@@ -17,6 +17,7 @@ export function SwipeRow({
   children,
   leading,
   trailing,
+  below,
   onOpen,
   onSwipeDelete,
   label,
@@ -25,6 +26,8 @@ export function SwipeRow({
   children: ReactNode;
   leading?: ReactNode;
   trailing?: ReactNode;
+  /** Rendered under the row (e.g. an expanded panel); not part of the swipe. */
+  below?: ReactNode;
   onOpen: () => void;
   onSwipeDelete: () => void;
   label: string;
@@ -77,39 +80,42 @@ export function SwipeRow({
   }
 
   return (
-    <li className={cn("relative overflow-hidden rounded-xl", className)}>
-      <div
-        className="absolute inset-0 flex items-center justify-end rounded-xl bg-danger px-5 text-danger-fg"
-        aria-hidden
-      >
-        <Trash2 className="size-5" />
-      </div>
-      <div
-        onPointerDown={down}
-        onPointerMove={move}
-        onPointerUp={up}
-        onPointerCancel={up}
-        onContextMenu={(e) => e.preventDefault()}
-        style={{ transform: `translateX(${dx}px)` }}
-        className={cn(
-          "relative flex min-h-14 w-full touch-pan-y items-center gap-3 bg-surface px-1 select-none",
-          settling && "transition-transform duration-200",
-        )}
-      >
-        {leading}
-        <button
-          type="button"
-          aria-label={label}
-          onClick={(e) => {
-            if (e.detail !== 0 && g.current.suppressClick) return; // a drag or long-press, not a tap
-            onOpen();
-          }}
-          className="flex min-h-14 min-w-0 flex-1 items-center gap-3 py-2 text-left"
+    <li className={className}>
+      <div className="relative overflow-hidden rounded-xl">
+        <div
+          className="absolute inset-0 flex items-center justify-end rounded-xl bg-danger px-5 text-danger-fg"
+          aria-hidden
         >
-          {children}
-        </button>
-        {trailing}
+          <Trash2 className="size-5" />
+        </div>
+        <div
+          onPointerDown={down}
+          onPointerMove={move}
+          onPointerUp={up}
+          onPointerCancel={up}
+          onContextMenu={(e) => e.preventDefault()}
+          style={{ transform: `translateX(${dx}px)` }}
+          className={cn(
+            "relative flex min-h-14 w-full touch-pan-y items-center gap-3 bg-surface px-1 select-none",
+            settling && "transition-transform duration-200",
+          )}
+        >
+          {leading}
+          <button
+            type="button"
+            aria-label={label}
+            onClick={(e) => {
+              if (e.detail !== 0 && g.current.suppressClick) return; // a drag or long-press, not a tap
+              onOpen();
+            }}
+            className="flex min-h-14 min-w-0 flex-1 items-center gap-3 py-2 text-left"
+          >
+            {children}
+          </button>
+          {trailing}
+        </div>
       </div>
+      {below}
     </li>
   );
 }

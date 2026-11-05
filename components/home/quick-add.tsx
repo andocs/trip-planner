@@ -1,7 +1,8 @@
 "use client";
 
-import { CalendarPlus, MapPinPlus, Receipt, UserPlus, type LucideIcon } from "lucide-react";
+import { Backpack, CalendarPlus, MapPinPlus, Receipt, UserPlus, type LucideIcon } from "lucide-react";
 import { useState } from "react";
+import { PackingSheet } from "@/components/pack/packing";
 import { ItinerarySheet } from "@/components/plan/itinerary-sheet";
 import { DestinationSheet } from "@/components/settings/destinations-section";
 import { TravelerSheet } from "@/components/settings/travelers-section";
@@ -21,6 +22,8 @@ export function QuickAdd({ budget }: { budget: Budget }) {
   const destination = useSheet<Row<"destinations">>();
   const traveler = useSheet<Row<"travelers">>();
   const activity = useSheet<Row<"itinerary_items">>();
+  const packing = useSheet<Row<"packing_items">>();
+  const { data: packItems } = useRows("packing_items");
   const { data: dests } = useRows("destinations", bySort);
 
   // Close the menu first, then open the target sheet, so two drawers never stack.
@@ -45,6 +48,7 @@ export function QuickAdd({ budget }: { budget: Budget }) {
       icon: MapPinPlus,
       open: go(destination.openAdd),
     },
+    { key: "packing", label: "Packing item", hint: "Something to bring", icon: Backpack, open: go(packing.openAdd) },
     { key: "traveler", label: "Traveler", hint: "Someone sharing costs", icon: UserPlus, open: go(traveler.openAdd) },
   ];
 
@@ -76,6 +80,11 @@ export function QuickAdd({ budget }: { budget: Budget }) {
       <DestinationSheet sheet={destination} sort={nextSort(dests)} />
       <TravelerSheet sheet={traveler} sort={nextSort(budget.travelers)} />
       <ItinerarySheet sheet={activity} cities={(dests ?? []).map((d) => d.city)} />
+      <PackingSheet
+        sheet={packing}
+        categories={[...new Set((packItems ?? []).map((i) => i.category).filter((c): c is string => !!c))]}
+        people={budget.travelers.map((t) => t.name)}
+      />
     </>
   );
 }

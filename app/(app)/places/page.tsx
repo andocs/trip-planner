@@ -1,8 +1,14 @@
 import type { Metadata } from "next";
-import { PlaceholderScreen } from "@/components/screens/placeholder";
+import { Suspense } from "react";
+import { PlacesScreen } from "@/components/screens/places";
+import { PageSkeleton } from "@/components/trip-gate";
 
 export const metadata: Metadata = { title: "Places" };
 
 export default function Page() {
-  return <PlaceholderScreen title="Places" milestone={6} />;
+  return (
+    <Suspense fallback={<PageSkeleton />}>
+      <PlacesScreen />
+    </Suspense>
+  );
 }
