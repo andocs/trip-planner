@@ -1,0 +1,125 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+ * Design tokens. Brand colours come straight from the planner workbook.
+ * "*-strong" variants are darker shades used for text and white-on-colour
+ * buttons so they meet WCAG AA contrast (the raw teal/coral are ~3:1 on white).
+ */
+:root {
+  --navy: #1f2a44;
+  --teal: #2a9d8f;
+  --coral: #e76f51;
+  --gold: #e9c46a;
+  --sand: #f6f1e9;
+  --ink: #2b2d42;
+  --muted: #8d99ae;
+  --line: #e3dccf;
+
+  --bg: var(--sand);
+  --surface: #ffffff;
+  --surface-2: #fbf8f3;
+  --fg: var(--ink);
+  --fg-muted: #5c677d;
+  --border: var(--line);
+  --primary: #1f7a70;
+  --primary-fg: #ffffff;
+  --accent: var(--teal);
+  --danger: #b9472b;
+  --danger-fg: #ffffff;
+  --warn: var(--gold);
+  --hero: var(--navy);
+  --hero-fg: #ffffff;
+  --ring: #1f7a70;
+  --shadow: 0 1px 2px rgb(31 42 68 / 0.06), 0 4px 16px rgb(31 42 68 / 0.06);
+
+  color-scheme: light;
+}
+
+.dark {
+  --bg: #121826;
+  --surface: #1a2234;
+  --surface-2: #212b40;
+  --fg: #e6e8ef;
+  --fg-muted: #9aa4b8;
+  --border: #2c3650;
+  --primary: #4cc2b3;
+  --primary-fg: #121826;
+  --accent: #4cc2b3;
+  --danger: #f08a70;
+  --danger-fg: #121826;
+  --hero: #0d1220;
+  --hero-fg: #ffffff;
+  --ring: #4cc2b3;
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 4px 16px rgb(0 0 0 / 0.25);
+
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-navy: var(--navy);
+  --color-teal: var(--teal);
+  --color-coral: var(--coral);
+  --color-gold: var(--gold);
+  --color-sand: var(--sand);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-fg: var(--fg);
+  --color-fg-muted: var(--fg-muted);
+  --color-border: var(--border);
+  --color-primary: var(--primary);
+  --color-primary-fg: var(--primary-fg);
+  --color-accent: var(--accent);
+  --color-danger: var(--danger);
+  --color-danger-fg: var(--danger-fg);
+  --color-warn: var(--warn);
+  --color-hero: var(--hero);
+  --color-hero-fg: var(--hero-fg);
+  --color-ring: var(--ring);
+
+  --shadow-card: var(--shadow);
+  --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+
+  --spacing-tabbar: calc(4rem + env(safe-area-inset-bottom));
+}
+
+@layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+    text-size-adjust: 100%;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--font-sans);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+
+  input,
+  select,
+  textarea {
+    font-size: 16px; /* prevents iOS zoom on focus */
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

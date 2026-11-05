@@ -1,0 +1,2444 @@
+{
+ "settings": {
+  "name": "Vietnam '26",
+  "dest": "Vietnam",
+  "start": "2026-06-16",
+  "end": "2026-06-26",
+  "home": "PHP",
+  "foreign": "VND",
+  "rate": 0.002457,
+  "budget": 118165,
+  "members": [
+   "Aq",
+   "Jam"
+  ],
+  "cats": [
+   "Flights",
+   "Accommodation",
+   "Food & Drinks",
+   "Transport",
+   "Activities & Tickets",
+   "Shopping & Pasalubong",
+   "SIM & Misc"
+  ],
+  "planned": {
+   "Flights": 27975.78,
+   "Accommodation": 73378.1,
+   "Transport": 4624.08,
+   "Activities & Tickets": 1334,
+   "SIM & Misc": 8520
+  },
+  "dests": [
+   {
+    "city": "Hanoi",
+    "country": "Vietnam",
+    "nights": 3,
+    "lat": 21.0285,
+    "lng": 105.8542
+   },
+   {
+    "city": "Sapa",
+    "country": "Vietnam",
+    "nights": 2,
+    "lat": 22.3364,
+    "lng": 103.8438
+   },
+   {
+    "city": "Ninh Binh",
+    "country": "Vietnam",
+    "nights": 2,
+    "lat": 20.2506,
+    "lng": 105.9745
+   }
+  ],
+  "map_region": "VN"
+ },
+ "exp": [
+  {
+   "date": "2026-06-18",
+   "desc": "Hanoi to Sapa bus tickets (2)",
+   "cat": "Transport",
+   "by": "Jam",
+   "cur": "PHP",
+   "amt": 2312.04,
+   "note": ""
+  },
+  {
+   "date": "2026-06-21",
+   "desc": "Sapa to Hanoi bus tickets (2)",
+   "cat": "Transport",
+   "by": "Jam",
+   "cur": "PHP",
+   "amt": 2312.04,
+   "note": ""
+  },
+  {
+   "date": "2026-06-22",
+   "desc": "Thang Long Water Puppet Show tickets (2)",
+   "cat": "Activities & Tickets",
+   "by": "Jam",
+   "cur": "PHP",
+   "amt": 1334,
+   "note": ""
+  },
+  {
+   "date": "",
+   "desc": "eSIM unlimited, 10 days",
+   "cat": "SIM & Misc",
+   "by": "Jam",
+   "cur": "PHP",
+   "amt": 1020,
+   "note": ""
+  },
+  {
+   "date": "",
+   "desc": "Camera rental, 11 days",
+   "cat": "SIM & Misc",
+   "by": "Jam",
+   "cur": "PHP",
+   "amt": 7500,
+   "note": ""
+  }
+ ],
+ "itin": [
+  {
+   "day": 0,
+   "date": "2026-06-18",
+   "city": "Hanoi → Sapa",
+   "time": "23:30",
+   "act": "Sleeper Bus to Sapa",
+   "dur": 420,
+   "type": "Transport"
+  },
+  {
+   "day": 1,
+   "date": "2026-06-19",
+   "city": "Sapa",
+   "time": "06:30",
+   "act": "Drop off bags @ Ville de Mont",
+   "dur": 30,
+   "type": "Rest & Stay"
+  },
+  {
+   "day": 1,
+   "date": "2026-06-19",
+   "city": "Sapa",
+   "time": "07:00",
+   "act": "Grab to Le Gecko Cafe",
+   "dur": 20,
+   "type": "Transport"
+  },
+  {
+   "day": 1,
+   "date": "2026-06-19",
+   "city": "Sapa",
+   "time": "07:20",
+   "act": "Le Gecko Café",
+   "dur": 40,
+   "type": "Food & Drink"
+  },
+  {
+   "day": 1,
+   "date": "2026-06-19",
+   "city": "Sapa",
+   "time": "08:00",
+   "act": "Walk to Sun Plaza",
+   "dur": 10,
+   "type": "Transport"
+  },
+  {
+   "day": 1,
+   "date": "2026-06-19",
+   "city": "Sapa",
+   "time": "08:10",
+   "act": "Sunworld Fansipan w/Buffet Lunch @ Van Sam",
+   "dur": 330,
+   "type": "Food & Drink"
+  },
+  {
+   "day": 1,
+   "date": "2026-06-19",
+   "city": "Sapa",
+   "time": "13:40",
+   "act": "Grab to Moana Sapa",
+   "dur": 15,
+   "type": "Transport"
+  },
+  {
+   "day": 1,
+   "date": "2026-06-19",
+   "city": "Sapa",
+   "time": "13:55",
+   "act": "Moana Sapa",
+   "dur": 60,
+   "type": "Sightseeing"
+  },
+  {
+   "day": 1,
+   "date": "2026-06-19",
+   "city": "Sapa",
+   "time": "14:55",
+   "act": "Grab to Alpine Coaster",
+   "dur": 15,
+   "type": "Transport"
+  },
+  {
+   "day": 1,
+   "date": "2026-06-19",
+   "city": "Sapa",
+   "time": "15:10",
+   "act": "Alpine Coaster",
+   "dur": 60,
+   "type": "Sightseeing"
+  },
+  {
+   "day": 1,
+   "date": "2026-06-19",
+   "city": "Sapa",
+   "time": "16:10",
+   "act": "Walk to Ville de Mont",
+   "dur": 10,
+   "type": "Transport"
+  },
+  {
+   "day": 1,
+   "date": "2026-06-19",
+   "city": "Sapa",
+   "time": "16:20",
+   "act": "Check In/Rest",
+   "dur": 180,
+   "type": "Rest & Stay"
+  },
+  {
+   "day": 1,
+   "date": "2026-06-19",
+   "city": "Sapa",
+   "time": "19:20",
+   "act": "Grab to Good Morning View Restaurant",
+   "dur": 15,
+   "type": "Transport"
+  },
+  {
+   "day": 1,
+   "date": "2026-06-19",
+   "city": "Sapa",
+   "time": "19:35",
+   "act": "Dinner @ Good Morning View Restaurant",
+   "dur": 60,
+   "type": "Food & Drink"
+  },
+  {
+   "day": 1,
+   "date": "2026-06-19",
+   "city": "Sapa",
+   "time": "20:35",
+   "act": "Grab to Ville de Mont",
+   "dur": 15,
+   "type": "Transport"
+  },
+  {
+   "day": 1,
+   "date": "2026-06-19",
+   "city": "Sapa",
+   "time": "20:50",
+   "act": "Rest",
+   "dur": null,
+   "type": "Rest & Stay"
+  },
+  {
+   "day": 2,
+   "date": "2026-06-20",
+   "city": "Sapa",
+   "time": "07:00",
+   "act": "Breakfast/Check out",
+   "dur": 60,
+   "type": "Food & Drink"
+  },
+  {
+   "day": 2,
+   "date": "2026-06-20",
+   "city": "Sapa",
+   "time": "08:00",
+   "act": "Transfer to Coupole",
+   "dur": 30,
+   "type": "Transport"
+  },
+  {
+   "day": 2,
+   "date": "2026-06-20",
+   "city": "Sapa",
+   "time": "08:30",
+   "act": "Grab to Silver Waterfall",
+   "dur": 30,
+   "type": "Transport"
+  },
+  {
+   "day": 2,
+   "date": "2026-06-20",
+   "city": "Sapa",
+   "time": "09:00",
+   "act": "Silver Waterfall",
+   "dur": 60,
+   "type": "Sightseeing"
+  },
+  {
+   "day": 2,
+   "date": "2026-06-20",
+   "city": "Sapa",
+   "time": "10:00",
+   "act": "Grab to Love Waterfall",
+   "dur": 10,
+   "type": "Transport"
+  },
+  {
+   "day": 2,
+   "date": "2026-06-20",
+   "city": "Sapa",
+   "time": "10:10",
+   "act": "Love Waterfall",
+   "dur": 90,
+   "type": "Sightseeing"
+  },
+  {
+   "day": 2,
+   "date": "2026-06-20",
+   "city": "Sapa",
+   "time": "11:40",
+   "act": "Grab to Heaven's Gate Peak",
+   "dur": 10,
+   "type": "Transport"
+  },
+  {
+   "day": 2,
+   "date": "2026-06-20",
+   "city": "Sapa",
+   "time": "11:50",
+   "act": "Heaven's Gate Peak",
+   "dur": 30,
+   "type": "Sightseeing"
+  },
+  {
+   "day": 2,
+   "date": "2026-06-20",
+   "city": "Sapa",
+   "time": "12:20",
+   "act": "Lunch at Hoang Lien Restaurant",
+   "dur": 60,
+   "type": "Food & Drink"
+  },
+  {
+   "day": 2,
+   "date": "2026-06-20",
+   "city": "Sapa",
+   "time": "13:20",
+   "act": "Grab to Lonely Tree",
+   "dur": 5,
+   "type": "Transport"
+  },
+  {
+   "day": 2,
+   "date": "2026-06-20",
+   "city": "Sapa",
+   "time": "13:25",
+   "act": "Lonely Tree",
+   "dur": 30,
+   "type": "Sightseeing"
+  },
+  {
+   "day": 2,
+   "date": "2026-06-20",
+   "city": "Sapa",
+   "time": "13:55",
+   "act": "Grab to Rong May Glass Bridge",
+   "dur": 10,
+   "type": "Transport"
+  },
+  {
+   "day": 2,
+   "date": "2026-06-20",
+   "city": "Sapa",
+   "time": "14:05",
+   "act": "Rong May Glass Bridge",
+   "dur": 120,
+   "type": "Sightseeing"
+  },
+  {
+   "day": 2,
+   "date": "2026-06-20",
+   "city": "Sapa",
+   "time": "16:05",
+   "act": "Grab back to Hotel",
+   "dur": 40,
+   "type": "Transport"
+  },
+  {
+   "day": 2,
+   "date": "2026-06-20",
+   "city": "Sapa",
+   "time": "16:45",
+   "act": "Rest",
+   "dur": 135,
+   "type": "Rest & Stay"
+  },
+  {
+   "day": 2,
+   "date": "2026-06-20",
+   "city": "Sapa",
+   "time": "19:00",
+   "act": "Grab to Sapa Emotion Restaurant",
+   "dur": 15,
+   "type": "Transport"
+  },
+  {
+   "day": 2,
+   "date": "2026-06-20",
+   "city": "Sapa",
+   "time": "19:15",
+   "act": "Sapa Emotion Restaurant",
+   "dur": 80,
+   "type": "Food & Drink"
+  },
+  {
+   "day": 2,
+   "date": "2026-06-20",
+   "city": "Sapa",
+   "time": "20:35",
+   "act": "Walk back to Hotel",
+   "dur": 20,
+   "type": "Transport"
+  },
+  {
+   "day": 2,
+   "date": "2026-06-20",
+   "city": "Sapa",
+   "time": "20:55",
+   "act": "Rest",
+   "dur": null,
+   "type": "Rest & Stay"
+  },
+  {
+   "day": 3,
+   "date": "2026-06-21",
+   "city": "Sapa",
+   "time": "07:00",
+   "act": "Breakfast/Check out",
+   "dur": 60,
+   "type": "Food & Drink"
+  },
+  {
+   "day": 3,
+   "date": "2026-06-21",
+   "city": "Sapa",
+   "time": "08:00",
+   "act": "Walk to Sapa Lake Square",
+   "dur": 20,
+   "type": "Transport"
+  },
+  {
+   "day": 3,
+   "date": "2026-06-21",
+   "city": "Sapa",
+   "time": "08:20",
+   "act": "Stroll @ Sapa Lake Square",
+   "dur": 40,
+   "type": "Sightseeing"
+  },
+  {
+   "day": 3,
+   "date": "2026-06-21",
+   "city": "Sapa",
+   "time": "09:00",
+   "act": "Walk to Sapa Stone Church",
+   "dur": 10,
+   "type": "Transport"
+  },
+  {
+   "day": 3,
+   "date": "2026-06-21",
+   "city": "Sapa",
+   "time": "09:10",
+   "act": "Sapa Stone Church",
+   "dur": 20,
+   "type": "Sightseeing"
+  },
+  {
+   "day": 3,
+   "date": "2026-06-21",
+   "city": "Sapa",
+   "time": "09:30",
+   "act": "Ham Rong Mountain",
+   "dur": 120,
+   "type": "Sightseeing"
+  },
+  {
+   "day": 3,
+   "date": "2026-06-21",
+   "city": "Sapa",
+   "time": "11:30",
+   "act": "Grab to Viettrekking Coffee & Restaurant",
+   "dur": 15,
+   "type": "Transport"
+  },
+  {
+   "day": 3,
+   "date": "2026-06-21",
+   "city": "Sapa",
+   "time": "11:45",
+   "act": "Viettrekking Coffee",
+   "dur": 80,
+   "type": "Food & Drink"
+  },
+  {
+   "day": 3,
+   "date": "2026-06-21",
+   "city": "Sapa",
+   "time": "13:05",
+   "act": "Grab to Mat Pet Farm",
+   "dur": 15,
+   "type": "Transport"
+  },
+  {
+   "day": 3,
+   "date": "2026-06-21",
+   "city": "Sapa",
+   "time": "13:20",
+   "act": "Mat Pet Farm",
+   "dur": 85,
+   "type": "Sightseeing"
+  },
+  {
+   "day": 3,
+   "date": "2026-06-21",
+   "city": "Sapa",
+   "time": "14:45",
+   "act": "Grab to Cat Cat Village",
+   "dur": 15,
+   "type": "Transport"
+  },
+  {
+   "day": 3,
+   "date": "2026-06-21",
+   "city": "Sapa",
+   "time": "15:00",
+   "act": "Cat Cat Village",
+   "dur": 180,
+   "type": "Sightseeing"
+  },
+  {
+   "day": 3,
+   "date": "2026-06-21",
+   "city": "Sapa",
+   "time": "18:00",
+   "act": "Grab to Sa Pa Night Market",
+   "dur": 20,
+   "type": "Transport"
+  },
+  {
+   "day": 3,
+   "date": "2026-06-21",
+   "city": "Sapa",
+   "time": "18:20",
+   "act": "Sa Pa Night Market/Dinner",
+   "dur": 240,
+   "type": "Food & Drink"
+  },
+  {
+   "day": 3,
+   "date": "2026-06-21",
+   "city": "Sapa",
+   "time": "22:20",
+   "act": "Grab back to Hotel",
+   "dur": 10,
+   "type": "Transport"
+  },
+  {
+   "day": 3,
+   "date": "2026-06-21",
+   "city": "Sapa",
+   "time": "22:30",
+   "act": "Wait for pickup/get bags",
+   "dur": 35,
+   "type": "Rest & Stay"
+  },
+  {
+   "day": 3,
+   "date": "2026-06-21",
+   "city": "Sapa",
+   "time": "23:05",
+   "act": "Pickup for bus",
+   "dur": 25,
+   "type": "Transport"
+  },
+  {
+   "day": 3,
+   "date": "2026-06-21",
+   "city": "Sapa",
+   "time": "23:30",
+   "act": "Sleeper Bus to Hanoi",
+   "dur": 420,
+   "type": "Transport"
+  },
+  {
+   "day": 4,
+   "date": "2026-06-22",
+   "city": "Hanoi",
+   "time": "06:30",
+   "act": "Drop off bags @ Hotel de Lagom",
+   "dur": 30,
+   "type": "Rest & Stay"
+  },
+  {
+   "day": 4,
+   "date": "2026-06-22",
+   "city": "Hanoi",
+   "time": "07:00",
+   "act": "Rest/Shower",
+   "dur": 60,
+   "type": "Rest & Stay"
+  },
+  {
+   "day": 4,
+   "date": "2026-06-22",
+   "city": "Hanoi",
+   "time": "08:00",
+   "act": "Walk to St. Joseph Cathedral",
+   "dur": 15,
+   "type": "Transport"
+  },
+  {
+   "day": 4,
+   "date": "2026-06-22",
+   "city": "Hanoi",
+   "time": "08:15",
+   "act": "St. Joseph Cathedral/Banh mi Mama",
+   "dur": 30,
+   "type": "Food & Drink"
+  },
+  {
+   "day": 4,
+   "date": "2026-06-22",
+   "city": "Hanoi",
+   "time": "08:45",
+   "act": "Walk to Hoan Kiem Lake",
+   "dur": 15,
+   "type": "Transport"
+  },
+  {
+   "day": 4,
+   "date": "2026-06-22",
+   "city": "Hanoi",
+   "time": "09:00",
+   "act": "Walk to Ngoc Son Temple",
+   "dur": 10,
+   "type": "Transport"
+  },
+  {
+   "day": 4,
+   "date": "2026-06-22",
+   "city": "Hanoi",
+   "time": "09:10",
+   "act": "Ngoc Son Temple",
+   "dur": 30,
+   "type": "Sightseeing"
+  },
+  {
+   "day": 4,
+   "date": "2026-06-22",
+   "city": "Hanoi",
+   "time": "09:40",
+   "act": "Walk to Hanoi Hilton (Hoa Lo Prison)",
+   "dur": 30,
+   "type": "Transport"
+  },
+  {
+   "day": 4,
+   "date": "2026-06-22",
+   "city": "Hanoi",
+   "time": "10:10",
+   "act": "Hanoi Hilton (Hoa Lo Prison)",
+   "dur": 90,
+   "type": "Sightseeing"
+  },
+  {
+   "day": 4,
+   "date": "2026-06-22",
+   "city": "Hanoi",
+   "time": "11:40",
+   "act": "Grab to Tam Vi",
+   "dur": 10,
+   "type": "Transport"
+  },
+  {
+   "day": 4,
+   "date": "2026-06-22",
+   "city": "Hanoi",
+   "time": "11:50",
+   "act": "Tam Vi",
+   "dur": 80,
+   "type": "Food & Drink"
+  },
+  {
+   "day": 4,
+   "date": "2026-06-22",
+   "city": "Hanoi",
+   "time": "13:10",
+   "act": "Grab to Temple of Literature",
+   "dur": 10,
+   "type": "Transport"
+  },
+  {
+   "day": 4,
+   "date": "2026-06-22",
+   "city": "Hanoi",
+   "time": "13:20",
+   "act": "Temple of Literature",
+   "dur": 60,
+   "type": "Sightseeing"
+  },
+  {
+   "day": 4,
+   "date": "2026-06-22",
+   "city": "Hanoi",
+   "time": "14:20",
+   "act": "Grab to Opera House",
+   "dur": 25,
+   "type": "Transport"
+  },
+  {
+   "day": 4,
+   "date": "2026-06-22",
+   "city": "Hanoi",
+   "time": "14:45",
+   "act": "Opera House",
+   "dur": 20,
+   "type": "Sightseeing"
+  },
+  {
+   "day": 4,
+   "date": "2026-06-22",
+   "city": "Hanoi",
+   "time": "15:05",
+   "act": "Grab to Bánh Cuốn Bà Xuân",
+   "dur": 20,
+   "type": "Transport"
+  },
+  {
+   "day": 4,
+   "date": "2026-06-22",
+   "city": "Hanoi",
+   "time": "15:25",
+   "act": "Bánh Cuốn Bà Xuân",
+   "dur": 30,
+   "type": "Food & Drink"
+  },
+  {
+   "day": 4,
+   "date": "2026-06-22",
+   "city": "Hanoi",
+   "time": "15:55",
+   "act": "Grab to Thang Long Puppet Show",
+   "dur": 15,
+   "type": "Transport"
+  },
+  {
+   "day": 4,
+   "date": "2026-06-22",
+   "city": "Hanoi",
+   "time": "16:10",
+   "act": "Thang Long Puppet Show",
+   "dur": 70,
+   "type": "Sightseeing"
+  },
+  {
+   "day": 4,
+   "date": "2026-06-22",
+   "city": "Hanoi",
+   "time": "17:20",
+   "act": "Grab to Bun Cha Dac Kim",
+   "dur": 10,
+   "type": "Transport"
+  },
+  {
+   "day": 4,
+   "date": "2026-06-22",
+   "city": "Hanoi",
+   "time": "17:30",
+   "act": "Bun Cha Dac Kim",
+   "dur": 30,
+   "type": "Food & Drink"
+  },
+  {
+   "day": 4,
+   "date": "2026-06-22",
+   "city": "Hanoi",
+   "time": "18:00",
+   "act": "Walk to Pho Ga Nguyet",
+   "dur": 5,
+   "type": "Transport"
+  },
+  {
+   "day": 4,
+   "date": "2026-06-22",
+   "city": "Hanoi",
+   "time": "18:05",
+   "act": "Pho Ga Nguyet",
+   "dur": 30,
+   "type": "Food & Drink"
+  },
+  {
+   "day": 4,
+   "date": "2026-06-22",
+   "city": "Hanoi",
+   "time": "18:35",
+   "act": "Walk to Train Street",
+   "dur": 10,
+   "type": "Transport"
+  },
+  {
+   "day": 4,
+   "date": "2026-06-22",
+   "city": "Hanoi",
+   "time": "18:45",
+   "act": "Relax at Train Street Cafe/Railway Tuan",
+   "dur": 120,
+   "type": "Food & Drink"
+  },
+  {
+   "day": 4,
+   "date": "2026-06-22",
+   "city": "Hanoi",
+   "time": "20:45",
+   "act": "Go back to Hotel de Lagom",
+   "dur": 30,
+   "type": "Transport"
+  },
+  {
+   "day": 4,
+   "date": "2026-06-22",
+   "city": "Hanoi",
+   "time": "21:15",
+   "act": "Rest",
+   "dur": null,
+   "type": "Rest & Stay"
+  },
+  {
+   "day": 5,
+   "date": "2026-06-23",
+   "city": "Hanoi",
+   "time": "06:30",
+   "act": "Breakfast/Check-out",
+   "dur": 60,
+   "type": "Food & Drink"
+  },
+  {
+   "day": 5,
+   "date": "2026-06-23",
+   "city": "Hanoi",
+   "time": "07:30",
+   "act": "Grab to Ho Chi Minh Mausoleum",
+   "dur": 15,
+   "type": "Transport"
+  },
+  {
+   "day": 5,
+   "date": "2026-06-23",
+   "city": "Hanoi",
+   "time": "07:45",
+   "act": "Ho Chi Minh Mausoleum",
+   "dur": 60,
+   "type": "Sightseeing"
+  },
+  {
+   "day": 5,
+   "date": "2026-06-23",
+   "city": "Hanoi",
+   "time": "08:45",
+   "act": "Walk to One Pillar Pagoda",
+   "dur": 5,
+   "type": "Transport"
+  },
+  {
+   "day": 5,
+   "date": "2026-06-23",
+   "city": "Hanoi",
+   "time": "08:50",
+   "act": "One Pillar Pagoda",
+   "dur": 15,
+   "type": "Sightseeing"
+  },
+  {
+   "day": 5,
+   "date": "2026-06-23",
+   "city": "Hanoi",
+   "time": "09:05",
+   "act": "Walk to Presidential Palace",
+   "dur": 10,
+   "type": "Transport"
+  },
+  {
+   "day": 5,
+   "date": "2026-06-23",
+   "city": "Hanoi",
+   "time": "09:15",
+   "act": "Presidential Palace",
+   "dur": 15,
+   "type": "Sightseeing"
+  },
+  {
+   "day": 5,
+   "date": "2026-06-23",
+   "city": "Hanoi",
+   "time": "09:30",
+   "act": "Walk to Imperial Citadel",
+   "dur": 20,
+   "type": "Transport"
+  },
+  {
+   "day": 5,
+   "date": "2026-06-23",
+   "city": "Hanoi",
+   "time": "09:50",
+   "act": "Imperial Citadel",
+   "dur": 120,
+   "type": "Sightseeing"
+  },
+  {
+   "day": 5,
+   "date": "2026-06-23",
+   "city": "Hanoi",
+   "time": "11:50",
+   "act": "Grab to Bun Cha Ta",
+   "dur": 20,
+   "type": "Transport"
+  },
+  {
+   "day": 5,
+   "date": "2026-06-23",
+   "city": "Hanoi",
+   "time": "12:10",
+   "act": "Bun Cha Ta",
+   "dur": 40,
+   "type": "Food & Drink"
+  },
+  {
+   "day": 5,
+   "date": "2026-06-23",
+   "city": "Hanoi",
+   "time": "12:50",
+   "act": "Walk to Cafe Giang",
+   "dur": 5,
+   "type": "Transport"
+  },
+  {
+   "day": 5,
+   "date": "2026-06-23",
+   "city": "Hanoi",
+   "time": "12:55",
+   "act": "Cafe Giang",
+   "dur": 40,
+   "type": "Food & Drink"
+  },
+  {
+   "day": 5,
+   "date": "2026-06-23",
+   "city": "Hanoi",
+   "time": "13:35",
+   "act": "Grab to Quan Thanh Temple",
+   "dur": 20,
+   "type": "Transport"
+  },
+  {
+   "day": 5,
+   "date": "2026-06-23",
+   "city": "Hanoi",
+   "time": "13:55",
+   "act": "Quan Thanh Temple",
+   "dur": 30,
+   "type": "Sightseeing"
+  },
+  {
+   "day": 5,
+   "date": "2026-06-23",
+   "city": "Hanoi",
+   "time": "14:25",
+   "act": "Walk to Tran Quoc Pagoda/Truc Bach Lake",
+   "dur": 15,
+   "type": "Transport"
+  },
+  {
+   "day": 5,
+   "date": "2026-06-23",
+   "city": "Hanoi",
+   "time": "14:40",
+   "act": "Tran Quoc Pagoda",
+   "dur": 30,
+   "type": "Sightseeing"
+  },
+  {
+   "day": 5,
+   "date": "2026-06-23",
+   "city": "Hanoi",
+   "time": "15:10",
+   "act": "Grab to Vietnam Museum of Ethnology",
+   "dur": 20,
+   "type": "Transport"
+  },
+  {
+   "day": 5,
+   "date": "2026-06-23",
+   "city": "Hanoi",
+   "time": "15:30",
+   "act": "Vietnam Museum of Ethnology",
+   "dur": 120,
+   "type": "Sightseeing"
+  },
+  {
+   "day": 5,
+   "date": "2026-06-23",
+   "city": "Hanoi",
+   "time": "17:30",
+   "act": "Go back to Hotel de Lagom",
+   "dur": 30,
+   "type": "Transport"
+  },
+  {
+   "day": 5,
+   "date": "2026-06-23",
+   "city": "Hanoi",
+   "time": "18:00",
+   "act": "Limousine Bus to Ninh Binh",
+   "dur": 180,
+   "type": "Transport"
+  },
+  {
+   "day": 5,
+   "date": "2026-06-23",
+   "city": "Hanoi",
+   "time": "21:00",
+   "act": "Check In @ One Day Tam Coc",
+   "dur": 30,
+   "type": "Rest & Stay"
+  },
+  {
+   "day": 5,
+   "date": "2026-06-23",
+   "city": "Hanoi",
+   "time": "21:30",
+   "act": "Grab to Hoa Lu Old Town",
+   "dur": 30,
+   "type": "Transport"
+  },
+  {
+   "day": 5,
+   "date": "2026-06-23",
+   "city": "Hanoi",
+   "time": "22:00",
+   "act": "Dinner & Explore @ Hoa Lu Old Town",
+   "dur": 90,
+   "type": "Food & Drink"
+  },
+  {
+   "day": 5,
+   "date": "2026-06-23",
+   "city": "Hanoi",
+   "time": "23:30",
+   "act": "Grab back to hotel",
+   "dur": 30,
+   "type": "Transport"
+  },
+  {
+   "day": 5,
+   "date": "2026-06-23",
+   "city": "Hanoi",
+   "time": "00:00",
+   "act": "Rest",
+   "dur": null,
+   "type": "Rest & Stay"
+  },
+  {
+   "day": 6,
+   "date": "2026-06-24",
+   "city": "Ninh Binh",
+   "time": "07:00",
+   "act": "Breakfast",
+   "dur": 60,
+   "type": "Food & Drink"
+  },
+  {
+   "day": 6,
+   "date": "2026-06-24",
+   "city": "Ninh Binh",
+   "time": "08:00",
+   "act": "Go to Trang An Docks",
+   "dur": 30,
+   "type": "Transport"
+  },
+  {
+   "day": 6,
+   "date": "2026-06-24",
+   "city": "Ninh Binh",
+   "time": "08:30",
+   "act": "Trang An Tour",
+   "dur": 210,
+   "type": "Sightseeing"
+  },
+  {
+   "day": 6,
+   "date": "2026-06-24",
+   "city": "Ninh Binh",
+   "time": "12:00",
+   "act": "Grab to Forest Sunset Bar & Restaurant",
+   "dur": 10,
+   "type": "Transport"
+  },
+  {
+   "day": 6,
+   "date": "2026-06-24",
+   "city": "Ninh Binh",
+   "time": "12:10",
+   "act": "Forest Sunset Bar & Restaurant",
+   "dur": 80,
+   "type": "Food & Drink"
+  },
+  {
+   "day": 6,
+   "date": "2026-06-24",
+   "city": "Ninh Binh",
+   "time": "13:30",
+   "act": "Grab to Hoa Lu Ancient Capital",
+   "dur": 15,
+   "type": "Transport"
+  },
+  {
+   "day": 6,
+   "date": "2026-06-24",
+   "city": "Ninh Binh",
+   "time": "13:45",
+   "act": "Hoa Lu Ancient Capital",
+   "dur": 180,
+   "type": "Sightseeing"
+  },
+  {
+   "day": 6,
+   "date": "2026-06-24",
+   "city": "Ninh Binh",
+   "time": "16:45",
+   "act": "Grab to Tam Coc Pet Coffee",
+   "dur": 50,
+   "type": "Transport"
+  },
+  {
+   "day": 6,
+   "date": "2026-06-24",
+   "city": "Ninh Binh",
+   "time": "17:35",
+   "act": "Tam Coc Pet Coffee",
+   "dur": 80,
+   "type": "Food & Drink"
+  },
+  {
+   "day": 6,
+   "date": "2026-06-24",
+   "city": "Ninh Binh",
+   "time": "18:55",
+   "act": "Go back to Hotel",
+   "dur": 20,
+   "type": "Transport"
+  },
+  {
+   "day": 6,
+   "date": "2026-06-24",
+   "city": "Ninh Binh",
+   "time": "19:15",
+   "act": "Rest",
+   "dur": null,
+   "type": "Rest & Stay"
+  },
+  {
+   "day": 7,
+   "date": "2026-06-25",
+   "city": "Ninh Binh",
+   "time": "04:30",
+   "act": "Grab to Hang Mua",
+   "dur": 30,
+   "type": "Transport"
+  },
+  {
+   "day": 7,
+   "date": "2026-06-25",
+   "city": "Ninh Binh",
+   "time": "05:00",
+   "act": "Hang Mua Sunrise Climb",
+   "dur": 120,
+   "type": "Sightseeing"
+  },
+  {
+   "day": 7,
+   "date": "2026-06-25",
+   "city": "Ninh Binh",
+   "time": "07:00",
+   "act": "Grab back to hotel",
+   "dur": 30,
+   "type": "Transport"
+  },
+  {
+   "day": 7,
+   "date": "2026-06-25",
+   "city": "Ninh Binh",
+   "time": "07:30",
+   "act": "Shower/Breakfast",
+   "dur": 90,
+   "type": "Food & Drink"
+  },
+  {
+   "day": 7,
+   "date": "2026-06-25",
+   "city": "Ninh Binh",
+   "time": "09:00",
+   "act": "Bike to Bich Dong Pagoda",
+   "dur": 5,
+   "type": "Transport"
+  },
+  {
+   "day": 7,
+   "date": "2026-06-25",
+   "city": "Ninh Binh",
+   "time": "09:05",
+   "act": "Bich Dong Pagoda",
+   "dur": 60,
+   "type": "Sightseeing"
+  },
+  {
+   "day": 7,
+   "date": "2026-06-25",
+   "city": "Ninh Binh",
+   "time": "10:05",
+   "act": "Bike to Buffalo Cave",
+   "dur": 15,
+   "type": "Transport"
+  },
+  {
+   "day": 7,
+   "date": "2026-06-25",
+   "city": "Ninh Binh",
+   "time": "10:20",
+   "act": "Buffalo Cave",
+   "dur": 45,
+   "type": "Sightseeing"
+  },
+  {
+   "day": 7,
+   "date": "2026-06-25",
+   "city": "Ninh Binh",
+   "time": "11:05",
+   "act": "Bike to Thung Nham Eco Tourism Zone (optional)",
+   "dur": 30,
+   "type": "Transport"
+  },
+  {
+   "day": 7,
+   "date": "2026-06-25",
+   "city": "Ninh Binh",
+   "time": "11:35",
+   "act": "Thung Nam Eco Tourism Zone (optional)",
+   "dur": 90,
+   "type": "Sightseeing"
+  },
+  {
+   "day": 7,
+   "date": "2026-06-25",
+   "city": "Ninh Binh",
+   "time": "13:05",
+   "act": "Bike back to hotel",
+   "dur": 15,
+   "type": "Transport"
+  },
+  {
+   "day": 7,
+   "date": "2026-06-25",
+   "city": "Ninh Binh",
+   "time": "13:20",
+   "act": "Bus back to Hanoi",
+   "dur": 180,
+   "type": "Transport"
+  },
+  {
+   "day": 7,
+   "date": "2026-06-25",
+   "city": "Ninh Binh",
+   "time": "16:20",
+   "act": "Check-in to AirBnb",
+   "dur": 30,
+   "type": "Rest & Stay"
+  },
+  {
+   "day": 7,
+   "date": "2026-06-25",
+   "city": "Ninh Binh",
+   "time": "16:50",
+   "act": "Shower/Rest",
+   "dur": 120,
+   "type": "Rest & Stay"
+  },
+  {
+   "day": 7,
+   "date": "2026-06-25",
+   "city": "Ninh Binh",
+   "time": "18:50",
+   "act": "Grab to Pizza 4P's",
+   "dur": 20,
+   "type": "Transport"
+  },
+  {
+   "day": 7,
+   "date": "2026-06-25",
+   "city": "Ninh Binh",
+   "time": "19:10",
+   "act": "Pizza 4P’s Bao Khanh",
+   "dur": 80,
+   "type": "Food & Drink"
+  },
+  {
+   "day": 7,
+   "date": "2026-06-25",
+   "city": "Ninh Binh",
+   "time": "20:30",
+   "act": "Walk to Little Bowl",
+   "dur": 10,
+   "type": "Transport"
+  },
+  {
+   "day": 7,
+   "date": "2026-06-25",
+   "city": "Ninh Binh",
+   "time": "20:40",
+   "act": "Little Bowl Dessert",
+   "dur": 30,
+   "type": "Food & Drink"
+  },
+  {
+   "day": 7,
+   "date": "2026-06-25",
+   "city": "Ninh Binh",
+   "time": "21:10",
+   "act": "Go back to AirBnb",
+   "dur": 30,
+   "type": "Transport"
+  },
+  {
+   "day": 7,
+   "date": "2026-06-25",
+   "city": "Ninh Binh",
+   "time": "21:40",
+   "act": "Check Out",
+   "dur": 30,
+   "type": "Rest & Stay"
+  },
+  {
+   "day": 7,
+   "date": "2026-06-25",
+   "city": "Ninh Binh",
+   "time": "22:10",
+   "act": "Grab to Noi Bai International",
+   "dur": 60,
+   "type": "Transport"
+  },
+  {
+   "day": 7,
+   "date": "2026-06-25",
+   "city": "Ninh Binh",
+   "time": "23:10",
+   "act": "Prepare for flight",
+   "dur": 160,
+   "type": "Rest & Stay"
+  },
+  {
+   "day": 8,
+   "date": "2026-06-26",
+   "city": "Hanoi",
+   "time": "01:50",
+   "act": "Goodbye Vietnam",
+   "dur": null,
+   "type": "Transport"
+  }
+ ],
+ "flights": [
+  {
+   "from": "MNL",
+   "to": "HAN",
+   "airline": "Philippine Airlines",
+   "no": "PR 595",
+   "dep": "2026-06-16T22:20",
+   "arr": "2026-06-17T00:45",
+   "fare": 13103.35,
+   "status": "Priced",
+   "ref": ""
+  },
+  {
+   "from": "HAN",
+   "to": "MNL",
+   "airline": "Cebu Pacific",
+   "no": "5J 747",
+   "dep": "2026-06-26T01:50",
+   "arr": "2026-06-26T06:25",
+   "fare": 14872.43,
+   "status": "Priced",
+   "ref": ""
+  }
+ ],
+ "stays": [
+  {
+   "status": "Planned",
+   "city": "Hanoi",
+   "hotel": "To be decided",
+   "room": "",
+   "cin": "2026-06-17",
+   "cout": "2026-06-19",
+   "total": 21944.1,
+   "conf": "",
+   "note": "Budget option 3"
+  },
+  {
+   "status": "Planned",
+   "city": "Sapa",
+   "hotel": "To be decided",
+   "room": "",
+   "cin": "2026-06-20",
+   "cout": "2026-06-21",
+   "total": 20433,
+   "conf": "",
+   "note": "Budget option 3"
+  },
+  {
+   "status": "Planned",
+   "city": "Sapa",
+   "hotel": "Hotel de la Coupole",
+   "room": "Deluxe King Room w/ breakfast",
+   "cin": "2026-06-21",
+   "cout": "2026-06-22",
+   "total": 15581,
+   "conf": "",
+   "note": "Budget option 3"
+  },
+  {
+   "status": "Planned",
+   "city": "Ninh Binh",
+   "hotel": "One Day Tam Coc Retreat",
+   "room": "King Room with Balcony w/ breakfast",
+   "cin": "2026-06-23",
+   "cout": "2026-06-25",
+   "total": 12420,
+   "conf": "",
+   "note": "Budget option 3"
+  },
+  {
+   "status": "Planned",
+   "city": "Hanoi",
+   "hotel": "Half-day stay",
+   "room": "Check-in 4:30 PM, before the night flight",
+   "cin": "2026-06-25",
+   "cout": "2026-06-25",
+   "total": 3000,
+   "conf": "",
+   "note": "Budget option 3; the itinerary says Airbnb"
+  }
+ ],
+ "short": [
+  {
+   "city": "Hanoi",
+   "hotel": "Hotel de Lagom",
+   "room": "Signature Terrace Suite City View",
+   "nights": 1,
+   "total": 10972.05
+  },
+  {
+   "city": "Hanoi",
+   "hotel": "Carillon Boutique Hotel",
+   "room": "Executive Double/Twin w/ breakfast",
+   "nights": 1,
+   "total": 6160.83
+  },
+  {
+   "city": "Hanoi",
+   "hotel": "The Oriental Jade Hotel",
+   "room": "Sapphire Quarter View King w/ breakfast",
+   "nights": 2,
+   "total": 18126.2
+  },
+  {
+   "city": "Hanoi",
+   "hotel": "Bespoke Trendy Hotel",
+   "room": "Trendy Suite w/ breakfast",
+   "nights": 1,
+   "total": 12573.17
+  },
+  {
+   "city": "Sapa",
+   "hotel": "Pistachio Hotel",
+   "room": "Superior Mountain View Double w/ breakfast",
+   "nights": 1,
+   "total": 9109.5
+  },
+  {
+   "city": "Sapa",
+   "hotel": "Hotel de la Coupole",
+   "room": "Deluxe King Room w/ breakfast",
+   "nights": 1,
+   "total": 15581.0
+  },
+  {
+   "city": "Sapa",
+   "hotel": "Ville de Mont",
+   "room": "Executive Villa on the Rocks",
+   "nights": 0.5,
+   "total": 16601.67
+  },
+  {
+   "city": "Sapa",
+   "hotel": "KK Sapa Hotel",
+   "room": "Mountain Suite w/ breakfast",
+   "nights": 2,
+   "total": 14888.28
+  },
+  {
+   "city": "Sapa",
+   "hotel": "Sapa Jade Hill Resort",
+   "room": "Panorama View Bungalow w/ breakfast",
+   "nights": 1,
+   "total": 20697.62
+  },
+  {
+   "city": "Sapa",
+   "hotel": "Sapa CatCat Hills Resort & Spa",
+   "room": "Panorama Executive Suite w/ breakfast",
+   "nights": 0.5,
+   "total": 5419.62
+  },
+  {
+   "city": "Ninh Binh",
+   "hotel": "One Day Tam Coc Retreat",
+   "room": "King Room with Balcony w/ breakfast",
+   "nights": 2,
+   "total": 12420
+  },
+  {
+   "city": "Ninh Binh",
+   "hotel": "The Greenary Garden",
+   "room": "Junior Suite with Pool View w/ breakfast",
+   "nights": 2,
+   "total": 5550
+  },
+  {
+   "city": "Ninh Binh",
+   "hotel": "Coco Island Resort",
+   "room": "Deluxe King Room w/ breakfast",
+   "nights": 2,
+   "total": 8606
+  },
+  {
+   "city": "Ninh Binh",
+   "hotel": "Tam Coc Retreat",
+   "room": "Suite with Private Garden w/ breakfast",
+   "nights": 2,
+   "total": 16180
+  }
+ ],
+ "transfers": [
+  {
+   "route": "Hanoi → Sapa (sleeper bus)",
+   "provider": "Sleeper bus, 2 tickets",
+   "cost": "₱2,312.04 total",
+   "link": ""
+  },
+  {
+   "route": "Sapa → Hanoi (sleeper bus)",
+   "provider": "Sleeper bus, 2 tickets",
+   "cost": "₱2,312.04 total",
+   "link": ""
+  },
+  {
+   "route": "Hanoi → Ninh Binh (limousine)",
+   "provider": "Klook shared limousine",
+   "cost": "",
+   "link": "https://www.klook.com/en-PH/activity/76802-shared-limousine-to-ninh-binh-from-ha-noi-and-vice-versa/"
+  },
+  {
+   "route": "Hanoi → Ninh Binh (limousine)",
+   "provider": "ninhbinhcar.com online booking",
+   "cost": "",
+   "link": "https://ninhbinhcar.com/dat-ve-truc-tuyen/?from=24&to=42&departDate=23-06-2026"
+  },
+  {
+   "route": "Hanoi → Ninh Binh (limousine)",
+   "provider": "Also compare: 12go.asia, vexere.com, Cat Ba Express, Daiichi Travel",
+   "cost": "",
+   "link": ""
+  },
+  {
+   "route": "Around town",
+   "provider": "Grab",
+   "cost": "Noted as 2k-3k per ride",
+   "link": ""
+  }
+ ],
+ "food": [
+  {
+   "name": "Bun Cha Ta",
+   "city": "Hanoi",
+   "day": 2,
+   "note": "Bib Gourmand",
+   "status": "Planned"
+  },
+  {
+   "name": "Cafe Giang",
+   "city": "Hanoi",
+   "day": 2,
+   "note": "High Ratings",
+   "status": "Planned"
+  },
+  {
+   "name": "Bánh Cuốn Bà Xuân",
+   "city": "Hanoi",
+   "day": 2,
+   "note": "Michelin Selected",
+   "status": "Planned"
+  },
+  {
+   "name": "Bun Cha Dac Kim",
+   "city": "Hanoi",
+   "day": 2,
+   "note": "Michelin Selected",
+   "status": "Planned"
+  },
+  {
+   "name": "Pho Ga Nguyet",
+   "city": "Hanoi",
+   "day": 2,
+   "note": "Bib Gourmand",
+   "status": "Planned"
+  },
+  {
+   "name": "Mr Bay Mien Tay",
+   "city": "Hanoi",
+   "day": null,
+   "note": "",
+   "status": "Maybe"
+  },
+  {
+   "name": "Phở 10 Lý Quốc Sư",
+   "city": "Hanoi",
+   "day": null,
+   "note": "",
+   "status": "Maybe"
+  },
+  {
+   "name": "4Ps Bao Khanh",
+   "city": "Hanoi",
+   "day": 1,
+   "note": "High Ratings",
+   "status": "Planned"
+  },
+  {
+   "name": "1946 Cua Bac",
+   "city": "Hanoi",
+   "day": null,
+   "note": "Bib Gourmand",
+   "status": "Maybe"
+  },
+  {
+   "name": "Tuyết Bún Chả 34",
+   "city": "Hanoi",
+   "day": null,
+   "note": "Bib Gourmand",
+   "status": "Maybe"
+  },
+  {
+   "name": "Phở Tiến",
+   "city": "Hanoi",
+   "day": null,
+   "note": "Michelin Selected",
+   "status": "Maybe"
+  },
+  {
+   "name": "Ốc Dì Tú",
+   "city": "Hanoi",
+   "day": null,
+   "note": "Michelin Selected",
+   "status": "Maybe"
+  },
+  {
+   "name": "Lamai Garden",
+   "city": "Hanoi",
+   "day": null,
+   "note": "Michelin Selected",
+   "status": "Maybe"
+  },
+  {
+   "name": "Hemispheres Steak & Seafood Grill",
+   "city": "Hanoi",
+   "day": null,
+   "note": "Michelin Selected",
+   "status": "Maybe"
+  },
+  {
+   "name": "Banh Mi 25",
+   "city": "Hanoi",
+   "day": null,
+   "note": "High Ratings",
+   "status": "Maybe"
+  },
+  {
+   "name": "The Note Coffee",
+   "city": "Hanoi",
+   "day": null,
+   "note": "High Ratings",
+   "status": "Maybe"
+  },
+  {
+   "name": "Banh mi Mama",
+   "city": "Hanoi",
+   "day": 1,
+   "note": "Local Spot",
+   "status": "Planned"
+  },
+  {
+   "name": "Phở An (Pho Restaurant)",
+   "city": "Ninh Binh",
+   "day": null,
+   "note": "Local Spot",
+   "status": "Maybe"
+  },
+  {
+   "name": "Viva Mexico - Taco & Grill",
+   "city": "Ninh Binh",
+   "day": null,
+   "note": "Local Spot",
+   "status": "Maybe"
+  }
+ ],
+ "menu": [
+  {
+   "rest": "Bun Cha Ta",
+   "item": "Bun Cha Ta (Grilled Pork, Rice Noodles)",
+   "vnd": 80000
+  },
+  {
+   "rest": "Bun Cha Ta",
+   "item": "Bun Cha Ta Full Option (Bun Cha Ta + 2 Fried Spring Rolls)",
+   "vnd": 120000
+  },
+  {
+   "rest": "Bun Cha Ta",
+   "item": "Bun Cha Ta + Nem Hai San (Bun Cha Ta + 2 Fried Seafood Spring Rolls)",
+   "vnd": 140000
+  },
+  {
+   "rest": "Bun Cha Ta",
+   "item": "Bun Cha Ta + Nem Ga (Bun Cha Ta + 2 Fried Chicken Spring Rolls)",
+   "vnd": 140000
+  },
+  {
+   "rest": "Bun Cha Ta",
+   "item": "Bun Nem Ta (3 Fried Spring Rolls, Rice Noodles)",
+   "vnd": 80000
+  },
+  {
+   "rest": "Bun Cha Ta",
+   "item": "Bun Nem Hai San Ta (3 Fried Seafood Spring Rolls, Rice Noodles)",
+   "vnd": 110000
+  },
+  {
+   "rest": "Bun Cha Ta",
+   "item": "Bun Nem Chay Ta (3 Fried Vegetarian Spring Rolls, Rice Noodles)",
+   "vnd": 80000
+  },
+  {
+   "rest": "Bun Cha Ta",
+   "item": "Bun Nem Ga Ta (3 Fried Chicken Spring Rolls, Rice Noodles)",
+   "vnd": 110000
+  },
+  {
+   "rest": "Bun Cha Ta",
+   "item": "Bun Dau Chay Ta (Fried Tofu w/Tomato Sauce, Rice Noodles)",
+   "vnd": 100000
+  },
+  {
+   "rest": "Bun Cha Ta",
+   "item": "Special Bun Cha Ta (Bun Cha Ta + 1 each Fried Spring Rolls (Traditional/Chicken/Seafood))",
+   "vnd": 160000
+  },
+  {
+   "rest": "Cafe Giang",
+   "item": "Cafe Trung (Nong/Da) (Egg Coffee (Hot/Iced))",
+   "vnd": 40000
+  },
+  {
+   "rest": "Cafe Giang",
+   "item": "Cacao Trung (Nong/Da) (Egg Cocoa (Hot/Iced))",
+   "vnd": 40000
+  },
+  {
+   "rest": "Cafe Giang",
+   "item": "Dau Xanh Trung (Nong/Da) (Egg Coffee w/Mung Bean (Hot/Iced))",
+   "vnd": 40000
+  },
+  {
+   "rest": "Cafe Giang",
+   "item": "Trung Hon Hop (Nong/Da) (Egg MIx - Egg Cocoa/Egg Coffee w/Mung Bean (Hot/Iced))",
+   "vnd": 45000
+  },
+  {
+   "rest": "Cafe Giang",
+   "item": "Kem Trung (Nong/Da) (Egg Cream - Coffee, Cocoa, Mung Bean, Oreo, Matcha, Cinnamon (Hot/Iced))",
+   "vnd": 45000
+  },
+  {
+   "rest": "Cafe Giang",
+   "item": "Cafe Trung Hanh Nanh (Nong/Da) (Egg Coffee w/Almonds (Hot/Iced))",
+   "vnd": 50000
+  },
+  {
+   "rest": "Cafe Giang",
+   "item": "Cacao Trung Hanh Nanh (Nong/Da) (Egg Cocoa w/Almonds (Hot/Iced))",
+   "vnd": 50000
+  },
+  {
+   "rest": "Cafe Giang",
+   "item": "Cafe Trung Sua Dua (Nong/Da) (Egg Coffee w/Coconut (Hot/Iced))",
+   "vnd": 50000
+  },
+  {
+   "rest": "Cafe Giang",
+   "item": "Cacao Trung Sua Dua (Nong/Da) (Egg Cocoa w/Coconut (Hot/Iced))",
+   "vnd": 50000
+  },
+  {
+   "rest": "Cafe Giang",
+   "item": "Rum Trung (Nong/Da) (Egg Coffee w/Rum (Hot/Iced))",
+   "vnd": 55000
+  },
+  {
+   "rest": "Cafe Giang",
+   "item": "Bia Trung (Nong/Da) (Egg Coffee w/Beer (Hot/Iced))",
+   "vnd": 55000
+  },
+  {
+   "rest": "Cafe Giang",
+   "item": "Matcha Trung (Nong/Da) (Egg Coffee w/Matcha (Hot/Iced))",
+   "vnd": 45000
+  },
+  {
+   "rest": "Cafe Giang",
+   "item": "Oreo Trung (Nong/Da) (Egg Coffee w/Oreo (Hot/Iced))",
+   "vnd": 45000
+  },
+  {
+   "rest": "Cafe Giang",
+   "item": "Que Trung (Nong/Da) (Egg Coffee w/Cinnamon (Hot/Iced))",
+   "vnd": 45000
+  },
+  {
+   "rest": "Bánh Cuốn Bà Xuân",
+   "item": "Banh Cuon (Steamed Rice Rolls w/Pork & Mushroom Filling topped w/Shallots)",
+   "vnd": 40000
+  },
+  {
+   "rest": "Bánh Cuốn Bà Xuân",
+   "item": "Banh Trung (Steamed Rice Rolls w/Chicken, Egg, Pork & Mushroom Filling topped w/Shallots)",
+   "vnd": 20000
+  },
+  {
+   "rest": "Bánh Cuốn Bà Xuân",
+   "item": "Cha Mo (Pork Meatloaf)",
+   "vnd": 10000
+  },
+  {
+   "rest": "Bánh Cuốn Bà Xuân",
+   "item": "Lap Xuong (Chinese Sausage)",
+   "vnd": 20000
+  },
+  {
+   "rest": "Bun Cha Dac Kim",
+   "item": "Bun Cha (Kebab Rice Noodles)",
+   "vnd": 70000
+  },
+  {
+   "rest": "Bun Cha Dac Kim",
+   "item": "Bun Nem Cua Be (Rice Noodles + 3 Fried Spring Rolls)",
+   "vnd": 80000
+  },
+  {
+   "rest": "Bun Cha Dac Kim",
+   "item": "Nem Cua Be (Fried Sea Crab Spring Rolls)",
+   "vnd": 25000
+  },
+  {
+   "rest": "Bun Cha Dac Kim",
+   "item": "Bun Nem Chay (Vegetarian Spring Rolls)",
+   "vnd": 70000
+  },
+  {
+   "rest": "Bun Cha Dac Kim",
+   "item": "Combo Bun Cha Va Nem Cua Be (Kebab Rice Noodles + 2 Fried Spring Rolls)",
+   "vnd": 120000
+  },
+  {
+   "rest": "Phở Gà Nguyệt",
+   "item": "Pho Luon (Pho with Chicken Breast)",
+   "vnd": 55000
+  },
+  {
+   "rest": "Phở Gà Nguyệt",
+   "item": "Pho Long Me (Pho with Chicken Offal)",
+   "vnd": 60000
+  },
+  {
+   "rest": "Phở Gà Nguyệt",
+   "item": "Pho Lung (Pho with Chicken Back)",
+   "vnd": 60000
+  },
+  {
+   "rest": "Phở Gà Nguyệt",
+   "item": "Pho Dui (Pho with Chicken Thigh)",
+   "vnd": 70000
+  },
+  {
+   "rest": "Phở Gà Nguyệt",
+   "item": "Pho Canh (Pho with Chicken Wing)",
+   "vnd": 65000
+  },
+  {
+   "rest": "Phở Gà Nguyệt",
+   "item": "Pho Dui Canh (Pho with Chicken Thigh & Wing)",
+   "vnd": 120000
+  },
+  {
+   "rest": "Phở Gà Nguyệt",
+   "item": "Pho Dui Lung (Pho with Chicken Thigh & Back)",
+   "vnd": 120000
+  },
+  {
+   "rest": "Phở Gà Nguyệt",
+   "item": "Pho Canh Lung (Pho with Chicken Wing & Back)",
+   "vnd": 120000
+  },
+  {
+   "rest": "Phở Gà Nguyệt",
+   "item": "Pho Dui Luon (Pho with Chicken Thigh & Breast)",
+   "vnd": 90000
+  },
+  {
+   "rest": "Phở Gà Nguyệt",
+   "item": "Pho Canh Luon (Pho with Chicken Wing & Breast)",
+   "vnd": 90000
+  },
+  {
+   "rest": "Phở Gà Nguyệt",
+   "item": "Pho Lung Luon (Pho with Chicken Back & Breast)",
+   "vnd": 90000
+  }
+ ],
+ "att": [
+  {
+   "name": "One Pillar Pagoda",
+   "city": "Hanoi",
+   "day": 1,
+   "note": "",
+   "status": "Planned"
+  },
+  {
+   "name": "Presidential Palace",
+   "city": "Hanoi",
+   "day": 1,
+   "note": "",
+   "status": "Planned"
+  },
+  {
+   "name": "Imperial Citadel of Thang Long",
+   "city": "Hanoi",
+   "day": 1,
+   "note": "",
+   "status": "Planned"
+  },
+  {
+   "name": "Quan Thanh Temple",
+   "city": "Hanoi",
+   "day": 1,
+   "note": "",
+   "status": "Planned"
+  },
+  {
+   "name": "Truc Bach Lake",
+   "city": "Hanoi",
+   "day": 1,
+   "note": "",
+   "status": "Planned"
+  },
+  {
+   "name": "West Lake",
+   "city": "Hanoi",
+   "day": 1,
+   "note": "",
+   "status": "Planned"
+  },
+  {
+   "name": "Tran Quoc Pagoda",
+   "city": "Hanoi",
+   "day": 1,
+   "note": "",
+   "status": "Planned"
+  },
+  {
+   "name": "Van Nien Pagoda",
+   "city": "Hanoi",
+   "day": 1,
+   "note": "",
+   "status": "Planned"
+  },
+  {
+   "name": "Vietnam Museum of Ethnology",
+   "city": "Hanoi",
+   "day": 1,
+   "note": "",
+   "status": "Planned"
+  },
+  {
+   "name": "Hanoi Train Street",
+   "city": "Hanoi",
+   "day": 1,
+   "note": "",
+   "status": "Planned"
+  },
+  {
+   "name": "Saint Joseph Cathedral",
+   "city": "Hanoi",
+   "day": 2,
+   "note": "",
+   "status": "Planned"
+  },
+  {
+   "name": "Hoan Kiem Lake",
+   "city": "Hanoi",
+   "day": 2,
+   "note": "",
+   "status": "Planned"
+  },
+  {
+   "name": "Ngoc Son Temple",
+   "city": "Hanoi",
+   "day": 2,
+   "note": "",
+   "status": "Planned"
+  },
+  {
+   "name": "Hanoi Hilton (Hoa Lo Prison)",
+   "city": "Hanoi",
+   "day": 2,
+   "note": "",
+   "status": "Planned"
+  },
+  {
+   "name": "Temple of Literature",
+   "city": "Hanoi",
+   "day": 2,
+   "note": "",
+   "status": "Planned"
+  },
+  {
+   "name": "Vietnam National Fine Arts Museum",
+   "city": "Hanoi",
+   "day": 2,
+   "note": "",
+   "status": "Planned"
+  },
+  {
+   "name": "Hanoi Opera House",
+   "city": "Hanoi",
+   "day": 2,
+   "note": "",
+   "status": "Planned"
+  },
+  {
+   "name": "Thang Long Water Puppet Theatre",
+   "city": "Hanoi",
+   "day": 2,
+   "note": "",
+   "status": "Planned"
+  },
+  {
+   "name": "Sapa Stone Church",
+   "city": "Sapa",
+   "day": 3,
+   "note": "",
+   "status": "Planned"
+  },
+  {
+   "name": "Ham Rong Mountain",
+   "city": "Sapa",
+   "day": 3,
+   "note": "",
+   "status": "Planned"
+  },
+  {
+   "name": "Viettrekking Cafe",
+   "city": "Sapa",
+   "day": 3,
+   "note": "",
+   "status": "Planned"
+  },
+  {
+   "name": "Mat Pet Farm",
+   "city": "Sapa",
+   "day": 3,
+   "note": "",
+   "status": "Planned"
+  },
+  {
+   "name": "Moana Sapa",
+   "city": "Sapa",
+   "day": 3,
+   "note": "",
+   "status": "Planned"
+  },
+  {
+   "name": "Cat Cat Village",
+   "city": "Sapa",
+   "day": 3,
+   "note": "",
+   "status": "Planned"
+  },
+  {
+   "name": "Cat Cat Village Rainbow Slide",
+   "city": "Sapa",
+   "day": 3,
+   "note": "",
+   "status": "Planned"
+  },
+  {
+   "name": "Rong May Glass Bridge",
+   "city": "Sapa",
+   "day": 3,
+   "note": "",
+   "status": "Planned"
+  },
+  {
+   "name": "Sun World Fansipan Legend Tickets + Cable Car & Muong Hoa Monorail",
+   "city": "Sapa",
+   "day": 3,
+   "note": "",
+   "status": "Planned"
+  },
+  {
+   "name": "Mong Village Alpine Coaster",
+   "city": "Sapa",
+   "day": 3,
+   "note": "",
+   "status": "Planned"
+  },
+  {
+   "name": "Hang Mua Peak + Mua Cave",
+   "city": "Ninh Binh",
+   "day": null,
+   "note": "",
+   "status": "Maybe"
+  },
+  {
+   "name": "Trang An Scenic Landscape Complex",
+   "city": "Ninh Binh",
+   "day": null,
+   "note": "",
+   "status": "Maybe"
+  },
+  {
+   "name": "Bich Dong Pagoda",
+   "city": "Ninh Binh",
+   "day": null,
+   "note": "",
+   "status": "Maybe"
+  },
+  {
+   "name": "Hoa Lu Old Town",
+   "city": "Ninh Binh",
+   "day": null,
+   "note": "",
+   "status": "Maybe"
+  },
+  {
+   "name": "Bicycling through countryside of Ninh Binh",
+   "city": "Ninh Binh",
+   "day": null,
+   "note": "",
+   "status": "Maybe"
+  },
+  {
+   "name": "Tam Coc Pet Coffee",
+   "city": "Ninh Binh",
+   "day": null,
+   "note": "",
+   "status": "Maybe"
+  },
+  {
+   "name": "Buffalo Cave",
+   "city": "Ninh Binh",
+   "day": null,
+   "note": "",
+   "status": "Maybe"
+  },
+  {
+   "name": "Van Long Wetland Nature Reserve",
+   "city": "Ninh Binh",
+   "day": null,
+   "note": "",
+   "status": "Maybe"
+  }
+ ],
+ "pack": [
+  {
+   "cat": "Important docs",
+   "item": "Passport",
+   "who": "Jam"
+  },
+  {
+   "cat": "Important docs",
+   "item": "Certificate of employment (printed)",
+   "who": "Jam"
+  },
+  {
+   "cat": "Important docs",
+   "item": "Valid ID",
+   "who": "Jam"
+  },
+  {
+   "cat": "Important docs",
+   "item": "Secondary valid ID",
+   "who": "Jam"
+  },
+  {
+   "cat": "Important docs",
+   "item": "Company ID",
+   "who": "Jam"
+  },
+  {
+   "cat": "Important docs",
+   "item": "Approved leave from employer",
+   "who": "Jam"
+  },
+  {
+   "cat": "Important docs",
+   "item": "Roundtrip ticket (printed)",
+   "who": "Jam"
+  },
+  {
+   "cat": "Important docs",
+   "item": "Hotel vouchers (printed)",
+   "who": "Jam"
+  },
+  {
+   "cat": "Important docs",
+   "item": "eTravel app registered",
+   "who": "Jam"
+  },
+  {
+   "cat": "Important docs",
+   "item": "Bank statement (can be printed)",
+   "who": "Jam"
+  },
+  {
+   "cat": "Important docs",
+   "item": "Luggage 20kg",
+   "who": "Jam"
+  },
+  {
+   "cat": "Important docs",
+   "item": "Handcarry bag 7kg",
+   "who": "Jam"
+  },
+  {
+   "cat": "Personal items",
+   "item": "Wallet and card holders",
+   "who": "Jam"
+  },
+  {
+   "cat": "Personal items",
+   "item": "Electronics: Phone, powerbank (airplane safe), charger, earphones, travel camera",
+   "who": "Jam"
+  },
+  {
+   "cat": "Personal items",
+   "item": "Clothes: 2 cold sets for Sapa, 2 comfy, 2 dressy, company attire, swimwear",
+   "who": "Jam"
+  },
+  {
+   "cat": "Personal items",
+   "item": "Toiletries: Toothbrush, toothpaste, deodorant, comb, tissue, wipes, makeup pouch with skincare, accessories bag, hygiene bag",
+   "who": "Jam"
+  },
+  {
+   "cat": "Personal items",
+   "item": "Meds kit: Pills (2 packs), Biogesic, inhaler, Erceflora",
+   "who": "Jam"
+  },
+  {
+   "cat": "Personal items",
+   "item": "Extra chopsticks",
+   "who": "Jam"
+  },
+  {
+   "cat": "Personal items",
+   "item": "Water tumbler",
+   "who": "Jam"
+  },
+  {
+   "cat": "Important docs",
+   "item": "Passport",
+   "who": "Docs"
+  },
+  {
+   "cat": "Important docs",
+   "item": "Certificate of employment (printed)",
+   "who": "Docs"
+  },
+  {
+   "cat": "Important docs",
+   "item": "Valid ID",
+   "who": "Docs"
+  },
+  {
+   "cat": "Important docs",
+   "item": "Secondary valid ID",
+   "who": "Docs"
+  },
+  {
+   "cat": "Important docs",
+   "item": "Company ID",
+   "who": "Docs"
+  },
+  {
+   "cat": "Important docs",
+   "item": "Approved leave from employer",
+   "who": "Docs"
+  },
+  {
+   "cat": "Important docs",
+   "item": "Travel itinerary 7D6N (printed)",
+   "who": "Docs"
+  },
+  {
+   "cat": "Important docs",
+   "item": "Roundtrip ticket (printed)",
+   "who": "Docs"
+  },
+  {
+   "cat": "Important docs",
+   "item": "Hotel bookings (printed)",
+   "who": "Docs"
+  },
+  {
+   "cat": "Important docs",
+   "item": "Klook bookings (printed)",
+   "who": "Docs"
+  },
+  {
+   "cat": "Important docs",
+   "item": "eTravel app registered",
+   "who": "Docs"
+  },
+  {
+   "cat": "Important docs",
+   "item": "Bank statement (can be printed)",
+   "who": "Docs"
+  },
+  {
+   "cat": "Important docs",
+   "item": "Luggage 20kg",
+   "who": "Docs"
+  },
+  {
+   "cat": "Important docs",
+   "item": "Handcarry bag 7kg",
+   "who": "Docs"
+  },
+  {
+   "cat": "Personal items",
+   "item": "Wallet and card holders",
+   "who": "Docs"
+  },
+  {
+   "cat": "Personal items",
+   "item": "Electronics: Phone, powerbank (airplane safe), charger, earphones, travel camera",
+   "who": "Docs"
+  },
+  {
+   "cat": "Personal items",
+   "item": "Clothes: 2 cold sets for Sapa, 2 comfy, 2 dressy, swimwear",
+   "who": "Docs"
+  },
+  {
+   "cat": "Personal items",
+   "item": "Toiletries: Toothbrush, toothpaste, deodorant, comb, tissue, wipes, makeup pouch with skincare",
+   "who": "Docs"
+  },
+  {
+   "cat": "Personal items",
+   "item": "Meds kit: Erceflora, Biogesic, inhaler",
+   "who": "Docs"
+  },
+  {
+   "cat": "Personal items",
+   "item": "Extra chopsticks",
+   "who": "Docs"
+  },
+  {
+   "cat": "Personal items",
+   "item": "Water tumbler",
+   "who": "Docs"
+  }
+ ],
+ "pas": [
+  {
+   "who": "Refrigerator",
+   "gift": "Ref magnets: Hanoi, Sapa, Ninh Binh",
+   "budget": null
+  },
+  {
+   "who": "Ate Jo, Janjan, Papa",
+   "gift": "Vietnamese coffee beans, snacks",
+   "budget": null
+  },
+  {
+   "who": "Mama and Ate Pup",
+   "gift": "Vietnamese coffee beans, keychains, Adidas keme",
+   "budget": null
+  },
+  {
+   "who": "Darla, Joe, Ella, Mary, Kurt, David",
+   "gift": "Keychains, coffee (Darla)",
+   "budget": null
+  },
+  {
+   "who": "Office",
+   "gift": "Keychains, snacks",
+   "budget": null
+  }
+ ],
+ "rem": [
+  {
+   "text": "Make sure nothing is left out of the important docs. Especially the passport."
+  },
+  {
+   "text": "Liquids must not exceed 100 mL each. A tumbler can go through, but the water gets dumped."
+  },
+  {
+   "text": "Register on eTravel 72 hours before departure."
+  },
+  {
+   "text": "Arrive at the airport 3 hours before departure."
+  },
+  {
+   "text": "Stay calm and consistent at immigration. Direct answers only."
+  },
+  {
+   "text": "Relax, enjoy, and travel safe."
+  }
+ ]
+}
