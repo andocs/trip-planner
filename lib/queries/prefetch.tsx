@@ -2,6 +2,7 @@ import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { dehydrate, HydrationBoundary, QueryClient } from "@tanstack/react-query";
+import { connection } from "next/server";
 import type { ReactNode } from "react";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createSupabaseServer } from "@/lib/supabase/server";
@@ -17,6 +18,9 @@ import type { ChildTable } from "./table";
 async function prefetch(tables: ChildTable[]) {
   if (!isSupabaseConfigured()) return null;
   try {
+    // TanStack's dehydrate() reads Date.now(), which Cache Components forbids while prerendering.
+    // This data is per-user and request-time anyway, so make that explicit before touching the clock.
+    await connection();
     const supabase = await createSupabaseServer();
     const { data: claims } = await supabase.auth.getClaims();
     const userId = claims?.claims.sub;
