@@ -50,3 +50,20 @@ export function avatarColor(name: string, index?: number): string {
   for (const ch of name) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
   return AVATAR_COLORS[h % AVATAR_COLORS.length];
 }
+
+/** "1h 30m", "45m", "2h". */
+export function formatDuration(min: number | null | undefined): string {
+  if (!min || min <= 0) return "";
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  return [h ? `${h}h` : "", m ? `${m}m` : ""].filter(Boolean).join(" ");
+}
+
+/** "23:30:00" → "23:30". */
+export const formatTime = (t: string | null | undefined) => (t ? t.slice(0, 5) : "");
+
+/** Local wall-clock timestamp "2026-06-16T22:20:00" → "Tue 16 Jun, 22:20". */
+export function formatDateTime(ts: string | null | undefined): string {
+  if (!ts) return "";
+  return `${formatDay(ts.slice(0, 10))}, ${ts.slice(11, 16)}`;
+}

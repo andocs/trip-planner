@@ -91,3 +91,21 @@ export const MAP_REGIONS = [
   { value: "002", label: "Africa" },
   { value: "009", label: "Oceania" },
 ];
+
+/** Optional http(s) URL. Anything else (javascript:, data:) is rejected so it can never be rendered as a link. */
+export const optionalUrl = z
+  .string()
+  .trim()
+  .refine((v) => v === "" || /^https?:\/\/[^\s]+$/i.test(v), "Use a full link starting with https://")
+  .transform((v) => (v === "" ? null : v));
+
+/** Only render links that are http(s), even if bad data got into the database some other way. */
+export const safeHref = (v: string | null | undefined) => (v && /^https?:\/\//i.test(v) ? v : undefined);
+
+/** Local wall-clock date-time from <input type="datetime-local">. */
+export const optionalDateTime = z
+  .string()
+  .refine((v) => v === "" || /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(v), "Pick a date and time")
+  .transform((v) => (v === "" ? null : v.slice(0, 16)));
+
+export const statusField = z.enum(["Idea", "Maybe", "Planned", "Priced", "Booked", "Done", "Cancelled"]);

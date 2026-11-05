@@ -1,5 +1,8 @@
 import { z } from "zod";
+import { ITINERARY_TYPES, STATUSES } from "@/lib/constants";
 import type { Database, TablesInsert } from "@/lib/database.types";
+
+const TYPES: readonly string[] = ITINERARY_TYPES;
 
 /**
  * Maps the workbook-export JSON (seed/vietnam26.seed.json) onto database rows.
@@ -60,12 +63,9 @@ export const SeedSchema = z.object({
 });
 export type Seed = z.infer<typeof SeedSchema>;
 
-const STATUSES = ["Idea", "Maybe", "Planned", "Priced", "Booked", "Done", "Cancelled"];
-const TYPES = ["Transport", "Sightseeing", "Food & Drink", "Rest & Stay", "Activity", "Shopping", "Flight", "Other"];
-
 /** "" and whitespace become null. */
 const t = (v: string | null | undefined) => (v && v.trim() ? v.trim() : null);
-const status = (v: string | null | undefined) => (v && STATUSES.includes(v) ? v : "Planned");
+const status = (v: string | null | undefined) => (v && (STATUSES as readonly string[]).includes(v) ? v : "Planned");
 const date = (v: string | null | undefined) => (v && /^\d{4}-\d{2}-\d{2}/.test(v) ? v.slice(0, 10) : null);
 const time = (v: string | null | undefined) => (v && /^\d{1,2}:\d{2}/.test(v) ? v : null);
 

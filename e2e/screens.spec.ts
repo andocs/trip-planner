@@ -10,12 +10,20 @@ test.describe("screens", () => {
       await page.clock.setFixedTime(new Date("2026-06-10T09:00:00"));
       await page.addInitScript((t) => localStorage.setItem("tp-theme", t), theme);
       await createFakeSupabase({ withSeed: true }).install(page);
-      for (const path of ["/", "/spend", "/settings"]) {
+      for (const path of [
+        "/",
+        "/spend",
+        "/settings",
+        "/plan",
+        "/plan?tab=flights",
+        "/plan?tab=stays",
+        "/plan?tab=ideas",
+      ]) {
         await page.goto(path);
         await page.waitForLoadState("networkidle");
         await page.waitForTimeout(2500);
-        const name = path === "/" ? "home" : path.slice(1);
-        await page.screenshot({ path: `e2e/screens/${name}-${theme}.png`, fullPage: true });
+        const name = path === "/" ? "home" : path.slice(1).replace(/[?=]/g, "-");
+        await page.screenshot({ path: `e2e/screens/${name}-${theme}.png`, fullPage: path !== "/plan" });
       }
       await page.goto("/spend");
       await page.getByRole("button", { name: "Add expense" }).click();

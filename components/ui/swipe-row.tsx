@@ -9,17 +9,22 @@ const LONG_PRESS_MS = 500;
 
 /**
  * List row with touch gestures: swipe left to delete, tap or long-press to edit.
- * The row is a real <button> so keyboard and screen-reader users get the same
- * "edit" action (delete lives in the edit sheet).
+ * The main area is a real <button> (keyboard / screen-reader "edit"); `leading` and
+ * `trailing` hold their own controls (checkbox, status chip) beside it, never nested inside.
+ * Delete for non-touch users lives in the edit sheet.
  */
 export function SwipeRow({
   children,
+  leading,
+  trailing,
   onOpen,
   onSwipeDelete,
   label,
   className,
 }: {
   children: ReactNode;
+  leading?: ReactNode;
+  trailing?: ReactNode;
   onOpen: () => void;
   onSwipeDelete: () => void;
   label: string;
@@ -27,20 +32,21 @@ export function SwipeRow({
 }) {
   const [dx, setDx] = useState(0);
   const [settling, setSettling] = useState(false);
-  const g = useRef({ x: 0, y: 0, dragging: false, cancelled: false, longPressed: false, timer: 0 });
+  const g = useRef({ x: 0, y: 0, dragging: false, suppressClick: false, timer: 0 });
 
-  function down(e: PointerEvent<HTMLButtonElement>) {
+  function down(e: PointerEvent<HTMLDivElement>) {
     if (e.pointerType === "mouse" && e.button !== 0) return;
-    g.current = { x: e.clientX, y: e.clientY, dragging: false, cancelled: false, longPressed: false, timer: 0 };
+    g.current = { x: e.clientX, y: e.clientY, dragging: false, suppressClick: false, timer: 0 };
     g.current.timer = window.setTimeout(() => {
-      g.current.longPressed = true;
+      g.current.suppressClick = true;
+      g.current.timer = 0;
       navigator.vibrate?.(10);
       onOpen();
     }, LONG_PRESS_MS);
     setSettling(false);
   }
 
-  function move(e: PointerEvent<HTMLButtonElement>) {
+  function move(e: PointerEvent<HTMLDivElement>) {
     const s = g.current;
     if (!s.timer && !s.dragging) return;
     const mx = e.clientX - s.x;
@@ -48,10 +54,11 @@ export function SwipeRow({
     if (!s.dragging && (Math.abs(mx) > 8 || Math.abs(my) > 8)) {
       clearTimeout(s.timer);
       s.timer = 0;
+      s.suppressClick = true;
       if (Math.abs(mx) > Math.abs(my) && mx < 0) {
         s.dragging = true;
         e.currentTarget.setPointerCapture(e.pointerId);
-      } else s.cancelled = true; // vertical scroll: let the page handle it
+      } // otherwise it's a vertical scroll: let the page handle it
     }
     if (s.dragging) setDx(Math.min(0, mx));
   }
@@ -60,13 +67,13 @@ export function SwipeRow({
     const s = g.current;
     clearTimeout(s.timer);
     s.timer = 0;
-    if (s.dragging) {
-      setSettling(true);
-      if (dx <= -THRESHOLD) {
-        setDx(-window.innerWidth);
-        window.setTimeout(onSwipeDelete, 180);
-      } else setDx(0);
-    }
+    if (!s.dragging) return;
+    s.dragging = false;
+    setSettling(true);
+    if (dx <= -THRESHOLD) {
+      setDx(-window.innerWidth);
+      window.setTimeout(onSwipeDelete, 180);
+    } else setDx(0);
   }
 
   return (
@@ -77,32 +84,32 @@ export function SwipeRow({
       >
         <Trash2 className="size-5" />
       </div>
-      <button
-        type="button"
-        aria-label={label}
+      <div
         onPointerDown={down}
         onPointerMove={move}
         onPointerUp={up}
         onPointerCancel={up}
-        onClick={(e) => {
-          if (e.detail === 0) return onOpen(); // keyboard activation
-          const s = g.current;
-          if (s.dragging || s.longPressed || s.cancelled) {
-            e.preventDefault();
-            s.dragging = false;
-            return;
-          }
-          onOpen();
-        }}
         onContextMenu={(e) => e.preventDefault()}
         style={{ transform: `translateX(${dx}px)` }}
         className={cn(
-          "relative flex min-h-14 w-full touch-pan-y items-center gap-3 bg-surface px-1 py-2 text-left select-none",
+          "relative flex min-h-14 w-full touch-pan-y items-center gap-3 bg-surface px-1 select-none",
           settling && "transition-transform duration-200",
         )}
       >
-        {children}
-      </button>
+        {leading}
+        <button
+          type="button"
+          aria-label={label}
+          onClick={(e) => {
+            if (e.detail !== 0 && g.current.suppressClick) return; // a drag or long-press, not a tap
+            onOpen();
+          }}
+          className="flex min-h-14 min-w-0 flex-1 items-center gap-3 py-2 text-left"
+        >
+          {children}
+        </button>
+        {trailing}
+      </div>
     </li>
   );
 }
