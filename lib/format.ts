@@ -38,10 +38,15 @@ export function initials(name: string): string {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
-/** Picks a stable brand colour for an avatar from a name. */
-export function avatarColor(name: string): string {
-  const colors = ["bg-teal", "bg-coral", "bg-gold text-ink", "bg-navy", "bg-[#6D597A]", "bg-[#457B9D]"];
+const AVATAR_COLORS = ["bg-teal", "bg-coral", "bg-[#457B9D]", "bg-gold text-ink", "bg-[#6D597A]", "bg-navy"];
+
+/**
+ * Avatar colour. Pass the traveler's position so everyone on a trip gets a different colour;
+ * without it, falls back to a hash of the name.
+ */
+export function avatarColor(name: string, index?: number): string {
+  if (index !== undefined && index >= 0) return AVATAR_COLORS[index % AVATAR_COLORS.length];
   let h = 0;
   for (const ch of name) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
-  return colors[h % colors.length];
+  return AVATAR_COLORS[h % AVATAR_COLORS.length];
 }

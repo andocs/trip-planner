@@ -51,7 +51,7 @@ export function Sheet({
               <span className="sr-only">Close</span>
             </Drawer.Close>
           </div>
-          <div className="flex-1 overflow-y-auto overscroll-contain px-5 pb-4">{children}</div>
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-4">{children}</div>
           {footer && (
             <div className="shrink-0 border-t border-border bg-surface px-5 pt-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)]">
               {footer}

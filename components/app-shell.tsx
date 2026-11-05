@@ -63,7 +63,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <main
         id="main"
-        className="mx-auto w-full max-w-5xl flex-1 px-4 pt-[calc(env(safe-area-inset-top)+1rem)] pb-[calc(var(--spacing-tabbar)+1.5rem)] lg:px-8 lg:pt-8 lg:pb-12"
+        className="mx-auto w-full max-w-5xl flex-1 px-4 pt-[calc(env(safe-area-inset-top)+1rem)] pb-[calc(var(--tabbar-h)+1.5rem)] lg:px-8 lg:pt-8 lg:pb-12"
       >
         {children}
       </main>

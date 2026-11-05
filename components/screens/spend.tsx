@@ -40,7 +40,7 @@ function Spend() {
           { value: "settle", label: "Settle up" },
         ]}
       />
-      <div className="grid gap-4 lg:grid-cols-[3fr_2fr] lg:items-start">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:items-start [&>*]:min-w-0">
         <div className={panel("log")}>
           <ExpenseLog budget={budget} onEdit={sheet.openEdit} onAdd={sheet.openAdd} />
         </div>

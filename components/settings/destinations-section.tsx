@@ -72,7 +72,7 @@ export function DestinationsSection() {
   );
 }
 
-function DestinationSheet({ sheet, sort }: { sheet: ReturnType<typeof useSheet<Dest>>; sort: number }) {
+export function DestinationSheet({ sheet, sort }: { sheet: ReturnType<typeof useSheet<Dest>>; sort: number }) {
   const insert = useInsertRow("destinations", "destination");
   const update = useUpdateRow("destinations", "destination");
   const remove = useDeleteRow("destinations", "destination");

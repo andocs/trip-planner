@@ -17,11 +17,12 @@ export function BudgetTiles({ budget }: { budget: Budget }) {
   return (
     <Card className="space-y-3">
       <div className="grid grid-cols-3 gap-2 text-center">
-        <Stat label="Budget" value={formatMoney(budget.budget, cur)} />
-        <Stat label="Spent" value={formatMoney(budget.spent, cur)} />
+        <Stat label="Budget" amount={budget.budget} currency={cur} />
+        <Stat label="Spent" amount={budget.spent} currency={cur} />
         <Stat
           label={budget.left < 0 ? "Over" : "Left"}
-          value={formatMoney(Math.abs(budget.left), cur)}
+          amount={Math.abs(budget.left)}
+          currency={cur}
           className={budget.left < 0 ? "text-danger" : undefined}
         />
       </div>
@@ -33,11 +34,26 @@ export function BudgetTiles({ budget }: { budget: Budget }) {
   );
 }
 
-function Stat({ label, value, className }: { label: string; value: string; className?: string }) {
+/** Currency code on its own line so large amounts fit three-across on a 390px phone. */
+function Stat({
+  label,
+  amount,
+  currency,
+  className,
+}: {
+  label: string;
+  amount: number;
+  currency: string;
+  className?: string;
+}) {
+  const [code, ...num] = formatMoney(amount, currency).split(" ");
   return (
     <div className="min-w-0">
       <p className="text-xs font-semibold tracking-wide text-fg-muted uppercase">{label}</p>
-      <p className={cn("mt-0.5 truncate text-sm font-bold tabular-nums sm:text-base", className)}>{value}</p>
+      <p className={cn("mt-1 font-bold tabular-nums", className)}>
+        <span className="block text-xs font-semibold text-fg-muted">{code}</span>
+        <span className="block text-sm break-all sm:text-base">{num.join(" ")}</span>
+      </p>
     </div>
   );
 }

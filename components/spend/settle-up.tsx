@@ -19,14 +19,15 @@ export function TransfersList({ settlement }: { settlement: Settlement }) {
         {settlement.total > 0 ? "All square. Nobody owes anything." : "No expenses yet."}
       </p>
     );
+  const order = new Map(settlement.rows.map((r, i) => [r.traveler.id, i]));
   return (
     <ul className="space-y-2">
       {settlement.transfers.map((t) => (
         <li key={`${t.from.id}-${t.to.id}`} className="flex items-center gap-2 rounded-xl bg-surface-2 px-3 py-2.5">
-          <Avatar name={t.from.name} className="size-8 text-xs" />
+          <Avatar name={t.from.name} index={order.get(t.from.id)} className="size-8 text-xs" />
           <span className="font-semibold">{t.from.name}</span>
           <ArrowRight className="size-4 text-fg-muted" aria-label="pays" />
-          <Avatar name={t.to.name} className="size-8 text-xs" />
+          <Avatar name={t.to.name} index={order.get(t.to.id)} className="size-8 text-xs" />
           <span className="font-semibold">{t.to.name}</span>
           <span className="ml-auto font-bold tabular-nums">{formatMoney(t.amount, trip.home_currency)}</span>
         </li>

@@ -25,7 +25,11 @@ export async function proxy(request: NextRequest) {
       },
     },
   });
-  await supabase.auth.getClaims();
+  try {
+    await supabase.auth.getClaims();
+  } catch {
+    // Supabase unreachable: serve the page anyway; the browser client retries on its own.
+  }
   return response;
 }
 

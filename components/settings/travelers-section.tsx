@@ -36,10 +36,10 @@ export function TravelersSection() {
         <Skeleton className="mt-3 h-14" />
       ) : travelers?.length ? (
         <List className="mt-2">
-          {travelers.map((t) => (
+          {travelers.map((t, i) => (
             <ListButton
               key={t.id}
-              leading={<Avatar name={t.name} />}
+              leading={<Avatar name={t.name} index={i} />}
               title={t.name}
               onClick={() => sheet.openEdit(t)}
               label={`Edit ${t.name}`}
@@ -54,7 +54,7 @@ export function TravelersSection() {
   );
 }
 
-function TravelerSheet({ sheet, sort }: { sheet: ReturnType<typeof useSheet<Row<"travelers">>>; sort: number }) {
+export function TravelerSheet({ sheet, sort }: { sheet: ReturnType<typeof useSheet<Row<"travelers">>>; sort: number }) {
   const insert = useInsertRow("travelers", "traveler");
   const update = useUpdateRow("travelers", "traveler");
   const remove = useDeleteRow("travelers", "traveler");

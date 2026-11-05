@@ -8,6 +8,9 @@
  * buttons so they meet WCAG AA contrast (the raw teal/coral are ~3:1 on white).
  */
 :root {
+  /* Height of the mobile bottom tab bar incl. the home-indicator inset. */
+  --tabbar-h: calc(4rem + env(safe-area-inset-bottom));
+
   --navy: #1f2a44;
   --teal: #2a9d8f;
   --coral: #e76f51;
@@ -34,6 +37,22 @@
   --ring: #1f7a70;
   --shadow: 0 1px 2px rgb(31 42 68 / 0.06), 0 4px 16px rgb(31 42 68 / 0.06);
 
+  /* Chart palette: brand hues re-stepped and checked for colour-blind separation
+     and contrast (dataviz validator). Order matters: assign in sequence, never cycle. */
+  --chart-1: #2a9d8f;
+  --chart-2: #e76f51;
+  --chart-3: #3d5a99;
+  --chart-4: #d9a21b;
+  --chart-5: #c2569b;
+  --chart-6: #5c9e3b;
+  --chart-7: #7b61d1;
+  --chart-8: #c8423a;
+  --chart-planned: #3d5a99;
+  --chart-spent: #2a9d8f;
+  --chart-grid: #ece6db;
+  --map-land: #ece6db;
+  --map-water: transparent;
+
   color-scheme: light;
 }
 
@@ -53,6 +72,19 @@
   --hero-fg: #ffffff;
   --ring: #4cc2b3;
   --shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 4px 16px rgb(0 0 0 / 0.25);
+
+  --chart-1: #2fa898;
+  --chart-2: #db6447;
+  --chart-3: #6487d4;
+  --chart-4: #b38510;
+  --chart-5: #cf62a6;
+  --chart-6: #64a843;
+  --chart-7: #8f78e0;
+  --chart-8: #d9534a;
+  --chart-planned: #6487d4;
+  --chart-spent: #2fa898;
+  --chart-grid: #2c3650;
+  --map-land: #2c3650;
 
   color-scheme: dark;
 }
@@ -86,7 +118,6 @@
   --shadow-card: var(--shadow);
   --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
 
-  --spacing-tabbar: calc(4rem + env(safe-area-inset-bottom));
 }
 
 @layer base {

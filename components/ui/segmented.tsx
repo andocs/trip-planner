@@ -29,7 +29,7 @@ export function Segmented<V extends string>({
         <ToggleGroup.Item
           key={o.value}
           value={o.value}
-          className="min-h-10 flex-1 rounded-xl px-4 text-sm font-semibold text-fg-muted transition-colors data-[state=on]:bg-surface data-[state=on]:text-fg data-[state=on]:shadow-card"
+          className="min-h-10 flex-1 rounded-xl px-4 text-sm font-semibold text-fg-muted transition-colors data-[state=on]:bg-primary data-[state=on]:text-primary-fg data-[state=on]:shadow-card"
         >
           {o.label}
         </ToggleGroup.Item>
