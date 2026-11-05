@@ -52,4 +52,5 @@ supabase/.branches
 /e2e/screens/
 /.next-e2e/
 /.next-lh/
+/.next-dbg/
 *.log

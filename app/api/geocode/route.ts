@@ -20,18 +20,25 @@ const Results = z.array(
   }),
 );
 
-let lastCall = 0;
-async function throttle() {
-  const wait = lastCall + 1100 - Date.now();
-  lastCall = Math.max(Date.now(), lastCall + 1100);
-  if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+/**
+ * Nominatim allows 1 request per second. Lookups run one at a time, each followed by a
+ * 1.1 s pause. This is a promise queue rather than a clock check because Cache Components
+ * forbids Date.now() inside cached functions. Per server instance, which is plenty here.
+ */
+let queue: Promise<unknown> = Promise.resolve();
+function oneAtATime<T>(task: () => Promise<T>): Promise<T> {
+  const run = queue.then(task, task);
+  queue = run.then(
+    () => new Promise((r) => setTimeout(r, 1100)),
+    () => new Promise((r) => setTimeout(r, 1100)),
+  );
+  return run;
 }
 
 /** Cached per query for weeks: city coordinates don't move. */
 async function geocode(q: string) {
   "use cache";
   cacheLife("weeks");
-  await throttle();
   const url = new URL("https://nominatim.openstreetmap.org/search");
   url.search = new URLSearchParams({
     q,
@@ -40,7 +47,7 @@ async function geocode(q: string) {
     addressdetails: "1",
     "accept-language": "en",
   }).toString();
-  const res = await fetch(url, { headers: { "User-Agent": USER_AGENT } });
+  const res = await oneAtATime(() => fetch(url, { headers: { "User-Agent": USER_AGENT } }));
   if (!res.ok) throw new Error(`Geocoder returned ${res.status}`);
   const [hit] = Results.parse(await res.json());
   if (!hit) return null;
