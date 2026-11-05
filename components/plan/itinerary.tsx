@@ -13,7 +13,10 @@ import { formatDay, formatDuration, formatTime } from "@/lib/format";
 import { useDeleteRow, useRows, useUpdateRow } from "@/lib/queries/table";
 import { useSheet } from "@/lib/use-sheet";
 import { cn } from "@/lib/utils";
-import { ItinerarySheet, type ItineraryItem } from "./itinerary-sheet";
+import dynamic from "next/dynamic";
+import type { ItineraryItem } from "./itinerary-sheet";
+
+const ItinerarySheet = dynamic(() => import("./itinerary-sheet").then((m) => m.ItinerarySheet), { ssr: false });
 
 const ALL = "__all";
 
@@ -145,7 +148,7 @@ export function Itinerary() {
           return (
             <section key={g.key} aria-label={title} className="rounded-2xl border border-border bg-surface shadow-card">
               <header className="sticky top-0 z-10 flex items-center gap-2 rounded-t-2xl border-b border-border bg-surface/95 py-1 pr-1 pl-4 backdrop-blur">
-                <h3 className="min-w-0 flex-1 truncate text-sm font-bold">{title}</h3>
+                <h2 className="min-w-0 flex-1 truncate text-sm font-bold">{title}</h2>
                 <span className="text-xs text-fg-muted tabular-nums">
                   {p.done}/{p.total}
                 </span>
@@ -191,7 +194,7 @@ export function Itinerary() {
           );
         })
       )}
-      <ItinerarySheet sheet={sheet} cities={cities} defaults={defaults} />
+      {sheet.mounted && <ItinerarySheet sheet={sheet} cities={cities} defaults={defaults} />}
     </div>
   );
 }

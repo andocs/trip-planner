@@ -8,6 +8,7 @@ import { useTrip } from "@/components/trip-gate";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
+import { InView } from "@/components/ui/in-view";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -23,6 +24,7 @@ import { formatDateRange, formatMoney, formatPercent } from "@/lib/format";
 import type { Budget } from "@/lib/queries/budget";
 import { useRows, type Row } from "@/lib/queries/table";
 import { bySort } from "@/lib/use-sheet";
+import { useClientValue } from "@/lib/use-client-value";
 import { cn } from "@/lib/utils";
 import { donutSlices } from "./chart-data";
 import type { MapStop } from "./geo-map";
@@ -87,9 +89,11 @@ export function Hero({ travelers }: { travelers: Row<"travelers">[] }) {
 
 export function CountdownTile() {
   const trip = useTrip();
-  const c = daysToGo(localISODate(), trip.start_date, trip.end_date);
-  const [big, small] =
-    c.kind === "before"
+  const today = useClientValue(localISODate, null);
+  const c = today ? daysToGo(today, trip.start_date, trip.end_date) : null;
+  const [big, small] = !c
+    ? [" ", " "]
+    : c.kind === "before"
       ? [String(c.n), c.n === 1 ? "day to go" : "days to go"]
       : c.kind === "during"
         ? [`Day ${c.n}`, `of ${c.of}`]
@@ -160,14 +164,18 @@ export function ChartsCard({ budget }: { budget: Budget }) {
           </ul>
         </div>
         <div className="mt-3">
-          <PlannedVsSpent lines={budget.lines} currency={trip.home_currency} />
+          <InView placeholder={<ChartFallback />}>
+            <PlannedVsSpent lines={budget.lines} currency={trip.home_currency} />
+          </InView>
         </div>
         <TableView budget={budget} />
       </Card>
       <Card className="col-span-2 min-w-0">
         <CardTitle>Where the money went</CardTitle>
         <div className="mt-3">
-          <SpendDonut slices={slices} total={budget.spent} currency={trip.home_currency} />
+          <InView placeholder={<ChartFallback />}>
+            <SpendDonut slices={slices} total={budget.spent} currency={trip.home_currency} />
+          </InView>
         </div>
       </Card>
     </>
@@ -260,7 +268,11 @@ export function MapCard() {
         </p>
       ) : (
         <div className="mt-3 grid gap-4 md:grid-cols-[3fr_2fr] md:items-center">
-          {stops.length > 0 && !failed && <GeoMap stops={stops} region={trip.map_region} onError={onError} />}
+          {stops.length > 0 && !failed && (
+            <InView placeholder={<Skeleton className="aspect-[4/3] w-full" />}>
+              <GeoMap stops={stops} region={trip.map_region} onError={onError} />
+            </InView>
+          )}
           {failed && (
             <p className="rounded-xl bg-surface-2 p-3 text-sm text-fg-muted">
               The map couldn&rsquo;t load. Here are your stops.

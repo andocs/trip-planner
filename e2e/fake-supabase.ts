@@ -12,6 +12,8 @@ import { buildSeedPlan, INSERT_ORDER } from "../lib/seed-map";
 export const FAKE_URL = "http://fake.supabase.test";
 
 type Row = Record<string, unknown> & { id: string };
+export type FakeRequest = { method: string; url: string; body?: unknown };
+export type FakeResponse = { status: number; body?: unknown };
 
 export function createFakeSupabase(opts: { withSeed?: boolean } = {}) {
   const tripId = "00000000-0000-4000-8000-000000000001";
@@ -70,12 +72,11 @@ export function createFakeSupabase(opts: { withSeed?: boolean } = {}) {
   const exp = Math.floor(Date.now() / 1000) + 3600;
   const jwt = `${b64({ alg: "HS256", typ: "JWT" })}.${b64({ sub: userId, role: "authenticated", exp, is_anonymous: true })}.sig`;
 
-  async function handle(route: Route) {
-    const req = route.request();
-    const url = new URL(req.url());
+  /** Transport-independent request handler (used by Playwright routes and the local HTTP server). */
+  function respond(req: FakeRequest): FakeResponse {
+    const url = new URL(req.url);
     const path = url.pathname;
-    const json = (body: unknown, status = 200) =>
-      route.fulfill({ status, contentType: "application/json", body: JSON.stringify(body) });
+    const json = (body: unknown, status = 200): FakeResponse => ({ status, body });
 
     if (path.startsWith("/auth/v1/signup") || path.startsWith("/auth/v1/token")) {
       return json({
@@ -101,7 +102,7 @@ export function createFakeSupabase(opts: { withSeed?: boolean } = {}) {
     if (path === "/rest/v1/rpc/active_trip") return json([trip]);
     if (path === "/rest/v1/rpc/regenerate_join_token") return json("e2e-new-token");
     if (path === "/rest/v1/rpc/join_trip") {
-      const { p_token } = req.postDataJSON() as { p_token: string };
+      const { p_token } = req.body as { p_token: string };
       if (p_token !== trip.join_token)
         return json(
           { code: "P0002", message: "Invite link is invalid or has expired", details: null, hint: null },
@@ -110,7 +111,7 @@ export function createFakeSupabase(opts: { withSeed?: boolean } = {}) {
       return json(trip.id);
     }
     if (path === "/rest/v1/rpc/start_new_trip") {
-      const { p_copy_setup } = req.postDataJSON() as { p_copy_setup: boolean };
+      const { p_copy_setup } = req.body as { p_copy_setup: boolean };
       const travelers = p_copy_setup ? (tables.get("travelers") ?? []) : [];
       const newId = `00000000-0000-4000-8000-${String(Date.now()).slice(-12)}`;
       trip = {
@@ -137,36 +138,36 @@ export function createFakeSupabase(opts: { withSeed?: boolean } = {}) {
 
     const table = path.replace("/rest/v1/", "");
     const eq = (k: string) => url.searchParams.get(k)?.replace(/^eq\./, "");
-    const method = req.method();
+    const method = req.method;
 
     if (table === "trips" && method === "PATCH") {
-      trip = { ...trip, ...(req.postDataJSON() as object) };
-      return route.fulfill({ status: 204 });
+      trip = { ...trip, ...(req.body as object) };
+      return { status: 204 };
     }
     const rows = tables.get(table) ?? [];
     if (method === "GET") return json(rows.filter((r) => !eq("trip_id") || r.trip_id === eq("trip_id")));
     if (method === "POST") {
-      const body = req.postDataJSON() as Row | Row[];
+      const body = req.body as Row | Row[];
       const added = (Array.isArray(body) ? body : [body]).map((r) => ({ created_at: new Date().toISOString(), ...r }));
       tables.set(table, [...rows, ...added]);
-      return route.fulfill({ status: 201 });
+      return { status: 201 };
     }
     if (method === "PATCH") {
       const id = eq("id");
       tables.set(
         table,
-        rows.map((r) => (r.id === id ? { ...r, ...(req.postDataJSON() as object) } : r)),
+        rows.map((r) => (r.id === id ? { ...r, ...(req.body as object) } : r)),
       );
-      return route.fulfill({ status: 204 });
+      return { status: 204 };
     }
     if (method === "DELETE") {
       tables.set(
         table,
         rows.filter((r) => r.id !== eq("id")),
       );
-      return route.fulfill({ status: 204 });
+      return { status: 204 };
     }
-    return route.fulfill({ status: 404 });
+    return { status: 404 };
   }
 
   // --- Realtime: a minimal Phoenix-channel server (JSON array frames, protocol 2.0.0) ---
@@ -243,8 +244,23 @@ export function createFakeSupabase(opts: { withSeed?: boolean } = {}) {
     get trip() {
       return trip;
     },
+    respond,
     install: async (page: Page) => {
-      await page.route(`${FAKE_URL}/**`, handle);
+      await page.route(`${FAKE_URL}/**`, (route: Route) => {
+        const req = route.request();
+        let body: unknown;
+        try {
+          body = req.postDataJSON();
+        } catch {
+          body = undefined;
+        }
+        const res = respond({ method: req.method(), url: req.url(), body });
+        return route.fulfill({
+          status: res.status,
+          contentType: "application/json",
+          body: res.body === undefined ? "" : JSON.stringify(res.body),
+        });
+      });
       await page.routeWebSocket(/fake\.supabase\.test\/realtime/, onSocket);
     },
   };

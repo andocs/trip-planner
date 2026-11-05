@@ -11,3 +11,6 @@ export function errorMessage(err: unknown, fallback = "Something went wrong"): s
   if (err && typeof err === "object" && "message" in err && typeof err.message === "string") return err.message;
   return fallback;
 }
+
+/** Only render links that are http(s), even if bad data got into the database some other way. */
+export const safeHref = (v: string | null | undefined) => (v && /^https?:\/\//i.test(v) ? v : undefined);

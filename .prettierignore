@@ -1,5 +1,6 @@
 .next
 .next-e2e
+.next-lh
 node_modules
 package-lock.json
 lib/database.types.ts

@@ -8,6 +8,7 @@ import { useTrip } from "@/components/trip-gate";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { useRegenerateLink } from "@/lib/queries/trip";
+import { useClientValue } from "@/lib/use-client-value";
 
 const noop = () => () => {};
 const useOrigin = () =>
@@ -25,7 +26,7 @@ export function InviteSection() {
   const trip = useTrip();
   const regenerate = useRegenerateLink();
   const link = inviteLink(useOrigin(), trip.join_token);
-  const canShare = typeof navigator !== "undefined" && "share" in navigator;
+  const canShare = useClientValue(() => "share" in navigator, false);
 
   async function copy() {
     try {

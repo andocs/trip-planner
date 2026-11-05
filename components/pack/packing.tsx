@@ -1,24 +1,24 @@
 "use client";
 
-import { zodResolver } from "@hookform/resolvers/zod";
 import { Plus } from "lucide-react";
-import { useEffect, useState } from "react";
-import { Controller, useForm } from "react-hook-form";
-import { z } from "zod";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { CheckButton } from "@/components/ui/check";
-import { Field, Input, Select } from "@/components/ui/field";
+import { Select } from "@/components/ui/field";
 import { Progress } from "@/components/ui/progress";
-import { RowSheet } from "@/components/ui/row-sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SwipeRow } from "@/components/ui/swipe-row";
 import { packedProgress } from "@/lib/calc";
 import { formatPercent } from "@/lib/format";
-import { newId, useDeleteRow, useInsertRow, useRows, useUpdateRow, type Row } from "@/lib/queries/table";
-import { optionalText, requiredText, str } from "@/lib/schemas";
+import { useDeleteRow, useRows, useUpdateRow, type Row } from "@/lib/queries/table";
 import { bySort, useSheet } from "@/lib/use-sheet";
 import { cn } from "@/lib/utils";
+import dynamic from "next/dynamic";
+
+/** Form sheets load on first open, keeping zod / react-hook-form / vaul out of the page's initial JS. */
+const PackingSheet = dynamic(() => import("./packing-sheet").then((m) => m.PackingSheet), { ssr: false });
+export { PackingSheet };
 
 type Item = Row<"packing_items">;
 const ALL = "__all";
@@ -108,7 +108,7 @@ export function Packing() {
               <header className="flex items-center gap-3 border-b border-border py-1 pr-1 pl-4">
                 <div className="min-w-0 flex-1 py-2">
                   <div className="flex items-baseline justify-between gap-2">
-                    <h3 className="truncate text-sm font-bold">{cat}</h3>
+                    <h2 className="truncate text-sm font-bold">{cat}</h2>
                     <span className="text-xs text-fg-muted tabular-nums">
                       {p.done}/{p.total}
                     </span>
@@ -150,123 +150,14 @@ export function Packing() {
           );
         })
       )}
-      <PackingSheet
-        sheet={sheet}
-        categories={categories.filter((c) => c !== NONE)}
-        people={people}
-        defaults={defaults}
-      />
+      {sheet.mounted && (
+        <PackingSheet
+          sheet={sheet}
+          categories={categories.filter((c) => c !== NONE)}
+          people={people}
+          defaults={defaults}
+        />
+      )}
     </div>
-  );
-}
-
-const Schema = z.object({
-  item: requiredText("Item", 120),
-  category: optionalText(60),
-  whose: optionalText(40),
-  packed: z.boolean(),
-});
-type In = z.input<typeof Schema>;
-type Out = z.output<typeof Schema>;
-
-export function PackingSheet({
-  sheet,
-  categories,
-  people,
-  defaults,
-}: {
-  sheet: ReturnType<typeof useSheet<Item>>;
-  categories: string[];
-  people: string[];
-  defaults?: Partial<In>;
-}) {
-  const insert = useInsertRow("packing_items", "packing item");
-  const update = useUpdateRow("packing_items", "packing item");
-  const remove = useDeleteRow("packing_items", "packing item");
-  const [keepAdding, setKeepAdding] = useState(true);
-  const { register, handleSubmit, reset, formState, control, getValues, setFocus } = useForm<In, unknown, Out>({
-    resolver: zodResolver(Schema),
-  });
-  const errors = formState.errors;
-
-  useEffect(() => {
-    if (!sheet.open) return;
-    const r = sheet.row;
-    reset({
-      item: r?.item ?? "",
-      category: str(r?.category),
-      whose: str(r?.whose),
-      packed: r?.packed ?? false,
-      ...(r ? {} : defaults),
-    });
-  }, [sheet.open, sheet.row, reset, defaults]);
-
-  const onSubmit = handleSubmit((v) => {
-    if (sheet.row) {
-      update.mutate({ id: sheet.row.id, patch: v });
-      sheet.close();
-      return;
-    }
-    insert.mutate([{ id: newId(), ...v }]);
-    if (keepAdding) {
-      reset({ ...getValues(), item: "", packed: false });
-      setFocus("item");
-    } else sheet.close();
-  });
-
-  return (
-    <RowSheet
-      open={sheet.open}
-      onOpenChange={sheet.setOpen}
-      title={sheet.row ? "Edit item" : "Add packing item"}
-      mode={sheet.mode}
-      onSubmit={onSubmit}
-      keepAdding={{ value: keepAdding, onChange: setKeepAdding }}
-      onDelete={
-        sheet.row
-          ? () => {
-              remove(sheet.row!, sheet.row!.item);
-              sheet.close();
-            }
-          : undefined
-      }
-    >
-      <Field label="Item" error={errors.item?.message}>
-        {(p) => <Input {...p} {...register("item")} autoComplete="off" />}
-      </Field>
-      <div className="grid grid-cols-2 gap-3">
-        <Field label="Category" error={errors.category?.message}>
-          {(p) => <Input {...p} {...register("category")} list="pack-cats" autoComplete="off" />}
-        </Field>
-        <Field label="Whose" error={errors.whose?.message}>
-          {(p) => <Input {...p} {...register("whose")} list="pack-people" autoComplete="off" placeholder="Shared" />}
-        </Field>
-      </div>
-      <datalist id="pack-cats">
-        {categories.map((c) => (
-          <option key={c} value={c} />
-        ))}
-      </datalist>
-      <datalist id="pack-people">
-        {people.map((c) => (
-          <option key={c} value={c} />
-        ))}
-      </datalist>
-      <Controller
-        control={control}
-        name="packed"
-        render={({ field }) => (
-          <label className="flex min-h-11 items-center gap-3 font-medium">
-            <input
-              type="checkbox"
-              checked={field.value}
-              onChange={(e) => field.onChange(e.target.checked)}
-              className="size-5 accent-[var(--primary)]"
-            />
-            Packed
-          </label>
-        )}
-      />
-    </RowSheet>
   );
 }

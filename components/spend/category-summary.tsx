@@ -119,7 +119,7 @@ export function CategorySummary({ budget }: { budget: Budget }) {
           );
         })}
       </ul>
-      <CategorySheet sheet={sheet} sort={nextSort(budget.categories)} />
+      {sheet.mounted && <CategorySheet sheet={sheet} sort={nextSort(budget.categories)} />}
     </Card>
   );
 }

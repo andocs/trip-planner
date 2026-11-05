@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { BudgetTiles, CategorySummary } from "@/components/spend/category-summary";
 import { ExpenseLog } from "@/components/spend/expense-log";
-import { ExpenseSheet } from "@/components/spend/expense-sheet";
+import dynamic from "next/dynamic";
 import { SettleUp } from "@/components/spend/settle-up";
 import { PageSkeleton, TripGate } from "@/components/trip-gate";
 import { Fab } from "@/components/ui/fab";
@@ -12,6 +12,10 @@ import { useBudget } from "@/lib/queries/budget";
 import type { Row } from "@/lib/queries/table";
 import { useSheet } from "@/lib/use-sheet";
 import { cn } from "@/lib/utils";
+
+const ExpenseSheet = dynamic(() => import("@/components/spend/expense-sheet").then((m) => m.ExpenseSheet), {
+  ssr: false,
+});
 
 type View = "log" | "categories" | "settle";
 
@@ -54,7 +58,7 @@ function Spend() {
         </div>
       </div>
       <Fab label="Add expense" onClick={sheet.openAdd} />
-      <ExpenseSheet sheet={sheet} categories={budget.categories} travelers={budget.travelers} />
+      {sheet.mounted && <ExpenseSheet sheet={sheet} categories={budget.categories} travelers={budget.travelers} />}
     </div>
   );
 }

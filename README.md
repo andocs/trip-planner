@@ -1,41 +1,208 @@
 # Trip Planner
 
-A mobile-first app where a small group plans one trip together: budget and expenses, itinerary, flights and stays, food and sights, packing. Built with Next.js (App Router) and Supabase, deployed on Vercel.
+A phone-first web app where a small group plans **one trip together**: budget and expenses with
+settle-up, a day-by-day itinerary, flights, stays, food spots with menu prices, sights, packing and
+pasalubong. It replaces a Google Sheets planner: same data, but tap-to-edit instead of cells.
 
-> Work in progress. A full setup and deploy guide arrives in milestone 8.
+- **No sign-up.** Opening the invite link joins the trip with edit rights (Supabase anonymous sign-in
+  - a secret token in the link).
+- **Live.** Edits on one phone appear on the others within a second.
+- **Installable** as an app (PWA), light and dark themes, works on desktop too (sidebar ≥ 1024 px).
 
-## Local development
+Stack: Next.js 16 (App Router) · TypeScript · Tailwind CSS 4 · Supabase (Postgres, RLS, Realtime,
+Anonymous Auth) · TanStack Query · react-hook-form + zod · Recharts · Google GeoChart · SheetJS.
+
+---
+
+## Deploy in ~15 minutes
+
+You need a GitHub account, a [Supabase](https://supabase.com) account and a
+[Vercel](https://vercel.com) account. All free tiers work.
+
+### 1. Supabase project (≈ 5 min)
+
+1. **Create a project** at supabase.com (any region close to you). Wait until it's ready.
+2. **Turn on anonymous sign-ins:** Authentication → Sign In / Providers → **Allow anonymous sign-ins** → Save.
+3. **Create the database:** SQL Editor → New query. Paste each file from
+   [`supabase/migrations/`](supabase/migrations/) **in filename order** and click Run each time:
+   1. `20261105000001_schema.sql`
+   2. `20261105000002_security.sql`
+   3. `20261105000003_realtime.sql`
+   4. `20261105000004_half_nights.sql`
+
+   (Prefer the CLI? `npx supabase login`, `npx supabase link --project-ref <ref>`, `npm run db:push`.)
+
+4. **Prove the security rules:** paste [`supabase/tests/rls_check.sql`](supabase/tests/rls_check.sql)
+   and run it. It shows as an _error_ reading **`RLS CHECK PASSED (30 checks)`**. That's intended:
+   it raises an error on purpose so nothing is saved.
+5. **Copy your keys:** Project Settings → API → _Project URL_ and the _anon / publishable_ key.
+
+### 2. Run it locally (optional, ≈ 2 min)
 
 ```bash
 npm install
-cp .env.example .env.local   # then fill in the two Supabase values
+cp .env.example .env.local   # paste the URL and anon key
 npm run dev                  # http://localhost:3000
 ```
 
-| Script              | What it does                                                                                         |
-| ------------------- | ---------------------------------------------------------------------------------------------------- |
-| `npm run lint`      | ESLint                                                                                               |
-| `npm run test`      | Vitest unit tests                                                                                    |
-| `npm run build`     | Production build                                                                                     |
-| `npm run check:rls` | Signs in two anonymous users against your Supabase project and proves one can't see the other's trip |
-| `npm run db:push`   | Applies `supabase/migrations` to the linked project (`npx supabase link` first)                      |
-| `npm run db:types`  | Regenerates `lib/database.types.ts` from the linked project                                          |
+Open the app, tap **Load the Vietnam ’26 example** (or **Create a trip**), then Settings → **Copy
+link** and open it in a private window to see two "phones" in sync.
+
+### 3. Deploy to Vercel (≈ 5 min)
+
+1. Push this repo to GitHub.
+2. Vercel → **Add New → Project** → import the repo (framework: Next.js, defaults are fine).
+3. Add **Environment Variables** (Production + Preview):
+   - `NEXT_PUBLIC_SUPABASE_URL`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - optional `GEOCODER_CONTACT` (see below)
+4. **Deploy.**
+
+### 4. Point Supabase at your site (≈ 1 min)
+
+Supabase → Authentication → URL Configuration → **Site URL** = your Vercel URL
+(e.g. `https://trip-planner-xyz.vercel.app`). Add `http://localhost:3000` under _Redirect URLs_ if you
+develop locally. (Only needed for the future "Save my access" email link; anonymous sign-in itself
+doesn't use it.)
+
+Done. Open the Vercel URL on your phone, add it to the home screen, and share the invite link.
+
+---
 
 ## Environment variables
 
-| Name                            | Where                | Notes                                                           |
-| ------------------------------- | -------------------- | --------------------------------------------------------------- |
-| `NEXT_PUBLIC_SUPABASE_URL`      | `.env.local`, Vercel | Project URL                                                     |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | `.env.local`, Vercel | anon / publishable key (safe in the browser; RLS protects data) |
-| `SUPABASE_SERVICE_ROLE_KEY`     | `.env.local` only    | Optional, for `scripts/seed.ts`. Never add to Vercel.           |
+| Name                            | Where                 | Purpose                                                                                 |
+| ------------------------------- | --------------------- | --------------------------------------------------------------------------------------- |
+| `NEXT_PUBLIC_SUPABASE_URL`      | `.env.local`, Vercel  | Supabase project URL                                                                    |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | `.env.local`, Vercel  | anon / publishable key. Safe in the browser: Row Level Security protects the data       |
+| `GEOCODER_CONTACT`              | optional, anywhere    | URL or email added to "Find coordinates" requests, as OpenStreetMap's usage policy asks |
+| `SUPABASE_SERVICE_ROLE_KEY`     | `.env.local` **only** | For `npm run seed -- --token …`. Bypasses RLS: **never** put it on Vercel               |
+| `APP_URL`                       | `.env.local` only     | Base URL used in the invite link that `npm run seed` prints                             |
 
-## Database and security
+---
 
-- Migrations live in `supabase/migrations`. Run them with `npm run db:push`, or paste each file in order into Supabase → SQL Editor.
-- Every table has Row Level Security. Access is granted only through `trip_members`, which only the `create_trip`, `join_trip` and `start_new_trip` functions can write.
-- The invite link `/join/<token>` is the only secret. Regenerating it from Settings invalidates the old link.
-- **Proof:** paste `supabase/tests/rls_check.sql` into the SQL Editor. It always rolls back and ends with `RLS CHECK PASSED (30 checks)` or a list of failures. `npm run check:rls` checks the same thing through the public API.
+## How access works (and its one catch)
 
-### Anonymous sessions
+- Every visitor is silently signed in as an **anonymous Supabase user**.
+- A trip is visible only to its **members** (`trip_members`). Row Level Security on every table checks
+  membership, and clients can't add themselves to a trip directly. The only way in is the
+  `join_trip(token)` function, which needs the trip's secret token.
+- The invite link `https://<app>/join/<token>` is that token. Settings → **New link** replaces it;
+  the old link stops working, people who already joined keep access.
+- **Catch:** an anonymous session lives in the browser. If someone clears site data, switches
+  browser, or uses a new phone, they lose access until they open the invite link again. Keep the
+  link somewhere the group can find it (e.g. pinned in your chat).
+- **Planned:** "Save my access", attaching an email to the anonymous account with
+  `supabase.auth.updateUser({ email })` so a magic link can restore it on any device.
 
-Everyone uses Supabase anonymous sign-in, so nobody needs an account. If someone clears their browser storage (or switches browser), they lose access until they open the invite link again. A later "Save my access" option will let a user attach an email (magic link) to keep their session.
+Other safeguards: no referrer is sent (the token never leaks to linked sites), the app can't be
+framed, transfer links must be `http(s)`, and the `/api/rate` and `/api/geocode` helpers only answer
+signed-in users so they can't be used as open proxies.
+
+---
+
+## Everyday use
+
+- **One active trip.** Settings → **Start a new trip** archives the current one (optionally keeping
+  travelers, currencies and the rate). Everyone and the invite link move to the new trip.
+- **Export to Excel** (Settings) downloads the whole trip: Trip, Budget (+ settle-up), Expenses,
+  Itinerary, Flights (+ transfers), Stays (+ hotel ideas), Food (+ menus), Attractions, Packing
+  (+ pasalubong, reminders).
+- **Undo.** Every delete shows Undo for 6 seconds. The real delete only happens after that, so
+  Undo restores everything, including links from other rows.
+- **Money.** Foreign-currency amounts convert at the trip's rate (Settings → Live rate fetches today's
+  rate from open.er-api.com). Expenses are split equally; Spend → Settle up lists the fewest transfers.
+
+### About the Vietnam ’26 example
+
+`seed/vietnam26.seed.json` is loaded as-is, with these adjustments:
+
+- Two expenses had no date; they're placed on the trip start date with the note "Date not recorded".
+- Itinerary day numbers are kept from the workbook (Day 1 = 19 Jun). New activities with a blank
+  day are numbered from the trip start (16 Jun = Day 1).
+- One hotel idea is a half-day stay (0.5 nights), which is why migration 4 allows half nights.
+- Flight times are local wall-clock times at each airport (stored without a time zone).
+
+---
+
+## Development
+
+| Command                       | What it does                                                                                  |
+| ----------------------------- | --------------------------------------------------------------------------------------------- |
+| `npm run dev`                 | Dev server on :3000                                                                           |
+| `npm run lint`                | ESLint                                                                                        |
+| `npm run typecheck`           | `tsc --noEmit`                                                                                |
+| `npm run test`                | Vitest unit tests (money, settle-up, dates incl. DST, seed mapping, export, realtime merging) |
+| `npm run test:e2e`            | Playwright smoke tests against an in-memory fake Supabase (no project or network needed)      |
+| `npm run build`               | Production build                                                                              |
+| `npm run format`              | Prettier                                                                                      |
+| `npm run check:rls`           | Two real anonymous users against your project; proves one can't see the other's trip          |
+| `npm run seed`                | Creates a new example trip on your project and prints its invite link                         |
+| `npm run seed -- --token <t>` | Loads the example into an existing **empty** trip (needs `SUPABASE_SERVICE_ROLE_KEY`)         |
+| `npm run db:push`             | Apply migrations to the linked project                                                        |
+| `npm run db:types`            | Regenerate `lib/database.types.ts` from the linked project                                    |
+
+First-time Playwright setup: `npx playwright install chromium`.
+`SCREENS=1 npx playwright test screens` saves screenshots of every screen (light and dark) to
+`e2e/screens/`.
+
+### Project layout
+
+```
+app/                 routes: / (Home), /spend, /plan, /places, /pack, /settings, /join/[token]
+  actions/           server action: load example
+  api/rate, geocode  route handlers (session required, cached)
+components/          screens, per-feature lists, *-sheet.tsx forms (lazy-loaded), ui/ primitives
+lib/
+  calc.ts            all trip maths (unit-tested)
+  queries/           TanStack Query hooks, optimistic writes, server prefetch, trip actions
+  realtime*.ts       live sync
+  seed-map.ts        workbook JSON → database rows
+  export.ts          Excel workbook builder
+  supabase/          browser/server clients
+supabase/
+  migrations/        schema, RLS + RPCs, realtime, half nights
+  tests/rls_check.sql
+e2e/                 Playwright tests + fake Supabase (HTTP + Realtime socket)
+scripts/             seed.ts, rls-check.ts, make-icons.mjs
+```
+
+### Notes for contributors
+
+- This is Next.js 16: middleware is `proxy.ts`, and `cacheComponents` is on, so anything reading
+  cookies must sit inside `<Suspense>`. See `AGENTS.md`.
+- Screens prefetch their data on the server for returning visitors (`lib/queries/prefetch.tsx`), so
+  the first HTML already has content; first-time visitors fetch in the browser.
+- Add/edit forms live in `*-sheet.tsx` files and load on first open, keeping zod,
+  react-hook-form and the drawer out of each page's initial JavaScript.
+- No `any` in app code; the generic table helpers cast through `unknown` in one place
+  (`lib/queries/table.ts`) because supabase-js can't type a union of table names.
+
+---
+
+## Quality status
+
+| Check                                  | Result                                                                   |
+| -------------------------------------- | ------------------------------------------------------------------------ |
+| Lint / typecheck / unit tests / build  | Pass (50 unit tests)                                                     |
+| Playwright smoke tests                 | 13 pass                                                                  |
+| RLS proof (`rls_check.sql`)            | 30 checks pass (verified on Postgres 17 via PGlite)                      |
+| `npm audit`                            | 0 vulnerabilities                                                        |
+| Lighthouse accessibility (mobile)      | 100 on every screen                                                      |
+| Lighthouse best practices              | 96 (the only flag was the fake test backend's missing Realtime socket)   |
+| Lighthouse performance (mobile, local) | 65–73. Below the 90 target; see below                                    |
+| Installable (PWA)                      | Manifest with 192/512 + maskable icons, standalone display, theme colour |
+
+**Performance.** Measured locally on a production build with simulated slow 4G and a 4× slower
+CPU, as a returning user. Layout shift is ~0 and first paint ~0.8 s. The score is held back by
+Lighthouse's estimate of when the largest text paints (≈ 4 s) and by React's start-up time
+(0.5–1 s of blocking under 4× CPU slowdown). Even a near-empty page on this stack scored 83 locally.
+Re-measure the deployed site with [PageSpeed Insights](https://pagespeed.web.dev/): Vercel's CDN and
+HTTP/2 behave differently from `next start` on a laptop. The remaining levers are tracked below.
+
+### Possible next steps
+
+- "Save my access" (email magic link for anonymous users).
+- Performance: serve the first screen's content without streaming behind a Suspense boundary
+  (requires reworking the cached route handlers), or trim client-side libraries further.
+- Content-Security-Policy header (needs nonces for Next's inline scripts).

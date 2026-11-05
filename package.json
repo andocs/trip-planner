@@ -17,7 +17,8 @@
     "check:rls": "tsx scripts/rls-check.ts",
     "seed": "tsx scripts/seed.ts",
     "icons": "node scripts/make-icons.mjs",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "fake:supabase": "tsx e2e/fake-supabase-server.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^7.0.3",

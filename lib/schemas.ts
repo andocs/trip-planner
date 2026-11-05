@@ -99,9 +99,6 @@ export const optionalUrl = z
   .refine((v) => v === "" || /^https?:\/\/[^\s]+$/i.test(v), "Use a full link starting with https://")
   .transform((v) => (v === "" ? null : v));
 
-/** Only render links that are http(s), even if bad data got into the database some other way. */
-export const safeHref = (v: string | null | undefined) => (v && /^https?:\/\//i.test(v) ? v : undefined);
-
 /** Local wall-clock date-time from <input type="datetime-local">. */
 export const optionalDateTime = z
   .string()

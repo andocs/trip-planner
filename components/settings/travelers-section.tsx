@@ -1,23 +1,18 @@
 "use client";
 
-import { zodResolver } from "@hookform/resolvers/zod";
 import { UserPlus } from "lucide-react";
-import { useEffect } from "react";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
-import { Field, Input } from "@/components/ui/field";
 import { EmptyHint, List, ListButton } from "@/components/ui/list";
-import { RowSheet } from "@/components/ui/row-sheet";
 import { Skeleton } from "@/components/ui/skeleton";
-import { newId, useDeleteRow, useInsertRow, useRows, useUpdateRow, type Row } from "@/lib/queries/table";
-import { requiredText } from "@/lib/schemas";
+import { useRows, type Row } from "@/lib/queries/table";
 import { bySort, nextSort, useSheet } from "@/lib/use-sheet";
+import dynamic from "next/dynamic";
 
-const Schema = z.object({ name: requiredText("Name", 40) });
-type Values = z.infer<typeof Schema>;
+/** Form sheets load on first open, keeping zod / react-hook-form / vaul out of the page's initial JS. */
+const TravelerSheet = dynamic(() => import("./travelers-sheet").then((m) => m.TravelerSheet), { ssr: false });
+export { TravelerSheet };
 
 export function TravelersSection() {
   const { data: travelers, isPending } = useRows("travelers", bySort);
@@ -49,55 +44,7 @@ export function TravelersSection() {
       ) : (
         <EmptyHint>Add everyone who&rsquo;s splitting costs. Expenses are shared equally between them.</EmptyHint>
       )}
-      <TravelerSheet sheet={sheet} sort={nextSort(travelers)} />
+      {sheet.mounted && <TravelerSheet sheet={sheet} sort={nextSort(travelers)} />}
     </Card>
-  );
-}
-
-export function TravelerSheet({ sheet, sort }: { sheet: ReturnType<typeof useSheet<Row<"travelers">>>; sort: number }) {
-  const insert = useInsertRow("travelers", "traveler");
-  const update = useUpdateRow("travelers", "traveler");
-  const remove = useDeleteRow("travelers", "traveler");
-  const { register, handleSubmit, reset, formState, setFocus } = useForm<Values>({ resolver: zodResolver(Schema) });
-
-  useEffect(() => {
-    if (sheet.open) reset({ name: sheet.row?.name ?? "" });
-  }, [sheet.open, sheet.row, reset]);
-
-  const onSubmit = handleSubmit(({ name }) => {
-    if (sheet.row) {
-      update.mutate({ id: sheet.row.id, patch: { name } });
-      sheet.close();
-    } else {
-      insert.mutate([{ id: newId(), name, sort }]);
-      reset({ name: "" });
-      setFocus("name");
-    }
-  });
-
-  return (
-    <RowSheet
-      open={sheet.open}
-      onOpenChange={sheet.setOpen}
-      title={sheet.row ? "Edit traveler" : "Add traveler"}
-      mode={sheet.mode}
-      onSubmit={onSubmit}
-      onDelete={
-        sheet.row
-          ? () => {
-              remove(sheet.row!, sheet.row!.name);
-              sheet.close();
-            }
-          : undefined
-      }
-    >
-      <Field
-        label="Name"
-        error={formState.errors.name?.message}
-        hint={sheet.row ? "Removing a traveler keeps their expenses but clears “paid by”." : "Add one, then the next."}
-      >
-        {(p) => <Input {...p} {...register("name")} autoComplete="off" autoFocus />}
-      </Field>
-    </RowSheet>
   );
 }

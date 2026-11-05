@@ -51,3 +51,5 @@ supabase/.branches
 /playwright-report/
 /e2e/screens/
 /.next-e2e/
+/.next-lh/
+*.log

@@ -38,7 +38,8 @@ export function initials(name: string): string {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
-const AVATAR_COLORS = ["bg-teal", "bg-coral", "bg-[#457B9D]", "bg-gold text-ink", "bg-[#6D597A]", "bg-navy"];
+// Deeper shades of the brand colours so white initials meet WCAG AA (>= 4.5:1).
+const AVATAR_COLORS = ["bg-[#1F7A70]", "bg-[#B9472B]", "bg-[#3D6A88]", "bg-gold text-ink", "bg-[#6D597A]", "bg-navy"];
 
 /**
  * Avatar colour. Pass the traveler's position so everyone on a trip gets a different colour;
