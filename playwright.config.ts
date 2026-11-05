@@ -25,6 +25,11 @@ export default defineConfig({
     url: `http://localhost:${PORT}/manifest.webmanifest`,
     reuseExistingServer: false,
     timeout: 400_000,
-    env: { NEXT_PUBLIC_SUPABASE_URL: FAKE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY: "e2e-anon-key", NEXT_TELEMETRY_DISABLED: "1", NEXT_DIST_DIR: ".next-e2e" },
+    env: {
+      NEXT_PUBLIC_SUPABASE_URL: FAKE_URL,
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: "e2e-anon-key",
+      NEXT_TELEMETRY_DISABLED: "1",
+      NEXT_DIST_DIR: ".next-e2e",
+    },
   },
 });
