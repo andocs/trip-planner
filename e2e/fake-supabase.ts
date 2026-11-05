@@ -1,4 +1,4 @@
-import type { Page, Route } from "@playwright/test";
+import type { Page, Route, WebSocketRoute } from "@playwright/test";
 import seed from "../seed/vietnam26.seed.json";
 import { buildSeedPlan, INSERT_ORDER } from "../lib/seed-map";
 
@@ -100,6 +100,40 @@ export function createFakeSupabase(opts: { withSeed?: boolean } = {}) {
 
     if (path === "/rest/v1/rpc/active_trip") return json([trip]);
     if (path === "/rest/v1/rpc/regenerate_join_token") return json("e2e-new-token");
+    if (path === "/rest/v1/rpc/join_trip") {
+      const { p_token } = req.postDataJSON() as { p_token: string };
+      if (p_token !== trip.join_token)
+        return json(
+          { code: "P0002", message: "Invite link is invalid or has expired", details: null, hint: null },
+          400,
+        );
+      return json(trip.id);
+    }
+    if (path === "/rest/v1/rpc/start_new_trip") {
+      const { p_copy_setup } = req.postDataJSON() as { p_copy_setup: boolean };
+      const travelers = p_copy_setup ? (tables.get("travelers") ?? []) : [];
+      const newId = `00000000-0000-4000-8000-${String(Date.now()).slice(-12)}`;
+      trip = {
+        ...trip,
+        id: newId,
+        name: "My Trip",
+        destination: null,
+        start_date: null,
+        end_date: null,
+        budget: 0,
+        ...(p_copy_setup ? {} : { home_currency: "PHP", foreign_currency: "USD", rate: 1 }),
+      };
+      tables.clear();
+      tables.set(
+        "travelers",
+        travelers.map((t) => ({ ...t, id: `${t.id}-new`, trip_id: newId })),
+      );
+      tables.set(
+        "categories",
+        defaults.map((name, i) => ({ id: `n${i}`, trip_id: newId, name, planned: null, sort: i, created_at: now })),
+      );
+      return json(newId);
+    }
 
     const table = path.replace("/rest/v1/", "");
     const eq = (k: string) => url.searchParams.get(k)?.replace(/^eq\./, "");
@@ -135,11 +169,83 @@ export function createFakeSupabase(opts: { withSeed?: boolean } = {}) {
     return route.fulfill({ status: 404 });
   }
 
+  // --- Realtime: a minimal Phoenix-channel server (JSON array frames, protocol 2.0.0) ---
+  type Binding = { id: number; event: string; table: string; filter?: string };
+  let socket: WebSocketRoute | undefined;
+  let channel: { topic: string; bindings: Binding[] } | undefined;
+
+  function onSocket(ws: WebSocketRoute) {
+    socket = ws;
+    ws.onMessage((raw) => {
+      const [joinRef, ref, topic, event, payload] = JSON.parse(String(raw)) as [
+        string | null,
+        string,
+        string,
+        string,
+        { config?: { postgres_changes?: Omit<Binding, "id">[] } },
+      ];
+      const reply = (response: object) =>
+        ws.send(JSON.stringify([joinRef, ref, topic, "phx_reply", { status: "ok", response }]));
+      if (event === "phx_join") {
+        const bindings = (payload.config?.postgres_changes ?? []).map((b, i) => ({ ...b, id: 1000 + i }));
+        channel = { topic, bindings };
+        reply({ postgres_changes: bindings });
+      } else reply({}); // heartbeat, access_token, phx_leave
+    });
+  }
+
+  /** Simulates another phone changing a row: updates the store and pushes the change over the socket. */
+  function remoteChange(table: string, type: "INSERT" | "UPDATE" | "DELETE", record: Row) {
+    const rows = tables.get(table) ?? [];
+    if (type === "INSERT") tables.set(table, [...rows, record]);
+    if (type === "UPDATE")
+      tables.set(
+        table,
+        rows.map((r) => (r.id === record.id ? { ...r, ...record } : r)),
+      );
+    if (type === "DELETE")
+      tables.set(
+        table,
+        rows.filter((r) => r.id !== record.id),
+      );
+    if (!socket || !channel) throw new Error("realtime channel not joined yet");
+    const ids = channel.bindings.filter((b) => b.table === table && b.event === type).map((b) => b.id);
+    const full = type === "DELETE" ? null : (tables.get(table) ?? []).find((r) => r.id === record.id);
+    socket.send(
+      JSON.stringify([
+        null,
+        null,
+        channel.topic,
+        "postgres_changes",
+        {
+          ids,
+          data: {
+            schema: "public",
+            table,
+            commit_timestamp: new Date().toISOString(),
+            type,
+            columns: [],
+            record: full,
+            old_record: type === "INSERT" ? null : { id: record.id },
+            errors: null,
+          },
+        },
+      ]),
+    );
+  }
+
   return {
     tables,
+    remoteChange,
+    get realtimeJoined() {
+      return !!channel;
+    },
     get trip() {
       return trip;
     },
-    install: (page: Page) => page.route(`${FAKE_URL}/**`, handle),
+    install: async (page: Page) => {
+      await page.route(`${FAKE_URL}/**`, handle);
+      await page.routeWebSocket(/fake\.supabase\.test\/realtime/, onSocket);
+    },
   };
 }

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { CategoriesSection } from "@/components/settings/categories-section";
 import { DestinationsSection } from "@/components/settings/destinations-section";
 import { InviteSection } from "@/components/settings/invite-section";
+import { TripTools } from "@/components/settings/trip-tools";
 import { TravelersSection } from "@/components/settings/travelers-section";
 import { TripForm } from "@/components/settings/trip-form";
 import { useTheme, type ThemePref } from "@/components/theme";
@@ -48,6 +49,7 @@ export function SettingsScreen() {
           <div className="space-y-4">
             <TripForm />
             <InviteSection />
+            <TripTools />
           </div>
           <div className="space-y-4">
             <TravelersSection />

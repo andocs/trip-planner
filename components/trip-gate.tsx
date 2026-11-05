@@ -5,6 +5,8 @@ import { createContext, use, type ReactNode } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useLoadExample } from "@/lib/queries/trip-actions";
+import { useRealtimeSync } from "@/lib/realtime";
 import { useActiveTrip, useCreateTrip, useUserId, type Trip } from "@/lib/queries/trip";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { errorMessage } from "@/lib/utils";
@@ -33,7 +35,17 @@ function TripGateInner({ children }: { children: ReactNode }) {
   if (!trip.isSuccess) return <PageSkeleton />;
   if (!trip.data) return <NoTrip />;
 
-  return <TripContext value={trip.data}>{children}</TripContext>;
+  return (
+    <TripContext value={trip.data}>
+      <RealtimeSync tripId={trip.data.id} />
+      {children}
+    </TripContext>
+  );
+}
+
+function RealtimeSync({ tripId }: { tripId: string }) {
+  useRealtimeSync(tripId);
+  return null;
 }
 
 export function PageSkeleton() {
@@ -51,6 +63,7 @@ export function PageSkeleton() {
 
 function NoTrip() {
   const create = useCreateTrip();
+  const loadExample = useLoadExample();
   return (
     <div className="flex min-h-[70dvh] flex-col items-center justify-center text-center">
       <span className="mb-6 grid size-20 place-items-center rounded-3xl bg-navy text-white shadow-card" aria-hidden>
@@ -75,8 +88,17 @@ function NoTrip() {
           )}
           Create a trip
         </Button>
-        <Button size="lg" variant="secondary" disabled title="Available in a later milestone">
-          <Sparkles className="size-5" aria-hidden />
+        <Button
+          size="lg"
+          variant="secondary"
+          disabled={loadExample.isPending || create.isPending}
+          onClick={() => loadExample.mutate()}
+        >
+          {loadExample.isPending ? (
+            <Loader2 className="size-5 animate-spin" aria-hidden />
+          ) : (
+            <Sparkles className="size-5" aria-hidden />
+          )}
           Load the Vietnam &rsquo;26 example
         </Button>
       </div>

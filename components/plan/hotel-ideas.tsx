@@ -98,7 +98,7 @@ const Schema = z.object({
   city: optionalText(80),
   hotel: requiredText("Hotel", 120),
   room: optionalText(120),
-  nights: optionalNumber({ min: 0, max: 365, int: true }),
+  nights: optionalNumber({ min: 0, max: 365 }),
   total: optionalNumber({ min: 0 }),
 });
 type In = z.input<typeof Schema>;
@@ -177,7 +177,7 @@ function HotelIdeaSheet({ sheet, cities }: { sheet: ReturnType<typeof useSheet<I
       </Field>
       <div className="grid grid-cols-2 gap-3">
         <Field label="Nights" error={errors.nights?.message}>
-          {(p) => <Input {...p} {...register("nights")} type="number" inputMode="numeric" min={0} />}
+          {(p) => <Input {...p} {...register("nights")} type="number" inputMode="decimal" min={0} step={0.5} />}
         </Field>
         <Field label={`Total (${trip.home_currency})`} error={errors.total?.message}>
           {(p) => <Input {...p} {...register("total")} inputMode="decimal" />}

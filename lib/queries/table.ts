@@ -115,13 +115,23 @@ export function useDeleteRow<T extends ChildTable>(table: T, label = "item") {
       void qc.invalidateQueries({ queryKey: key });
     };
 
-    const cancel = schedule(commit, UNDO_MS);
+    pendingDeleteIds.add(row.id);
+    const cancel = schedule(async () => {
+      try {
+        await commit();
+      } finally {
+        pendingDeleteIds.delete(row.id);
+      }
+    }, UNDO_MS);
     toast(`Deleted ${description ?? `the ${label}`}`, {
       duration: UNDO_MS,
       action: {
         label: "Undo",
         onClick: () => {
-          if (cancel()) qc.setQueryData(key, prev);
+          if (cancel()) {
+            pendingDeleteIds.delete(row.id);
+            qc.setQueryData(key, prev);
+          }
         },
       },
     });
@@ -133,6 +143,8 @@ export function useDeleteRow<T extends ChildTable>(table: T, label = "item") {
 // ---------------------------------------------------------------------------
 
 const pending = new Map<number, () => Promise<void>>();
+/** Row ids deleted locally but still inside the Undo window. */
+export const pendingDeleteIds = new Set<string>();
 let nextId = 0;
 let listening = false;
 
