@@ -2,6 +2,10 @@
 
 # dependencies
 /node_modules
+PRODUCT.md
+/design*
+/.claude
+/.impeccable
 /.pnp
 .pnp.*
 .yarn/*
