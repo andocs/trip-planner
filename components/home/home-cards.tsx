@@ -104,7 +104,7 @@ export function CountdownTile() {
     <Card className="flex flex-col justify-between bg-teal/10">
       <CardTitle>Countdown</CardTitle>
       <p className="mt-2">
-        <span className="block text-3xl font-bold text-primary tabular-nums">{big}</span>
+        <span className="block text-3xl font-bold text-teal tabular-nums">{big}</span>
         <span className="text-sm font-medium text-fg-muted">{small}</span>
       </p>
     </Card>
@@ -186,7 +186,7 @@ function TableView({ budget }: { budget: Budget }) {
   const trip = useTrip();
   return (
     <details className="mt-2 text-sm">
-      <summary className="inline-flex min-h-11 cursor-pointer items-center font-semibold text-primary">
+      <summary className="inline-flex min-h-11 cursor-pointer items-center font-semibold text-teal">
         View as table
       </summary>
       <table className="w-full tabular-nums">
@@ -249,7 +249,7 @@ export function MapCard() {
             href={routeUrl(dests)}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex min-h-11 items-center gap-1 text-sm font-semibold text-primary"
+            className="inline-flex min-h-11 items-center gap-1 text-sm font-semibold text-teal"
           >
             Open in Google Maps
             <ExternalLink className="size-4" aria-hidden />
@@ -261,7 +261,7 @@ export function MapCard() {
         <Skeleton className="mt-3 aspect-[4/3] w-full" />
       ) : dests.length === 0 ? (
         <p className="py-4 text-sm text-fg-muted">
-          <Link href="/settings" className="font-semibold text-primary underline">
+          <Link href="/settings" className="font-semibold text-teal underline">
             Add destinations
           </Link>{" "}
           to see your route on a map.
@@ -281,7 +281,7 @@ export function MapCard() {
           <ol className="space-y-2.5">
             {dests.map((d, i) => (
               <li key={d.id} className="flex items-center gap-3">
-                <span className="grid size-7 shrink-0 place-items-center rounded-full bg-teal/15 text-xs font-bold text-primary">
+                <span className="grid size-7 shrink-0 place-items-center rounded-full bg-teal/15 text-xs font-bold text-teal">
                   {i + 1}
                 </span>
                 <div className="min-w-0 flex-1">

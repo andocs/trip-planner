@@ -78,7 +78,7 @@ export function TripTools() {
                 type="checkbox"
                 checked={copySetup}
                 onChange={(e) => setCopySetup(e.target.checked)}
-                className="size-5 accent-[var(--primary)]"
+                className="size-5 accent-[var(--teal)]"
               />
               Keep travelers, currencies and exchange rate
             </label>

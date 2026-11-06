@@ -2,7 +2,7 @@
 
 import { Receipt } from "lucide-react";
 import { useMemo, useState } from "react";
-import { useTrip } from "@/components/trip-gate";
+import { EditOnly, useTrip } from "@/components/trip-gate";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { Select } from "@/components/ui/field";
@@ -98,9 +98,11 @@ export function ExpenseLog({
           <Receipt className="size-10 text-muted" aria-hidden />
           <p className="mt-3 font-semibold">No expenses yet</p>
           <p className="mt-1 text-sm text-fg-muted">Log what you spend and it&rsquo;s split for you.</p>
-          <Button className="mt-4" onClick={onAdd}>
-            Add the first expense
-          </Button>
+          <EditOnly>
+            <Button className="mt-4" onClick={onAdd}>
+              Add the first expense
+            </Button>
+          </EditOnly>
         </div>
       ) : filtered.length === 0 ? (
         <div className="py-6 text-center text-sm text-fg-muted">
@@ -108,7 +110,7 @@ export function ExpenseLog({
           {isFiltered && (
             <button
               type="button"
-              className="font-semibold text-primary underline"
+              className="font-semibold text-teal underline"
               onClick={() => {
                 setCat(ALL);
                 setPayer(ALL);

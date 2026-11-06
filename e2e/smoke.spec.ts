@@ -31,8 +31,8 @@ test("home dashboard shows the seeded trip", async ({ page }) => {
 
   await expect(page.getByRole("heading", { name: "Vietnam '26" })).toBeVisible();
   await expect(page.getByText("11 days")).toBeVisible();
-  await expect(page.getByText("6", { exact: true })).toBeVisible(); // 6 days to go
-  await expect(page.getByText("days to go")).toBeVisible();
+  await expect(page.locator("#main").getByText("6", { exact: true })).toBeVisible(); // 6 days to go
+  await expect(page.locator("#main").getByText("days to go")).toBeVisible();
   await expect(page.getByText("PHP 118,165.00")).toBeVisible();
   await expect(page.getByText("PHP 14,478.08").first()).toBeVisible(); // spent
   await expect(page.getByText("Jam").first()).toBeVisible(); // who owes whom

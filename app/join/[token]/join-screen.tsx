@@ -1,21 +1,26 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { GateLayout, gateTitle } from "@/components/gate/gate-layout";
+import { Board } from "@/components/ui/board";
 import { Button } from "@/components/ui/button";
-import { qk } from "@/lib/queries/keys";
 import { joinTrip } from "@/lib/queries/trip";
 import { errorMessage } from "@/lib/utils";
 
 export function Joining() {
   return (
-    <div className="flex flex-col items-center gap-3" aria-live="polite">
-      <Loader2 className="size-8 animate-spin text-primary" aria-hidden />
-      <p className="font-medium">Joining the trip…</p>
-    </div>
+    <GateLayout>
+      <div className="flex items-center gap-3.5 py-2" aria-live="polite">
+        <Board value="0" />
+        <div>
+          <h1 className="font-display text-2xl font-extrabold">Joining the trip…</h1>
+          <p className="text-sm text-fg-muted">Checking your invite.</p>
+        </div>
+      </div>
+    </GateLayout>
   );
 }
 
@@ -31,7 +36,7 @@ export function JoinScreen() {
     started.current = true;
     joinTrip(token)
       .then(async () => {
-        await qc.invalidateQueries({ queryKey: qk.activeTrip });
+        await qc.invalidateQueries();
         router.replace("/"); // drops the token from the address bar and history
       })
       .catch((e: unknown) => setError(errorMessage(e)));
@@ -40,12 +45,16 @@ export function JoinScreen() {
   if (!error) return <Joining />;
 
   return (
-    <div role="alert" className="max-w-sm rounded-2xl border border-border bg-surface p-6 shadow-card">
-      <h1 className="text-lg font-bold">This invite link doesn&rsquo;t work</h1>
-      <p className="mt-2 text-sm text-fg-muted">{error}. Ask whoever shared it for a fresh link.</p>
-      <Button asChild className="mt-4">
-        <Link href="/">Go to my trip</Link>
-      </Button>
-    </div>
+    <GateLayout>
+      <div role="alert" className="flex flex-col gap-3.5">
+        <h1 className={gateTitle}>This invite link doesn&rsquo;t work</h1>
+        <p className="text-fg-muted">
+          {error}. The owner may have replaced the link or removed your access. Ask for a new one.
+        </p>
+        <Button asChild variant="secondary" size="lg" className="mt-1.5 w-full">
+          <Link href="/">Back to start</Link>
+        </Button>
+      </div>
+    </GateLayout>
   );
 }

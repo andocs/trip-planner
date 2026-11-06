@@ -1,7 +1,7 @@
 "use client";
 
 import { ExternalLink, Plane, Plus } from "lucide-react";
-import { useTrip } from "@/components/trip-gate";
+import { EditOnly, useTrip } from "@/components/trip-gate";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -42,10 +42,12 @@ export function Flights() {
               <p className="mt-0.5 text-sm text-fg-muted">Fares {formatMoney(total, trip.home_currency)}</p>
             )}
           </div>
-          <Button size="sm" variant="secondary" onClick={sheet.openAdd}>
-            <Plus className="size-4" aria-hidden />
-            Add
-          </Button>
+          <EditOnly>
+            <Button size="sm" variant="secondary" onClick={sheet.openAdd}>
+              <Plus className="size-4" aria-hidden />
+              Add
+            </Button>
+          </EditOnly>
         </div>
         {isPending ? (
           <Skeleton className="mt-3 h-20" />
@@ -67,7 +69,7 @@ export function Flights() {
                   />
                 }
               >
-                <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-navy text-white dark:bg-surface-2">
+                <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-ink text-ground">
                   <Plane className="size-5" aria-hidden />
                 </span>
                 <span className="min-w-0 flex-1">
@@ -113,10 +115,12 @@ function Transfers() {
     <Card>
       <div className="flex items-center justify-between gap-2">
         <CardTitle>Transfers</CardTitle>
-        <Button size="sm" variant="secondary" onClick={sheet.openAdd}>
-          <Plus className="size-4" aria-hidden />
-          Add
-        </Button>
+        <EditOnly>
+          <Button size="sm" variant="secondary" onClick={sheet.openAdd}>
+            <Plus className="size-4" aria-hidden />
+            Add
+          </Button>
+        </EditOnly>
       </div>
       {isPending ? (
         <Skeleton className="mt-3 h-20" />
@@ -139,7 +143,7 @@ function Transfers() {
                       target="_blank"
                       rel="noopener noreferrer"
                       onPointerDown={(e) => e.stopPropagation()}
-                      className="grid size-11 shrink-0 place-items-center rounded-full text-primary hover:bg-surface-2"
+                      className="grid size-11 shrink-0 place-items-center rounded-full text-teal hover:bg-surface-2"
                       aria-label={`Open link for ${t.route} (new tab)`}
                     >
                       <ExternalLink className="size-5" aria-hidden />

@@ -5,6 +5,7 @@ import { BudgetTilesGrid, ChartsCard, CountdownTile, Hero, MapCard, ReadinessCar
 import { QuickAdd } from "@/components/home/quick-add";
 import { TransfersList } from "@/components/spend/settle-up";
 import { PageSkeleton, TripGate } from "@/components/trip-gate";
+import { ViewOnlyBanner } from "@/components/view-only-banner";
 import { Card, CardTitle } from "@/components/ui/card";
 import { useBudget } from "@/lib/queries/budget";
 
@@ -25,7 +26,7 @@ function Home() {
           <Card>
             <div className="flex items-center justify-between">
               <CardTitle>Who owes whom</CardTitle>
-              <Link href="/spend" className="inline-flex min-h-11 items-center text-sm font-semibold text-primary">
+              <Link href="/spend" className="inline-flex min-h-11 items-center text-sm font-semibold text-teal">
                 Details
               </Link>
             </div>
@@ -43,6 +44,7 @@ function Home() {
 export function HomeScreen() {
   return (
     <TripGate>
+      <ViewOnlyBanner />
       <Home />
     </TripGate>
   );

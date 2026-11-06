@@ -5,6 +5,7 @@ import { Gifts } from "@/components/pack/gifts";
 import { Packing } from "@/components/pack/packing";
 import { Reminders } from "@/components/pack/reminders";
 import { TripGate } from "@/components/trip-gate";
+import { ViewOnlyBanner } from "@/components/view-only-banner";
 import { Segmented } from "@/components/ui/segmented";
 
 const TABS = [
@@ -41,6 +42,7 @@ function Pack() {
 export function PackScreen() {
   return (
     <TripGate>
+      <ViewOnlyBanner />
       <Pack />
     </TripGate>
   );

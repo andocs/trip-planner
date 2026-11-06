@@ -4,6 +4,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Food } from "@/components/places/food";
 import { PlaceList } from "@/components/places/place-list";
 import { TripGate } from "@/components/trip-gate";
+import { ViewOnlyBanner } from "@/components/view-only-banner";
 import { Segmented } from "@/components/ui/segmented";
 
 type Tab = "food" | "attractions";
@@ -39,6 +40,7 @@ function Places() {
 export function PlacesScreen() {
   return (
     <TripGate>
+      <ViewOnlyBanner />
       <Places />
     </TripGate>
   );

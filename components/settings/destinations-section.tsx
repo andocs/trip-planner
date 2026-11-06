@@ -38,7 +38,7 @@ export function DestinationsSection() {
               <ListButton
                 key={d.id}
                 leading={
-                  <span className="grid size-10 shrink-0 place-items-center rounded-full bg-teal/15 font-bold text-primary">
+                  <span className="grid size-10 shrink-0 place-items-center rounded-full bg-teal/15 font-bold text-teal">
                     {i + 1}
                   </span>
                 }

@@ -2,7 +2,7 @@ import { useId, type ComponentProps, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 const control =
-  "block min-h-12 w-full rounded-xl border border-border bg-surface-2 px-3.5 text-base text-fg placeholder:text-fg-muted/70 focus:border-primary focus:outline-2 focus:outline-offset-0 focus:outline-ring aria-[invalid=true]:border-danger disabled:opacity-60";
+  "block min-h-13 w-full rounded-[14px] border-2 border-line-strong bg-surface px-3.5 text-base text-fg focus:border-teal focus:outline-2 focus:outline-offset-0 focus:outline-ring aria-[invalid=true]:border-danger disabled:opacity-60";
 
 export function Input({ className, ...props }: ComponentProps<"input">) {
   return <input className={cn(control, className)} {...props} />;
@@ -37,7 +37,7 @@ export function Field({
   const describedBy = error ? `${id}-err` : hint ? `${id}-hint` : undefined;
   return (
     <div className={cn("space-y-1.5", className)}>
-      <label htmlFor={id} className="block text-sm font-semibold">
+      <label htmlFor={id} className="block text-[13px] font-bold text-fg-muted">
         {label}
       </label>
       {children({ id, "aria-invalid": error ? true : undefined, "aria-describedby": describedBy })}

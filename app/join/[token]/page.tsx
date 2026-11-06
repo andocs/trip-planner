@@ -6,10 +6,8 @@ export const metadata: Metadata = { title: "Join trip", referrer: "no-referrer" 
 
 export default function Page() {
   return (
-    <main className="grid min-h-dvh place-items-center p-6 text-center">
-      <Suspense fallback={<Joining />}>
-        <JoinScreen />
-      </Suspense>
-    </main>
+    <Suspense fallback={<Joining />}>
+      <JoinScreen />
+    </Suspense>
   );
 }

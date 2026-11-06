@@ -19,11 +19,11 @@ export function Progress({
   const color =
     tone === "budget"
       ? pct > 100
-        ? "bg-coral"
+        ? "bg-accent"
         : pct > 90
           ? "bg-gold"
           : "bg-teal"
-      : { teal: "bg-teal", gold: "bg-gold", coral: "bg-coral", navy: "bg-navy dark:bg-muted" }[tone];
+      : { teal: "bg-teal", gold: "bg-gold", coral: "bg-accent", navy: "bg-ink" }[tone];
   return (
     <div
       role="progressbar"

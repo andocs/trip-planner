@@ -6,6 +6,7 @@ import { HotelIdeas } from "@/components/plan/hotel-ideas";
 import { Itinerary } from "@/components/plan/itinerary";
 import { Stays } from "@/components/plan/stays";
 import { TripGate } from "@/components/trip-gate";
+import { ViewOnlyBanner } from "@/components/view-only-banner";
 import { Segmented } from "@/components/ui/segmented";
 
 const TABS = [
@@ -44,6 +45,7 @@ function Plan() {
 export function PlanScreen() {
   return (
     <TripGate>
+      <ViewOnlyBanner />
       <Plan />
     </TripGate>
   );

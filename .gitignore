@@ -3,6 +3,7 @@
 # dependencies
 /node_modules
 PRODUCT.md
+DESIGN.md
 /design*
 /.claude
 /.impeccable

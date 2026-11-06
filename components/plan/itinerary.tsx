@@ -2,6 +2,7 @@
 
 import { CalendarPlus, Plus } from "lucide-react";
 import { useState } from "react";
+import { EditOnly } from "@/components/trip-gate";
 import { Button } from "@/components/ui/button";
 import { CheckButton } from "@/components/ui/check";
 import { Select } from "@/components/ui/field";
@@ -86,10 +87,12 @@ export function Itinerary() {
         <p className="text-sm text-fg-muted">
           {all.total ? `${all.done} of ${all.total} done` : "Nothing planned yet"}
         </p>
-        <Button size="sm" variant="secondary" onClick={() => addTo()}>
-          <CalendarPlus className="size-4" aria-hidden />
-          Add
-        </Button>
+        <EditOnly>
+          <Button size="sm" variant="secondary" onClick={() => addTo()}>
+            <CalendarPlus className="size-4" aria-hidden />
+            Add
+          </Button>
+        </EditOnly>
       </div>
 
       {items.length > 0 && (
@@ -129,9 +132,11 @@ export function Itinerary() {
           <p className="mt-1 text-sm text-fg-muted">
             Add activities with a date and time; they&rsquo;re grouped by day.
           </p>
-          <Button className="mt-4" onClick={() => addTo()}>
-            Add the first activity
-          </Button>
+          <EditOnly>
+            <Button className="mt-4" onClick={() => addTo()}>
+              Add the first activity
+            </Button>
+          </EditOnly>
         </div>
       ) : groups.length === 0 ? (
         <p className="py-6 text-center text-sm text-fg-muted">Nothing matches these filters.</p>
@@ -152,9 +157,11 @@ export function Itinerary() {
                 <span className="text-xs text-fg-muted tabular-nums">
                   {p.done}/{p.total}
                 </span>
-                <Button variant="ghost" size="icon" onClick={() => addTo(g)} aria-label={`Add to ${title}`}>
-                  <Plus className="size-5" aria-hidden />
-                </Button>
+                <EditOnly>
+                  <Button variant="ghost" size="icon" onClick={() => addTo(g)} aria-label={`Add to ${title}`}>
+                    <Plus className="size-5" aria-hidden />
+                  </Button>
+                </EditOnly>
               </header>
               <ul className="p-2">
                 {g.items.map((it) => (

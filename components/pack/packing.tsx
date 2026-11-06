@@ -2,6 +2,7 @@
 
 import { Plus } from "lucide-react";
 import { useState } from "react";
+import { EditOnly } from "@/components/trip-gate";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { CheckButton } from "@/components/ui/check";
@@ -79,23 +80,27 @@ export function Packing() {
               type="checkbox"
               checked={hidePacked}
               onChange={(e) => setHidePacked(e.target.checked)}
-              className="size-5 accent-[var(--primary)]"
+              className="size-5 accent-[var(--teal)]"
             />
             Hide packed
           </label>
         )}
-        <Button size="sm" variant="secondary" onClick={() => add()} className="ml-auto">
-          <Plus className="size-4" aria-hidden />
-          Add
-        </Button>
+        <EditOnly>
+          <Button size="sm" variant="secondary" onClick={() => add()} className="ml-auto">
+            <Plus className="size-4" aria-hidden />
+            Add
+          </Button>
+        </EditOnly>
       </div>
 
       {items.length === 0 ? (
         <Card className="text-center">
           <p className="text-sm text-fg-muted">Make a list by category: documents, clothes, gadgets…</p>
-          <Button className="mt-3" onClick={() => add()}>
-            Add the first item
-          </Button>
+          <EditOnly>
+            <Button className="mt-3" onClick={() => add()}>
+              Add the first item
+            </Button>
+          </EditOnly>
         </Card>
       ) : (
         categories.map((cat) => {
@@ -115,9 +120,11 @@ export function Packing() {
                   </div>
                   <Progress value={p.percent} label={`${cat} packed`} className="mt-1.5 h-1.5" />
                 </div>
-                <Button variant="ghost" size="icon" onClick={() => add(cat)} aria-label={`Add to ${cat}`}>
-                  <Plus className="size-5" aria-hidden />
-                </Button>
+                <EditOnly>
+                  <Button variant="ghost" size="icon" onClick={() => add(cat)} aria-label={`Add to ${cat}`}>
+                    <Plus className="size-5" aria-hidden />
+                  </Button>
+                </EditOnly>
               </header>
               <ul className="p-2">
                 {list.map((i) => (

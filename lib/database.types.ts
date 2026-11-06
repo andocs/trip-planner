@@ -17,12 +17,16 @@ export type Database = {
           foreign_currency: string
           home_currency: string
           id: string
+          invite_rotated_at: string
           join_token: string
           map_region: string
           name: string
+          onboarding_step: number
+          owner_id: string | null
           rate: number
           rate_date: string | null
           start_date: string | null
+          status: string
         }
         Insert: {
           archived_at?: string | null
@@ -33,12 +37,16 @@ export type Database = {
           foreign_currency?: string
           home_currency?: string
           id?: string
+          invite_rotated_at?: string
           join_token?: string
           map_region?: string
           name?: string
+          onboarding_step?: number
+          owner_id?: string | null
           rate?: number
           rate_date?: string | null
           start_date?: string | null
+          status?: string
         }
         Update: {
           archived_at?: string | null
@@ -49,12 +57,16 @@ export type Database = {
           foreign_currency?: string
           home_currency?: string
           id?: string
+          invite_rotated_at?: string
           join_token?: string
           map_region?: string
           name?: string
+          onboarding_step?: number
+          owner_id?: string | null
           rate?: number
           rate_date?: string | null
           start_date?: string | null
+          status?: string
         }
         Relationships: [
 
@@ -62,17 +74,29 @@ export type Database = {
       }
       trip_members: {
         Row: {
+          email: string | null
           joined_at: string
+          label: string | null
+          revoked_at: string | null
+          role: string
           trip_id: string
           user_id: string
         }
         Insert: {
+          email?: string | null
           joined_at?: string
+          label?: string | null
+          revoked_at?: string | null
+          role?: string
           trip_id: string
           user_id: string
         }
         Update: {
+          email?: string | null
           joined_at?: string
+          label?: string | null
+          revoked_at?: string | null
+          role?: string
           trip_id?: string
           user_id?: string
         }
@@ -723,6 +747,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_edit: { Args: { t: string }; Returns: boolean }
+      can_view: { Args: { t: string }; Returns: boolean }
+      claim_trip: { Args: { p_trip: string }; Returns: undefined }
+      claimable_trips: { Args: never; Returns: Database["public"]["Tables"]["trips"]["Row"][] }
+      is_admin: { Args: never; Returns: boolean }
+      regenerate_invite: { Args: { p_trip: string }; Returns: string }
+      revoke_viewer: { Args: { p_trip: string; p_user: string }; Returns: undefined }
+      trip_role: { Args: { t: string }; Returns: string }
       active_trip: {
         Args: never
         Returns: Database["public"]["Tables"]["trips"]["Row"][]

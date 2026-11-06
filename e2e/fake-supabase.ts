@@ -6,8 +6,12 @@ import { buildSeedPlan, INSERT_ORDER } from "../lib/seed-map";
  * In-memory stand-in for Supabase Auth + PostgREST, wired up with page.route().
  * It lets the smoke test drive the real UI without a Supabase project. It implements
  * just the request shapes supabase-js sends: anonymous signup, rpc/active_trip,
- * select by trip_id, insert, update/delete by id. RLS is NOT simulated (see
- * supabase/tests/rls_check.sql for that).
+ * select by trip_id, insert, update/delete by id.
+ *
+ * Roles: `role` picks who the browser is. "owner" is the Google admin, "viewer" joined by link,
+ * "noaccess" is signed in with no trip, "signedout" has no session at all (the proxy shows Invite only).
+ * Writes by a viewer are refused the way Postgres refuses them, so the UI's behaviour is exercised;
+ * the real policies are proven in supabase/tests/rls_check.sql.
  */
 export const FAKE_URL = "http://fake.supabase.test";
 
@@ -15,7 +19,11 @@ type Row = Record<string, unknown> & { id: string };
 export type FakeRequest = { method: string; url: string; body?: unknown };
 export type FakeResponse = { status: number; body?: unknown };
 
-export function createFakeSupabase(opts: { withSeed?: boolean } = {}) {
+export type FakeRole = "owner" | "viewer" | "noaccess" | "signedout";
+
+export function createFakeSupabase(opts: { withSeed?: boolean; role?: FakeRole } = {}) {
+  let role: FakeRole = opts.role ?? "owner";
+  const claimable: Row[] = [];
   const tripId = "00000000-0000-4000-8000-000000000001";
   const userId = "00000000-0000-4000-8000-0000000000aa";
   const now = new Date().toISOString();
@@ -70,7 +78,33 @@ export function createFakeSupabase(opts: { withSeed?: boolean } = {}) {
 
   const b64 = (o: object) => Buffer.from(JSON.stringify(o)).toString("base64url");
   const exp = Math.floor(Date.now() / 1000) + 3600;
-  const jwt = `${b64({ alg: "HS256", typ: "JWT" })}.${b64({ sub: userId, role: "authenticated", exp, is_anonymous: true })}.sig`;
+  const isOwner = () => role === "owner";
+  const claims = () => ({
+    sub: userId,
+    role: "authenticated",
+    exp,
+    is_anonymous: !isOwner(),
+    ...(isOwner() ? { email: "owner@test.local", app_metadata: { provider: "google", providers: ["google"] } } : {}),
+  });
+  const authUser = () => ({
+    id: userId,
+    aud: "authenticated",
+    role: "authenticated",
+    is_anonymous: !isOwner(),
+    email: isOwner() ? "owner@test.local" : undefined,
+    app_metadata: isOwner() ? { provider: "google", providers: ["google"] } : {},
+    user_metadata: {},
+    created_at: now,
+  });
+  const session = () => ({
+    access_token: `${b64({ alg: "HS256", typ: "JWT" })}.${b64(claims())}.sig`,
+    token_type: "bearer",
+    expires_in: 3600,
+    expires_at: exp,
+    refresh_token: "refresh",
+    user: authUser(),
+  });
+  const canWrite = () => isOwner();
 
   /** Transport-independent request handler (used by Playwright routes and the local HTTP server). */
   function respond(req: FakeRequest): FakeResponse {
@@ -78,28 +112,22 @@ export function createFakeSupabase(opts: { withSeed?: boolean } = {}) {
     const path = url.pathname;
     const json = (body: unknown, status = 200): FakeResponse => ({ status, body });
 
-    if (path.startsWith("/auth/v1/signup") || path.startsWith("/auth/v1/token")) {
-      return json({
-        access_token: jwt,
-        token_type: "bearer",
-        expires_in: 3600,
-        expires_at: exp,
-        refresh_token: "refresh",
-        user: {
-          id: userId,
-          aud: "authenticated",
-          role: "authenticated",
-          is_anonymous: true,
-          app_metadata: {},
-          user_metadata: {},
-          created_at: now,
-        },
-      });
+    if (path.startsWith("/auth/v1/signup") || path.startsWith("/auth/v1/token")) return json(session());
+    if (path.startsWith("/auth/v1/user")) return json(authUser());
+    if (path.startsWith("/auth/v1/logout")) return { status: 204 };
+    if (path === "/rest/v1/rpc/is_admin") return json(isOwner());
+    if (path === "/rest/v1/rpc/trip_role")
+      return json(role === "owner" ? "owner" : role === "viewer" ? "viewer" : null);
+    if (path === "/rest/v1/rpc/claimable_trips") return json(isOwner() ? claimable : []);
+    if (path === "/rest/v1/rpc/claim_trip") {
+      claimable.length = 0;
+      role = "owner";
+      return { status: 204 };
     }
-    if (path.startsWith("/auth/v1/user"))
-      return json({ id: userId, aud: "authenticated", role: "authenticated", is_anonymous: true });
+    if (path === "/rest/v1/rpc/regenerate_invite") return json("e2e-new-token");
 
-    if (path === "/rest/v1/rpc/active_trip") return json([trip]);
+    if (path === "/rest/v1/rpc/active_trip")
+      return json(role === "noaccess" || role === "signedout" || claimable.length > 0 ? [] : [trip]);
     if (path === "/rest/v1/rpc/regenerate_join_token") return json("e2e-new-token");
     if (path === "/rest/v1/rpc/join_trip") {
       const { p_token } = req.body as { p_token: string };
@@ -108,9 +136,12 @@ export function createFakeSupabase(opts: { withSeed?: boolean } = {}) {
           { code: "P0002", message: "Invite link is invalid or has expired", details: null, hint: null },
           400,
         );
+      if (role === "noaccess" || role === "signedout") role = "viewer"; // opening a link grants view access only
       return json(trip.id);
     }
     if (path === "/rest/v1/rpc/start_new_trip") {
+      if (!canWrite())
+        return json({ code: "42501", message: "Only the trip owner can start a trip", details: null, hint: null }, 403);
       const { p_copy_setup } = req.body as { p_copy_setup: boolean };
       const travelers = p_copy_setup ? (tables.get("travelers") ?? []) : [];
       const newId = `00000000-0000-4000-8000-${String(Date.now()).slice(-12)}`;
@@ -141,11 +172,23 @@ export function createFakeSupabase(opts: { withSeed?: boolean } = {}) {
     const method = req.method;
 
     if (table === "trips" && method === "PATCH") {
-      trip = { ...trip, ...(req.body as object) };
+      if (canWrite()) trip = { ...trip, ...(req.body as object) }; // a viewer's update matches zero rows
       return { status: 204 };
     }
+    if (table === "trip_members") return json([]);
     const rows = tables.get(table) ?? [];
     if (method === "GET") return json(rows.filter((r) => !eq("trip_id") || r.trip_id === eq("trip_id")));
+    if (method === "POST" && !canWrite())
+      return json(
+        {
+          code: "42501",
+          message: 'new row violates row-level security policy for table "' + table + '"',
+          details: null,
+          hint: null,
+        },
+        403,
+      );
+    if ((method === "PATCH" || method === "DELETE") && !canWrite()) return { status: 204 };
     if (method === "POST") {
       const body = req.body as Row | Row[];
       const added = (Array.isArray(body) ? body : [body]).map((r) => ({ created_at: new Date().toISOString(), ...r }));
@@ -245,7 +288,16 @@ export function createFakeSupabase(opts: { withSeed?: boolean } = {}) {
       return trip;
     },
     respond,
+    get role() {
+      return role;
+    },
+    claimable,
     install: async (page: Page) => {
+      if (role !== "signedout") {
+        // The session cookie supabase-js would have written after sign-in (name: sb-<project ref>-auth-token).
+        const value = "base64-" + Buffer.from(JSON.stringify(session())).toString("base64url");
+        await page.context().addCookies([{ name: "sb-fake-auth-token", value, url: "http://localhost:3210" }]);
+      }
       await page.route(`${FAKE_URL}/**`, (route: Route) => {
         const req = route.request();
         let body: unknown;

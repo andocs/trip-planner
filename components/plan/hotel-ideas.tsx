@@ -1,7 +1,7 @@
 "use client";
 
 import { Plus } from "lucide-react";
-import { useTrip } from "@/components/trip-gate";
+import { EditOnly, useTrip } from "@/components/trip-gate";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -35,10 +35,12 @@ export function HotelIdeas() {
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-2">
         <p className="text-sm text-fg-muted">A shortlist to compare before you book.</p>
-        <Button size="sm" variant="secondary" onClick={sheet.openAdd}>
-          <Plus className="size-4" aria-hidden />
-          Add
-        </Button>
+        <EditOnly>
+          <Button size="sm" variant="secondary" onClick={sheet.openAdd}>
+            <Plus className="size-4" aria-hidden />
+            Add
+          </Button>
+        </EditOnly>
       </div>
       {isPending ? (
         <Skeleton className="h-40" />

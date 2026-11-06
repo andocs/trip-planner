@@ -1,7 +1,7 @@
 "use client";
 
 import { BedDouble, Plus } from "lucide-react";
-import { useTrip } from "@/components/trip-gate";
+import { EditOnly, useTrip } from "@/components/trip-gate";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -46,10 +46,12 @@ export function Stays() {
             </p>
           )}
         </div>
-        <Button size="sm" variant="secondary" onClick={sheet.openAdd}>
-          <Plus className="size-4" aria-hidden />
-          Add
-        </Button>
+        <EditOnly>
+          <Button size="sm" variant="secondary" onClick={sheet.openAdd}>
+            <Plus className="size-4" aria-hidden />
+            Add
+          </Button>
+        </EditOnly>
       </div>
       {isPending ? (
         <Skeleton className="mt-3 h-32" />
@@ -74,7 +76,7 @@ export function Stays() {
                   />
                 }
               >
-                <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-teal/15 text-primary">
+                <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-teal/15 text-teal">
                   <BedDouble className="size-5" aria-hidden />
                 </span>
                 <span className="min-w-0 flex-1">

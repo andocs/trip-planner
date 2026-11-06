@@ -2,6 +2,7 @@
 
 import { ChevronDown, Plus } from "lucide-react";
 import { useState, type ReactNode } from "react";
+import { EditOnly } from "@/components/trip-gate";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Select } from "@/components/ui/field";
@@ -61,10 +62,12 @@ export function PlaceList({
         <p className="text-sm text-fg-muted">
           {shown.length === places.length ? places.length : `${shown.length} of ${places.length}`} {noun}s
         </p>
-        <Button size="sm" variant="secondary" onClick={sheet.openAdd}>
-          <Plus className="size-4" aria-hidden />
-          Add
-        </Button>
+        <EditOnly>
+          <Button size="sm" variant="secondary" onClick={sheet.openAdd}>
+            <Plus className="size-4" aria-hidden />
+            Add
+          </Button>
+        </EditOnly>
       </div>
       {places.length > 0 && (
         <div className="grid grid-cols-2 gap-2">
@@ -95,9 +98,11 @@ export function PlaceList({
       {places.length === 0 ? (
         <Card className="text-center">
           <p className="text-sm text-fg-muted">{emptyHint}</p>
-          <Button className="mt-3" onClick={sheet.openAdd}>
-            Add a {noun}
-          </Button>
+          <EditOnly>
+            <Button className="mt-3" onClick={sheet.openAdd}>
+              Add a {noun}
+            </Button>
+          </EditOnly>
         </Card>
       ) : shown.length === 0 ? (
         <p className="py-6 text-center text-sm text-fg-muted">Nothing matches these filters.</p>

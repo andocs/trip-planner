@@ -25,13 +25,22 @@ async function prefetch(tables: ChildTable[]) {
     const { data: claims } = await supabase.auth.getClaims();
     const userId = claims?.claims.sub;
     if (!userId) return null;
+    const isAnonymous = claims.claims.is_anonymous === true;
 
     const qc = new QueryClient();
-    qc.setQueryData(qk.user, userId);
+    qc.setQueryData(qk.user, { id: userId, email: claims.claims.email ?? null, isAnonymous });
     const { data: trips, error } = await supabase.rpc("active_trip");
     if (error) return null;
     const trip = trips?.[0] ?? null;
     qc.setQueryData(qk.activeTrip, trip);
+    if (!isAnonymous) {
+      const { data: admin } = await supabase.rpc("is_admin");
+      qc.setQueryData(qk.admin, admin === true);
+    }
+    if (trip) {
+      const { data: role } = await supabase.rpc("trip_role", { t: trip.id });
+      qc.setQueryData(qk.role(trip.id), role ?? null);
+    }
 
     if (trip) {
       const db = supabase as unknown as SupabaseClient;

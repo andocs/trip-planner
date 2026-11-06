@@ -1,6 +1,6 @@
 "use client";
 
-import { useTrip } from "@/components/trip-gate";
+import { EditOnly, useCanEdit, useTrip } from "@/components/trip-gate";
 import { CategorySheet, MAX_CATEGORIES } from "@/components/settings/categories-section";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
@@ -60,6 +60,7 @@ function Stat({
 
 export function CategorySummary({ budget }: { budget: Budget }) {
   const trip = useTrip();
+  const canEdit = useCanEdit();
   const sheet = useSheet<Row<"categories">>();
   const cur = trip.home_currency;
 
@@ -68,9 +69,11 @@ export function CategorySummary({ budget }: { budget: Budget }) {
       <div className="flex items-center justify-between">
         <CardTitle>Categories</CardTitle>
         {budget.categories.length < MAX_CATEGORIES && (
-          <Button variant="ghost" size="sm" onClick={sheet.openAdd}>
-            Add
-          </Button>
+          <EditOnly>
+            <Button variant="ghost" size="sm" onClick={sheet.openAdd}>
+              Add
+            </Button>
+          </EditOnly>
         )}
       </div>
       <ul className="mt-2 space-y-1">
@@ -103,7 +106,7 @@ export function CategorySummary({ budget }: { budget: Budget }) {
           );
           return (
             <li key={l.id ?? "none"}>
-              {l.category ? (
+              {l.category && canEdit ? (
                 <button
                   type="button"
                   onClick={() => sheet.openEdit(l.category!)}

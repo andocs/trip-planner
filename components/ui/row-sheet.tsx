@@ -50,7 +50,7 @@ export function RowSheet({
             <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm font-medium select-none">
               <input
                 type="checkbox"
-                className="size-5 accent-[var(--primary)]"
+                className="size-5 accent-[var(--teal)]"
                 checked={keepAdding.value}
                 onChange={(e) => keepAdding.onChange(e.target.checked)}
               />
