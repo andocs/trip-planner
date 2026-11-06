@@ -748,6 +748,8 @@ export type Database = {
     }
     Functions: {
       can_edit: { Args: { t: string }; Returns: boolean }
+      finish_onboarding: { Args: { p_trip: string; p_starter?: boolean }; Returns: undefined }
+      save_onboarding: { Args: { p_trip: string; p_step: number; p_patch: Json }; Returns: undefined }
       can_view: { Args: { t: string }; Returns: boolean }
       claim_trip: { Args: { p_trip: string }; Returns: undefined }
       claimable_trips: { Args: never; Returns: Database["public"]["Tables"]["trips"]["Row"][] }

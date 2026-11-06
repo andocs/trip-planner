@@ -13,6 +13,7 @@ declare
   fake_admin uuid := gen_random_uuid();  -- anonymous session carrying an admin email
   trip_a uuid;
   trip_old uuid;
+  trip_old_draft uuid;
   tok text;
   tok2 text;
   n int;
@@ -108,6 +109,43 @@ begin
   update public.travelers set name = 'Edited' where trip_id = trip_old;
   get diagnostics rc = row_count;
   if rc <> 1 then failures := failures || 'claimed owner could not edit legacy trip'::text; end if;
+
+  -- ---- onboarding: trip_a was created as a draft ----
+  checks := checks + 1;
+  select status into r from public.trips where id = trip_a;
+  if r is distinct from 'draft' then failures := failures || format('new trip should be a draft, is %s', r); end if;
+  perform public.save_onboarding(trip_a, 3, '{"name":"Hanoi ''26","start_date":"2026-06-16","end_date":"2026-06-26","home_currency":"php","foreign_currency":"vnd","rate":0.002457,"budget":118165,"stops":[{"city":"Hanoi","country":"Vietnam","nights":3,"lat":21.03,"lng":105.85},{"city":"Sapa","nights":2},{"city":"  ","nights":1}],"travelers":["Aq"," Jam ",""]}'::jsonb);
+  checks := checks + 1;
+  select count(*) into n from public.destinations where trip_id = trip_a;
+  if n <> 2 then failures := failures || format('save_onboarding should store 2 stops (blank skipped), stored %s', n); end if;
+  checks := checks + 1;
+  select count(*) into n from public.travelers where trip_id = trip_a and name in ('Aq', 'Jam');
+  if n <> 2 then failures := failures || 'save_onboarding should replace travelers with Aq and Jam'; end if;
+  checks := checks + 1;
+  select home_currency || foreign_currency || onboarding_step into r from public.trips where id = trip_a;
+  if r is distinct from 'PHPVND3' then failures := failures || format('draft fields not saved, got %s', r); end if;
+  checks := checks + 1;
+  begin perform public.save_onboarding(trip_a, 2, '{"rate":0}'::jsonb); failures := failures || 'a zero rate was accepted'::text;
+  exception when check_violation then null; end;
+  perform public.finish_onboarding(trip_a, true);
+  checks := checks + 1;
+  select status into r from public.trips where id = trip_a;
+  if r is distinct from 'active' then failures := failures || 'finish_onboarding did not activate the trip'; end if;
+  checks := checks + 1;
+  select count(*) into n from public.packing_items where trip_id = trip_a;
+  if n < 5 then failures := failures || 'starter checklist missing'; end if;
+  checks := checks + 1;
+  begin perform public.finish_onboarding(trip_a, false); failures := failures || 'finish_onboarding ran twice'::text;
+  exception when sqlstate 'P0001' then null; end;
+  checks := checks + 1;
+  begin perform public.save_onboarding(trip_a, 1, '{"name":"x"}'::jsonb); failures := failures || 'save_onboarding changed a live trip'::text;
+  exception when sqlstate 'P0001' then null; end;
+  checks := checks + 1;
+  select public.create_trip('second') into trip_old_draft;
+  select status into r from public.trips where id = trip_old_draft;
+  if r is distinct from 'draft' then failures := failures || 'second create_trip should be a draft'; end if;
+  checks := checks + 1;
+  if public.create_trip('third') is distinct from trip_old_draft then failures := failures || 'create_trip should return the existing draft'; end if;
   reset role;
 
   -- legacy member stays a viewer after the claim
@@ -166,7 +204,7 @@ begin
   if n <> 1 then failures := failures || 'viewer cannot read the trip'::text; end if;
   checks := checks + 1;
   select count(*) into n from public.reminders where trip_id = trip_a;
-  if n <> 1 then failures := failures || 'viewer cannot read child rows'::text; end if;
+  if n < 1 then failures := failures || 'viewer cannot read child rows'::text; end if;
   checks := checks + 1;
   select count(*) into n from public.trip_members where trip_id = trip_a;
   if n <> 1 then failures := failures || format('viewer should see only their own member row, saw %s', n); end if;
@@ -201,6 +239,12 @@ begin
   exception when insufficient_privilege then null; end;
   checks := checks + 1;
   begin perform public.revoke_viewer(trip_a, viewer_u); failures := failures || 'viewer revoked someone'::text;
+  exception when insufficient_privilege then null; end;
+  checks := checks + 1;
+  begin perform public.save_onboarding(trip_a, 1, '{"name":"x"}'::jsonb); failures := failures || 'viewer ran save_onboarding'::text;
+  exception when insufficient_privilege then null; end;
+  checks := checks + 1;
+  begin perform public.finish_onboarding(trip_a, false); failures := failures || 'viewer ran finish_onboarding'::text;
   exception when insufficient_privilege then null; end;
   checks := checks + 1;
   begin perform public.start_new_trip(); failures := failures || 'viewer started a new trip'::text;

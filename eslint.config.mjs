@@ -14,6 +14,7 @@ const eslintConfig = defineConfig([
     "test-results/**",
     "design/**",
     ".claude/**",
+    "public/maplibre/**",
     "out/**",
     "build/**",
     "next-env.d.ts",

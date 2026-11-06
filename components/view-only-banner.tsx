@@ -18,3 +18,8 @@ export function ViewOnlyBanner() {
     </div>
   );
 }
+
+/** Empty-state copy: owners get the nudge to add something; viewers are told the owner is still planning. */
+export function EmptyText({ children }: { children: React.ReactNode }) {
+  return useCanEdit() ? <>{children}</> : <>Nothing here yet. The trip owner is still planning.</>;
+}

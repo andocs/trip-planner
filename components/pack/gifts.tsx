@@ -1,5 +1,6 @@
 "use client";
 
+import { EmptyText } from "@/components/view-only-banner";
 import { Gift, Plus } from "lucide-react";
 import { EditOnly, useTrip } from "@/components/trip-gate";
 import { Button } from "@/components/ui/button";
@@ -55,7 +56,9 @@ export function Gifts() {
       {gifts.length === 0 ? (
         <Card className="text-center">
           <Gift className="mx-auto size-8 text-muted" aria-hidden />
-          <p className="mt-2 text-sm text-fg-muted">Who are you bringing pasalubong for?</p>
+          <p className="mt-2 text-sm text-fg-muted">
+            <EmptyText>Who are you bringing pasalubong for?</EmptyText>
+          </p>
           <EditOnly>
             <Button className="mt-3" onClick={sheet.openAdd}>
               Add a gift

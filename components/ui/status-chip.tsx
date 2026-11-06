@@ -9,7 +9,8 @@ import { cn } from "@/lib/utils";
 const STYLE: Record<Status, string> = {
   Idea: "bg-surface-2 text-fg-muted ring-border",
   Maybe: "bg-surface-2 text-fg-muted ring-border border-dashed",
-  Planned: "bg-[#3d5a99]/12 text-[#2c4478] ring-[#3d5a99]/30 dark:text-[#a9bdf0]",
+  Planned:
+    "bg-[color-mix(in_srgb,var(--chart-3)_14%,transparent)] text-[var(--chart-3)] ring-[color-mix(in_srgb,var(--chart-3)_35%,transparent)]",
   Priced: "bg-gold/25 text-ink ring-gold/60 dark:text-gold",
   Booked: "bg-teal/15 text-teal ring-teal/40",
   Done: "bg-teal text-teal-ink ring-teal",

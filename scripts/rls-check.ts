@@ -10,6 +10,7 @@
  */
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { execSync } from "node:child_process";
+import { randomBytes } from "node:crypto";
 import type { Database } from "../lib/database.types";
 import { loadEnv } from "./env";
 
@@ -47,7 +48,8 @@ async function main() {
   const admin = mk(serviceKey);
   const stamp = Date.now();
   const email = `owner-${stamp}@rls-check.test`;
-  const password = `pw-${stamp}-Aa1!`;
+  // Random per run, never stored: this throwaway user is deleted at the end of the check.
+  const password = randomBytes(24).toString("base64url");
   const created: string[] = [];
 
   // Owner: a non-anonymous account whose app_metadata says google, the way an OAuth sign-in does.

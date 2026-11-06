@@ -3,8 +3,10 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
 import { Toaster } from "sonner";
+import { MapStylesProvider } from "@/components/map/map-config";
+import type { MapStyles } from "@/lib/map-styles";
 
-export function Providers({ children }: { children: ReactNode }) {
+export function Providers({ children, mapStyles }: { children: ReactNode; mapStyles: MapStyles }) {
   const [queryClient] = useState(
     () =>
       new QueryClient({
@@ -17,7 +19,7 @@ export function Providers({ children }: { children: ReactNode }) {
 
   return (
     <QueryClientProvider client={queryClient}>
-      {children}
+      <MapStylesProvider styles={mapStyles}>{children}</MapStylesProvider>
       <Toaster
         position="top-center"
         richColors

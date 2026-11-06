@@ -21,8 +21,13 @@ export type FakeResponse = { status: number; body?: unknown };
 
 export type FakeRole = "owner" | "viewer" | "noaccess" | "signedout";
 
-export function createFakeSupabase(opts: { withSeed?: boolean; role?: FakeRole } = {}) {
+export function createFakeSupabase(
+  opts: { withSeed?: boolean; role?: FakeRole; noTrip?: boolean; failSave?: boolean; draftStep?: number } = {},
+) {
+  let hasTrip = !opts.noTrip;
   let role: FakeRole = opts.role ?? "owner";
+  const wizardSaves: { step: number; patch: Record<string, unknown> }[] = [];
+  let finished: { starter: boolean } | null = null;
   const claimable: Row[] = [];
   const tripId = "00000000-0000-4000-8000-000000000001";
   const userId = "00000000-0000-4000-8000-0000000000aa";
@@ -53,11 +58,44 @@ export function createFakeSupabase(opts: { withSeed?: boolean; role?: FakeRole }
     map_region: "world",
     archived_at: null,
     created_at: now,
+    owner_id: null,
+    status: "active",
+    onboarding_step: 1,
+    invite_rotated_at: now,
   };
   tables.set(
     "categories",
     defaults.map((name, i) => ({ id: `c${i}`, trip_id: tripId, name, planned: null, sort: i, created_at: now })),
   );
+
+  if (opts.draftStep) {
+    trip = { ...trip, status: "draft", onboarding_step: opts.draftStep, name: "My Trip" };
+    tables.set("destinations", [
+      {
+        id: "d1",
+        trip_id: tripId,
+        city: "Hanoi",
+        country: "Vietnam",
+        nights: 3,
+        lat: 21.03,
+        lng: 105.85,
+        sort: 0,
+        created_at: now,
+      },
+      {
+        id: "d2",
+        trip_id: tripId,
+        city: "Sapa",
+        country: "Vietnam",
+        nights: 2,
+        lat: 22.34,
+        lng: 103.84,
+        sort: 1,
+        created_at: now,
+      },
+    ]);
+    tables.set("travelers", [{ id: "t1", trip_id: tripId, name: "Jam", sort: 0, created_at: now }]);
+  }
 
   if (opts.withSeed) {
     const plan = buildSeedPlan(seed, tables.get("categories")! as { id: string; name: string }[]);
@@ -126,8 +164,78 @@ export function createFakeSupabase(opts: { withSeed?: boolean; role?: FakeRole }
     }
     if (path === "/rest/v1/rpc/regenerate_invite") return json("e2e-new-token");
 
+    if (path === "/rest/v1/rpc/create_trip") {
+      if (!canWrite())
+        return json({ code: "42501", message: "Only the trip owner can create trips", details: null, hint: null }, 403);
+      if (!hasTrip) {
+        hasTrip = true;
+        trip = {
+          ...trip,
+          status: "draft",
+          onboarding_step: 1,
+          name: "My Trip",
+          start_date: null,
+          end_date: null,
+          destination: null,
+          budget: 0,
+        };
+        tables.set("destinations", []);
+        tables.set("travelers", []);
+      }
+      return json(trip.id);
+    }
+    if (path === "/rest/v1/rpc/save_onboarding") {
+      if (!canWrite())
+        return json(
+          { code: "42501", message: "Only the trip owner can set up a trip", details: null, hint: null },
+          403,
+        );
+      if (opts.failSave) return json({ code: "500", message: "boom", details: null, hint: null }, 500);
+      const { p_step, p_patch } = req.body as { p_step: number; p_patch: Record<string, unknown> };
+      const { stops, travelers, ...fields } = p_patch;
+      trip = { ...trip, ...fields, onboarding_step: p_step };
+      if (Array.isArray(stops))
+        tables.set(
+          "destinations",
+          (stops as Record<string, unknown>[]).map((v, i) => ({
+            id: `d${i}-${Date.now()}`,
+            trip_id: trip.id,
+            sort: i,
+            created_at: now,
+            ...v,
+          })) as Row[],
+        );
+      if (Array.isArray(travelers))
+        tables.set(
+          "travelers",
+          (travelers as string[]).map((name, i) => ({
+            id: `t${i}-${Date.now()}`,
+            trip_id: trip.id,
+            name,
+            sort: i,
+            created_at: now,
+          })),
+        );
+      wizardSaves.push({ step: p_step, patch: p_patch });
+      return { status: 204 };
+    }
+    if (path === "/rest/v1/rpc/finish_onboarding") {
+      if (!canWrite())
+        return json(
+          { code: "42501", message: "Only the trip owner can finish setting up a trip", details: null, hint: null },
+          403,
+        );
+      const { p_starter } = req.body as { p_starter: boolean };
+      trip = { ...trip, status: "active", onboarding_step: 6 };
+      if (p_starter)
+        tables.set("packing_items", [
+          { id: "pk1", trip_id: trip.id, item: "Passport", category: "Documents", packed: false, created_at: now },
+        ]);
+      finished = { starter: p_starter };
+      return { status: 204 };
+    }
     if (path === "/rest/v1/rpc/active_trip")
-      return json(role === "noaccess" || role === "signedout" || claimable.length > 0 ? [] : [trip]);
+      return json(!hasTrip || role === "noaccess" || role === "signedout" || claimable.length > 0 ? [] : [trip]);
     if (path === "/rest/v1/rpc/regenerate_join_token") return json("e2e-new-token");
     if (path === "/rest/v1/rpc/join_trip") {
       const { p_token } = req.body as { p_token: string };
@@ -148,6 +256,8 @@ export function createFakeSupabase(opts: { withSeed?: boolean; role?: FakeRole }
       trip = {
         ...trip,
         id: newId,
+        status: "draft",
+        onboarding_step: 1,
         name: "My Trip",
         destination: null,
         start_date: null,
@@ -290,6 +400,10 @@ export function createFakeSupabase(opts: { withSeed?: boolean; role?: FakeRole }
     respond,
     get role() {
       return role;
+    },
+    wizardSaves,
+    get finished() {
+      return finished;
     },
     claimable,
     install: async (page: Page) => {

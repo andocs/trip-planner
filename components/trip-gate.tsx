@@ -1,15 +1,13 @@
 "use client";
 
-import { Loader2, MapPinned, Sparkles } from "lucide-react";
-import { createContext, use, type ReactNode } from "react";
-import { toast } from "sonner";
+import { createContext, use, useEffect, useRef, type ReactNode } from "react";
 import { ClaimTrip } from "@/components/gate/claim-trip";
 import { InviteOnly } from "@/components/gate/invite-only";
+import { GateLayout, gateTitle } from "@/components/gate/gate-layout";
 import { NoAccess } from "@/components/gate/no-access";
-import { Board } from "@/components/ui/board";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useLoadExample } from "@/lib/queries/trip-actions";
+import { Wizard } from "@/components/wizard/wizard";
 import {
   useActiveTrip,
   useClaimableTrips,
@@ -97,8 +95,19 @@ function TripRole({
   if (!role.data) return <NoAccess email={email} />;
   // An owner row only counts while the account is still an admin (the database applies the same rule).
   const canEdit = role.data === "editor" || (role.data === "owner" && isAdmin);
+  // A draft is the owner's setup wizard; viewers wait until it is finished.
+  const value = { trip, role: role.data, canEdit };
+  if (trip.status === "draft") {
+    return canEdit ? (
+      <TripContext value={value}>
+        <Wizard trip={trip} />
+      </TripContext>
+    ) : (
+      <SettingUp />
+    );
+  }
   return (
-    <TripContext value={{ trip, role: role.data, canEdit }}>
+    <TripContext value={value}>
       <RealtimeSync tripId={trip.id} />
       {children}
     </TripContext>
@@ -128,49 +137,30 @@ function OwnerWithoutTrip() {
   const claimable = useClaimableTrips(true);
   if (claimable.isLoading) return <PageSkeleton />;
   if (claimable.data?.length) return <ClaimTrip />;
-  return <NoTrip />;
+  return <StartWizard />;
 }
 
-function NoTrip() {
+/** First run for the owner: start a draft trip and open the wizard. */
+function StartWizard() {
   const create = useCreateTrip();
-  const loadExample = useLoadExample();
+  const started = useRef(false);
+  useEffect(() => {
+    if (started.current) return; // StrictMode runs effects twice in dev
+    started.current = true;
+    create.mutate(undefined);
+  }, [create]);
+  if (create.isError)
+    return <ErrorState message={errorMessage(create.error)} onRetry={() => create.mutate(undefined)} />;
+  return <PageSkeleton />;
+}
+
+/** What viewers see while the owner is setting up a new trip. */
+function SettingUp() {
   return (
-    <div className="flex min-h-[70dvh] flex-col items-center justify-center text-center">
-      <Board value="0" size="lg" className="mb-6" />
-      <h1 className="text-2xl font-bold">Where to next?</h1>
-      <p className="mt-2 max-w-xs text-fg-muted">
-        Start a trip, then share the invite link so your travel buddies can follow along.
-      </p>
-      <div className="mt-8 flex w-full max-w-xs flex-col gap-3">
-        <Button
-          size="lg"
-          disabled={create.isPending}
-          onClick={() =>
-            create.mutate(undefined, { onError: (e) => toast.error(`Couldn't create the trip: ${errorMessage(e)}`) })
-          }
-        >
-          {create.isPending ? (
-            <Loader2 className="size-5 animate-spin" aria-hidden />
-          ) : (
-            <MapPinned className="size-5" aria-hidden />
-          )}
-          Create a trip
-        </Button>
-        <Button
-          size="lg"
-          variant="secondary"
-          disabled={loadExample.isPending || create.isPending}
-          onClick={() => loadExample.mutate()}
-        >
-          {loadExample.isPending ? (
-            <Loader2 className="size-5 animate-spin" aria-hidden />
-          ) : (
-            <Sparkles className="size-5" aria-hidden />
-          )}
-          Load the Vietnam &rsquo;26 example
-        </Button>
-      </div>
-    </div>
+    <GateLayout>
+      <h1 className={gateTitle}>Almost ready</h1>
+      <p className="text-fg-muted">The trip owner is setting up the next trip. Check back soon.</p>
+    </GateLayout>
   );
 }
 

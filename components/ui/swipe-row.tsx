@@ -97,12 +97,14 @@ export function SwipeRow({
   return (
     <li className={className}>
       <div className="relative overflow-hidden rounded-xl">
-        <div
-          className="absolute inset-0 flex items-center justify-end rounded-xl bg-danger px-5 text-danger-fg"
-          aria-hidden
-        >
-          <Trash2 className="size-5" />
-        </div>
+        {dx < 0 && (
+          <div
+            className="absolute inset-0 flex items-center justify-end rounded-xl bg-danger px-5 text-danger-fg"
+            aria-hidden
+          >
+            <Trash2 className="size-5" />
+          </div>
+        )}
         <div
           onPointerDown={down}
           onPointerMove={move}

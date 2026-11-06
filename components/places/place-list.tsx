@@ -1,5 +1,6 @@
 "use client";
 
+import { EmptyText } from "@/components/view-only-banner";
 import { ChevronDown, Plus } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { EditOnly } from "@/components/trip-gate";
@@ -97,7 +98,9 @@ export function PlaceList({
       )}
       {places.length === 0 ? (
         <Card className="text-center">
-          <p className="text-sm text-fg-muted">{emptyHint}</p>
+          <p className="text-sm text-fg-muted">
+            <EmptyText>{emptyHint}</EmptyText>
+          </p>
           <EditOnly>
             <Button className="mt-3" onClick={sheet.openAdd}>
               Add a {noun}
@@ -108,13 +111,14 @@ export function PlaceList({
         <p className="py-6 text-center text-sm text-fg-muted">Nothing matches these filters.</p>
       ) : (
         <Card className="p-2">
-          <ul className="divide-y divide-border">
+          <ul className="divide-y divide-border lg:grid lg:grid-cols-2 lg:gap-x-6 lg:divide-y-0">
             {shown.map((p) => {
               const expanded = open === p.id;
               const panelId = `panel-${p.id}`;
               return (
                 <SwipeRow
                   key={p.id}
+                  className="lg:border-b lg:border-border"
                   label={`${p.name}. Edit`}
                   onOpen={() => sheet.openEdit(p)}
                   onSwipeDelete={() => remove(p, p.name)}

@@ -1,5 +1,6 @@
 "use client";
 
+import { EmptyText } from "@/components/view-only-banner";
 import { Plus } from "lucide-react";
 import { useState } from "react";
 import { EditOnly } from "@/components/trip-gate";
@@ -50,7 +51,7 @@ export function Packing() {
   };
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 lg:grid lg:grid-cols-2 lg:items-start lg:gap-4 lg:space-y-0 lg:[&>*:nth-child(-n+2)]:col-span-2">
       <Card>
         <div className="flex items-baseline justify-between">
           <p className="font-semibold">
@@ -95,7 +96,9 @@ export function Packing() {
 
       {items.length === 0 ? (
         <Card className="text-center">
-          <p className="text-sm text-fg-muted">Make a list by category: documents, clothes, gadgets…</p>
+          <p className="text-sm text-fg-muted">
+            <EmptyText>Make a list by category: documents, clothes, gadgets…</EmptyText>
+          </p>
           <EditOnly>
             <Button className="mt-3" onClick={() => add()}>
               Add the first item
@@ -109,11 +112,11 @@ export function Packing() {
           if (list.length === 0) return null;
           const p = packedProgress(all);
           return (
-            <section key={cat} aria-label={cat} className="rounded-2xl border border-border bg-surface shadow-card">
+            <section key={cat} aria-label={cat} className="rounded-[20px] bg-surface shadow-card">
               <header className="flex items-center gap-3 border-b border-border py-1 pr-1 pl-4">
                 <div className="min-w-0 flex-1 py-2">
                   <div className="flex items-baseline justify-between gap-2">
-                    <h2 className="truncate text-sm font-bold">{cat}</h2>
+                    <h2 className="truncate font-display text-base font-extrabold">{cat}</h2>
                     <span className="text-xs text-fg-muted tabular-nums">
                       {p.done}/{p.total}
                     </span>

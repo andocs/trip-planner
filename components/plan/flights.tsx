@@ -1,5 +1,6 @@
 "use client";
 
+import { EmptyText } from "@/components/view-only-banner";
 import { ExternalLink, Plane, Plus } from "lucide-react";
 import { EditOnly, useTrip } from "@/components/trip-gate";
 import { Button } from "@/components/ui/button";
@@ -52,12 +53,15 @@ export function Flights() {
         {isPending ? (
           <Skeleton className="mt-3 h-20" />
         ) : flights.length === 0 ? (
-          <p className="py-3 text-sm text-fg-muted">Add your flights to keep times and booking refs in one place.</p>
+          <p className="py-3 text-sm text-fg-muted">
+            <EmptyText>Add your flights to keep times and booking refs in one place.</EmptyText>
+          </p>
         ) : (
-          <ul className="mt-2 space-y-1">
+          <ul className="mt-2 space-y-1 lg:grid lg:grid-cols-2 lg:space-y-0 lg:gap-x-4">
             {flights.map((f) => (
               <SwipeRow
                 key={f.id}
+                className="lg:border-b lg:border-border"
                 label={`${f.from_code ?? "?"} to ${f.to_code ?? "?"} ${f.flight_no ?? ""}. Edit`}
                 onOpen={() => sheet.openEdit(f)}
                 onSwipeDelete={() => remove(f, `${f.from_code ?? ""} → ${f.to_code ?? ""}`)}
@@ -127,12 +131,13 @@ function Transfers() {
       ) : transfers.length === 0 ? (
         <p className="py-3 text-sm text-fg-muted">Buses, trains, airport pickups between your stops.</p>
       ) : (
-        <ul className="mt-2 space-y-1">
+        <ul className="mt-2 space-y-1 lg:grid lg:grid-cols-2 lg:space-y-0 lg:gap-x-4">
           {transfers.map((t) => {
             const href = safeHref(t.link);
             return (
               <SwipeRow
                 key={t.id}
+                className="lg:border-b lg:border-border"
                 label={`${t.route}. Edit`}
                 onOpen={() => sheet.openEdit(t)}
                 onSwipeDelete={() => remove(t, t.route)}

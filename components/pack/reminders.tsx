@@ -1,5 +1,6 @@
 "use client";
 
+import { EmptyText } from "@/components/view-only-banner";
 import { BellRing, Plus } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
@@ -52,7 +53,7 @@ export function Reminders() {
         <Card className="text-center">
           <BellRing className="mx-auto size-8 text-muted" aria-hidden />
           <p className="mt-2 text-sm text-fg-muted">
-            Notes to self: visas, insurance, &ldquo;bring the adapter&rdquo;…
+            <EmptyText>Notes to self: visas, insurance, &ldquo;bring the adapter&rdquo;…</EmptyText>
           </p>
         </Card>
       ) : (

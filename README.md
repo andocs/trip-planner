@@ -11,7 +11,7 @@ pasalubong. It replaces a Google Sheets planner: same data, but tap-to-edit inst
 - **Installable** as an app (PWA), light and night themes, works on desktop too (sidebar ≥ 1024 px).
 
 Stack: Next.js 16 (App Router) · TypeScript · Tailwind CSS 4 · Supabase (Postgres, RLS, Realtime,
-Anonymous Auth) · TanStack Query · react-hook-form + zod · Recharts · Google GeoChart · SheetJS.
+Anonymous Auth) · TanStack Query · react-hook-form + zod · Recharts · MapLibre GL (OpenStreetMap) · SheetJS.
 
 ---
 
@@ -36,6 +36,7 @@ You need a GitHub account, a [Supabase](https://supabase.com) account and a
    4. `20261105000004_half_nights.sql`
    5. `20261106000005_roles_expand.sql` (additive, safe to run any time)
    6. `20261106000006_roles_cutover.sql` (**run together with the app update**: after it only the owner can write)
+   7. `20261107000007_onboarding.sql` (setup wizard: draft trips, `save_onboarding`, `finish_onboarding`; run with the same deploy)
 
    (Prefer the CLI? `npx supabase login`, `npx supabase link --project-ref <ref>`, `npm run db:push`.)
 
@@ -43,7 +44,7 @@ You need a GitHub account, a [Supabase](https://supabase.com) account and a
    `insert into app_admins(email) values ('<your google email, lowercase>');` in the SQL editor.
    (Existing trips show a one-time **Claim this trip** step the first time you sign in.)
 5. **Prove the security rules:** paste [`supabase/tests/rls_check.sql`](supabase/tests/rls_check.sql)
-   and run it. It shows as an _error_ reading **`RLS CHECK PASSED (93 checks)`**. That's intended:
+   and run it. It shows as an _error_ reading **`RLS CHECK PASSED (106 checks)`**. That's intended:
    it raises an error on purpose so nothing is saved.
 6. **Copy your keys:** Project Settings → API → _Project URL_ and the _anon / publishable_ key.
 
@@ -55,8 +56,9 @@ cp .env.example .env.local   # paste the URL and anon key
 npm run dev                  # http://localhost:3000
 ```
 
-Open the app, tap **Load the Vietnam ’26 example** (or **Create a trip**), then Settings → **Copy
-link** and open it in a private window to see two "phones" in sync.
+Sign in with Google (see the setup steps above), follow the **setup wizard** (map, nights, dates, travelers,
+money), then Settings → **Copy link** and open it in a private window to see a viewer. To fill a trip with the
+Vietnam ’26 example for testing, run `npm run seed -- --token <invite token of an empty trip>`.
 
 ### 3. Deploy to Vercel (≈ 5 min)
 
@@ -81,13 +83,15 @@ Done. Open the Vercel URL on your phone, add it to the home screen, and share th
 
 ## Environment variables
 
-| Name                            | Where                 | Purpose                                                                                 |
-| ------------------------------- | --------------------- | --------------------------------------------------------------------------------------- |
-| `NEXT_PUBLIC_SUPABASE_URL`      | `.env.local`, Vercel  | Supabase project URL                                                                    |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | `.env.local`, Vercel  | anon / publishable key. Safe in the browser: Row Level Security protects the data       |
-| `GEOCODER_CONTACT`              | optional, anywhere    | URL or email added to "Find coordinates" requests, as OpenStreetMap's usage policy asks |
-| `SUPABASE_SERVICE_ROLE_KEY`     | `.env.local` **only** | For `npm run seed -- --token …`. Bypasses RLS: **never** put it on Vercel               |
-| `APP_URL`                       | `.env.local` only     | Base URL used in the invite link that `npm run seed` prints                             |
+| Name                            | Where                 | Purpose                                                                                  |
+| ------------------------------- | --------------------- | ---------------------------------------------------------------------------------------- |
+| `NEXT_PUBLIC_SUPABASE_URL`      | `.env.local`, Vercel  | Supabase project URL                                                                     |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | `.env.local`, Vercel  | anon / publishable key. Safe in the browser: Row Level Security protects the data        |
+| `GEOCODER_CONTACT`              | optional, anywhere    | URL or email added to "Find coordinates" requests, as OpenStreetMap's usage policy asks  |
+| `NOMINATIM_USER_AGENT`          | optional, anywhere    | Full User-Agent for place search (overrides the default; Nominatim requires an identity) |
+| `MAP_STYLE_URL_LIGHT` / `_DARK` | optional, server      | OSM-based vector map styles. Default: OpenFreeMap (no key). Never OSM's own tile servers |
+| `SUPABASE_SERVICE_ROLE_KEY`     | `.env.local` **only** | For `npm run seed -- --token …`. Bypasses RLS: **never** put it on Vercel                |
+| `APP_URL`                       | `.env.local` only     | Base URL used in the invite link that `npm run seed` prints                              |
 
 ---
 
@@ -191,7 +195,7 @@ lib/
   supabase/          browser/server clients
 supabase/
   migrations/        schema, RLS + RPCs, realtime, half nights
-  tests/rls_check.sql   role-based RLS proof (93 checks); also run locally in Docker
+  tests/rls_check.sql   role-based RLS proof (106 checks); also run locally in Docker
   rollback/            rollback_cutover.sql (by hand, not a migration)
 e2e/                 Playwright tests + fake Supabase (HTTP + Realtime socket)
 scripts/             seed.ts, rls-check.ts, make-icons.mjs
@@ -212,16 +216,14 @@ scripts/             seed.ts, rls-check.ts, make-icons.mjs
 
 ## Quality status
 
-| Check                                  | Result                                                                              |
-| -------------------------------------- | ----------------------------------------------------------------------------------- |
-| Lint / typecheck / unit tests / build  | Pass (50 unit tests)                                                                |
-| Playwright smoke tests                 | 22 pass (incl. one per role: owner, viewer, blocked visitor)                        |
-| RLS proof (`rls_check.sql`)            | 93 checks pass on local Supabase (Postgres 17); `npm run check:rls`: 19 live checks |
-| `npm audit`                            | 0 vulnerabilities                                                                   |
-| Lighthouse accessibility (mobile)      | 100 on every screen                                                                 |
-| Lighthouse best practices              | 96 (the only flag was the fake test backend's missing Realtime socket)              |
-| Lighthouse performance (mobile, local) | 65–73. Below the 90 target; see below                                               |
-| Installable (PWA)                      | Manifest with 192/512 + maskable icons, standalone display, theme colour            |
+| Check                                                   | Result                                                                                                                                                                    |
+| ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Lint / typecheck / unit tests / build                   | Pass (66 unit tests)                                                                                                                                                      |
+| Playwright smoke tests                                  | 28 pass (per-role access + the setup wizard)                                                                                                                              |
+| RLS proof (`rls_check.sql`)                             | 106 checks pass on local Supabase (Postgres 17); `npm run check:rls`: 19 live checks                                                                                      |
+| `npm audit`                                             | 0 vulnerabilities                                                                                                                                                         |
+| Lighthouse (accessibility, best practices, performance) | **Not re-measured after the redesign.** Before it: accessibility 100, best practices 96, performance 65–73 (target 90). Measure the deployed site with PageSpeed Insights |
+| Installable (PWA)                                       | Manifest with 192/512 + maskable icons, standalone display, theme colour                                                                                                  |
 
 **Performance.** Measured locally on a production build with simulated slow 4G and a 4× slower
 CPU, as a returning user. Layout shift is ~0 and first paint ~0.8 s. The score is held back by
@@ -232,7 +234,8 @@ HTTP/2 behave differently from `next start` on a laptop. The remaining levers ar
 
 ### Possible next steps
 
-- "Save my access" (email magic link for anonymous users).
+- An `editor` role: the database already understands `owner | editor | viewer`, but nothing grants `editor` yet.
+- Hide the invite token from viewers (they can read it today, which equals "anyone with the link can view").
 - Performance: serve the first screen's content without streaming behind a Suspense boundary
   (requires reworking the cached route handlers), or trim client-side libraries further.
 - Content-Security-Policy header (needs nonces for Next's inline scripts).

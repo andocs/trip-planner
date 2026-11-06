@@ -58,13 +58,14 @@ export function Stays() {
       ) : stays.length === 0 ? (
         <p className="py-3 text-sm text-fg-muted">Plan where you&rsquo;ll sleep each night and track bookings.</p>
       ) : (
-        <ul className="mt-2 space-y-1">
+        <ul className="mt-2 space-y-1 lg:grid lg:grid-cols-2 lg:space-y-0 lg:gap-x-4">
           {stays.map((s) => {
             const n = stayNights(s.check_in, s.check_out);
             const ppn = pricePerNight(s.total, n);
             return (
               <SwipeRow
                 key={s.id}
+                className="lg:border-b lg:border-border"
                 label={`${s.hotel}, ${s.city ?? ""}. Edit`}
                 onOpen={() => sheet.openEdit(s)}
                 onSwipeDelete={() => remove(s, s.hotel)}

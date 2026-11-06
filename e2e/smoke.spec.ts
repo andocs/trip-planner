@@ -6,23 +6,13 @@ test.beforeEach(async ({ page }) => {
   await page.clock.setFixedTime(new Date("2026-06-10T09:00:00"));
 });
 
-test("first visit: create a trip from the empty state", async ({ page }) => {
-  const fake = createFakeSupabase();
+test("first visit: the owner with no trip lands in the setup wizard", async ({ page }) => {
+  const fake = createFakeSupabase({ noTrip: true });
   await fake.install(page);
-  // No trip yet: active_trip returns nothing until create_trip is called.
-  let created = false;
-  await page.route("**/rest/v1/rpc/active_trip", (r) =>
-    r.fulfill({ contentType: "application/json", body: JSON.stringify(created ? [fake.trip] : []) }),
-  );
-  await page.route("**/rest/v1/rpc/create_trip", (r) => {
-    created = true;
-    return r.fulfill({ contentType: "application/json", body: JSON.stringify(fake.trip.id) });
-  });
-
   await page.goto("/");
-  await expect(page.getByRole("heading", { name: "Where to next?" })).toBeVisible();
-  await page.getByRole("button", { name: "Create a trip" }).click();
-  await expect(page.getByRole("heading", { name: "My Trip" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Where are you going first?" })).toBeVisible();
+  await expect(page.getByRole("img", { name: "Step 1 of 6" })).toBeVisible();
+  expect(fake.trip.status).toBe("draft");
 });
 
 test("home dashboard shows the seeded trip", async ({ page }) => {
@@ -30,13 +20,20 @@ test("home dashboard shows the seeded trip", async ({ page }) => {
   await page.goto("/");
 
   await expect(page.getByRole("heading", { name: "Vietnam '26" })).toBeVisible();
-  await expect(page.getByText("11 days")).toBeVisible();
-  await expect(page.locator("#main").getByText("6", { exact: true })).toBeVisible(); // 6 days to go
-  await expect(page.locator("#main").getByText("days to go")).toBeVisible();
-  await expect(page.getByText("PHP 118,165.00")).toBeVisible();
-  await expect(page.getByText("PHP 14,478.08").first()).toBeVisible(); // spent
-  await expect(page.getByText("Jam").first()).toBeVisible(); // who owes whom
-  await expect(page.getByText("Hanoi").first()).toBeVisible(); // stop list
+  await expect(
+    page
+      .getByText(/11 days/)
+      .filter({ visible: true })
+      .first(),
+  ).toBeVisible();
+  await expect(page.locator("#main").getByText("6", { exact: true }).filter({ visible: true }).first()).toBeVisible(); // 6 days to go
+  await expect(page.locator("#main").getByText("days to go").filter({ visible: true }).first()).toBeVisible();
+  await expect(page.getByText("118,165", { exact: true })).toBeVisible(); // budget tile
+  await expect(page.getByText(/Amounts in PHP/)).toBeVisible();
+  await expect(page.getByText("14,478", { exact: true })).toBeVisible(); // spent tile
+  await expect(page.getByText("12% used.")).toBeVisible();
+  await expect(page.getByText("Jam").filter({ visible: true }).first()).toBeVisible(); // who owes whom
+  await expect(page.getByText("Hanoi").filter({ visible: true }).first()).toBeVisible(); // stop list
 });
 
 test("add a VND expense and see it converted and split", async ({ page }) => {
@@ -53,7 +50,7 @@ test("add a VND expense and see it converted and split", async ({ page }) => {
   await sheet.getByLabel("Paid by").selectOption({ label: "Aq" });
   await sheet.getByRole("button", { name: "Add expense" }).click();
 
-  await expect(page.getByText("Pho tour")).toBeVisible();
+  await expect(page.getByText("Pho tour").filter({ visible: true })).toBeVisible();
   await expect(page.getByText("PHP 16,935.08").first()).toBeVisible(); // 14,478.08 + 2,457
   expect(fake.tables.get("expenses")?.some((e) => e.description === "Pho tour" && e.currency === "VND")).toBe(true);
 

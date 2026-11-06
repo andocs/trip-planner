@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import { Bricolage_Grotesque, DM_Sans, JetBrains_Mono } from "next/font/google";
 import { Providers } from "@/components/providers";
+import { mapStyles } from "@/lib/map-styles";
 import { themeInitScript } from "@/lib/theme-script";
 import "./globals.css";
 
@@ -40,7 +41,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
       <body className="min-h-full">
-        <Providers>{children}</Providers>
+        <Providers mapStyles={mapStyles()}>{children}</Providers>
       </body>
     </html>
   );
