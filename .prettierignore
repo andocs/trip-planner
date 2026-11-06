@@ -7,3 +7,7 @@ lib/database.types.ts
 supabase/.temp
 seed/*.json
 AGENTS.md
+design
+PRODUCT.md
+DESIGN.md
+public/maplibre

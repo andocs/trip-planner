@@ -1,7 +1,9 @@
 "use client";
 
+import { EmptyText } from "@/components/view-only-banner";
 import { CalendarPlus, Plus } from "lucide-react";
 import { useState } from "react";
+import { EditOnly } from "@/components/trip-gate";
 import { Button } from "@/components/ui/button";
 import { CheckButton } from "@/components/ui/check";
 import { Select } from "@/components/ui/field";
@@ -86,10 +88,12 @@ export function Itinerary() {
         <p className="text-sm text-fg-muted">
           {all.total ? `${all.done} of ${all.total} done` : "Nothing planned yet"}
         </p>
-        <Button size="sm" variant="secondary" onClick={() => addTo()}>
-          <CalendarPlus className="size-4" aria-hidden />
-          Add
-        </Button>
+        <EditOnly>
+          <Button size="sm" variant="secondary" onClick={() => addTo()}>
+            <CalendarPlus className="size-4" aria-hidden />
+            Add
+          </Button>
+        </EditOnly>
       </div>
 
       {items.length > 0 && (
@@ -127,11 +131,13 @@ export function Itinerary() {
         <div className="rounded-2xl border border-dashed border-border p-8 text-center">
           <p className="font-semibold">Plan your days</p>
           <p className="mt-1 text-sm text-fg-muted">
-            Add activities with a date and time; they&rsquo;re grouped by day.
+            <EmptyText>Add activities with a date and time; they&rsquo;re grouped by day.</EmptyText>
           </p>
-          <Button className="mt-4" onClick={() => addTo()}>
-            Add the first activity
-          </Button>
+          <EditOnly>
+            <Button className="mt-4" onClick={() => addTo()}>
+              Add the first activity
+            </Button>
+          </EditOnly>
         </div>
       ) : groups.length === 0 ? (
         <p className="py-6 text-center text-sm text-fg-muted">Nothing matches these filters.</p>
@@ -146,15 +152,17 @@ export function Itinerary() {
             .filter(Boolean)
             .join(" · ");
           return (
-            <section key={g.key} aria-label={title} className="rounded-2xl border border-border bg-surface shadow-card">
-              <header className="sticky top-0 z-10 flex items-center gap-2 rounded-t-2xl border-b border-border bg-surface/95 py-1 pr-1 pl-4 backdrop-blur">
-                <h2 className="min-w-0 flex-1 truncate text-sm font-bold">{title}</h2>
-                <span className="text-xs text-fg-muted tabular-nums">
+            <section key={g.key} aria-label={title} className="rounded-[20px] bg-surface shadow-card">
+              <header className="sticky top-0 z-10 flex items-center gap-2 rounded-t-[20px] border-b border-border bg-surface py-1 pr-1 pl-4">
+                <h2 className="min-w-0 flex-1 truncate font-display text-base font-extrabold">{title}</h2>
+                <span className="font-mono text-xs font-bold text-fg-muted tabular-nums">
                   {p.done}/{p.total}
                 </span>
-                <Button variant="ghost" size="icon" onClick={() => addTo(g)} aria-label={`Add to ${title}`}>
-                  <Plus className="size-5" aria-hidden />
-                </Button>
+                <EditOnly>
+                  <Button variant="ghost" size="icon" onClick={() => addTo(g)} aria-label={`Add to ${title}`}>
+                    <Plus className="size-5" aria-hidden />
+                  </Button>
+                </EditOnly>
               </header>
               <ul className="p-2">
                 {g.items.map((it) => (

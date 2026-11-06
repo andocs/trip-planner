@@ -39,7 +39,14 @@ export function initials(name: string): string {
 }
 
 // Deeper shades of the brand colours so white initials meet WCAG AA (>= 4.5:1).
-const AVATAR_COLORS = ["bg-[#1F7A70]", "bg-[#B9472B]", "bg-[#3D6A88]", "bg-gold text-ink", "bg-[#6D597A]", "bg-navy"];
+const AVATAR_COLORS = [
+  "bg-[#1F7A70]",
+  "bg-[#B9472B]",
+  "bg-[#3D6A88]",
+  "bg-gold text-ink",
+  "bg-[#6D597A]",
+  "bg-[#5D7A2E]",
+];
 
 /**
  * Avatar colour. Pass the traveler's position so everyone on a trip gets a different colour;

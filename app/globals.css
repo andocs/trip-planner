@@ -3,102 +3,160 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 /*
- * Design tokens. Brand colours come straight from the planner workbook.
- * "*-strong" variants are darker shades used for text and white-on-colour
- * buttons so they meet WCAG AA contrast (the raw teal/coral are ~3:1 on white).
+ * Design tokens: "Atlas × Departure Board" (see DESIGN.md). Semantic names first;
+ * legacy names (--bg, --fg, --primary, ...) are aliases so existing components keep working.
+ * Light is the default; Night is the `.dark` class (set from the saved choice or the system setting).
  */
 :root {
   /* Height of the mobile bottom tab bar incl. the home-indicator inset. */
   --tabbar-h: calc(4rem + env(safe-area-inset-bottom));
 
-  --navy: #1f2a44;
-  --teal: #2a9d8f;
-  --coral: #e76f51;
-  --gold: #e9c46a;
-  --sand: #f6f1e9;
-  --ink: #2b2d42;
-  --muted: #8d99ae;
-  --line: #e3dccf;
-
-  --bg: var(--sand);
+  --ground: #eef3f0;
   --surface: #ffffff;
-  --surface-2: #fbf8f3;
-  --fg: var(--ink);
-  --fg-muted: #5c677d;
-  --border: var(--line);
-  --primary: #1f7a70;
-  --primary-fg: #ffffff;
-  --accent: var(--teal);
-  --danger: #b9472b;
-  --danger-fg: #ffffff;
-  --warn: var(--gold);
-  --hero: var(--navy);
-  --hero-fg: #ffffff;
-  --ring: #1f7a70;
-  --shadow: 0 1px 2px rgb(31 42 68 / 0.06), 0 4px 16px rgb(31 42 68 / 0.06);
+  --soft: #eef3f0;
+  --ink: #10302b;
+  --muted: #4f6b65;
+  --line: #e1eae6;
+  --line-strong: #c4d5ce;
+  --accent: #c93f1b; /* fills with white text (5.0:1) */
+  --accent-ink: #ffffff;
+  --accent-text: #b53714; /* coral used as text or marks on a surface */
+  --accent-tint: #fbe6df;
+  --teal: #0e6b5c;
+  --teal-tint: #ddf0eb;
+  --teal-ink: #ffffff; /* text on a teal fill */
+  --board: #10302b;
+  --board-digit: #ffb400;
+  --board-seam: #0a1f1b;
+  --danger: #a8281a;
+  --danger-tint: #fbe4e0;
+  --warn: #a8690f;
+  --warn-tint: #f6e6b8;
+  --focus: #0e6b5c;
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.05), 0 6px 20px rgb(0 0 0 / 0.05);
+  --shadow-float: 0 2px 8px rgb(0 0 0 / 0.14);
+  --shadow-sheet: 0 -6px 24px rgb(0 0 0 / 0.1);
+  --scrim: rgb(16 48 43 / 0.38);
 
-  /* Chart palette: brand hues re-stepped and checked for colour-blind separation
-     and contrast (dataviz validator). Order matters: assign in sequence, never cycle. */
-  --chart-1: #2a9d8f;
-  --chart-2: #e76f51;
-  --chart-3: #3d5a99;
-  --chart-4: #d9a21b;
-  --chart-5: #c2569b;
-  --chart-6: #5c9e3b;
-  --chart-7: #7b61d1;
-  --chart-8: #c8423a;
-  --chart-planned: #3d5a99;
-  --chart-spent: #2a9d8f;
-  --chart-grid: #ece6db;
-  --map-land: #ece6db;
+  /* Map stand-ins and region charts */
+  --sea: #cfe6e0;
+  --land: #f4f8f3;
+  --coast: #b3d2c9;
+  --route: #c93f1b;
+  --map-land: #c4d5ce;
   --map-water: transparent;
+
+  /* Chart series: assign in order, never cycle. Always paired with text labels. */
+  --chart-1: #0e6b5c;
+  --chart-2: #c93f1b;
+  --chart-3: #2f5d8a;
+  --chart-4: #a8690f;
+  --chart-5: #8a4a7b;
+  --chart-6: #5d7a2e;
+  --chart-7: #7a5c3e;
+  --chart-8: #6b7280;
+  --chart-planned: #2f5d8a;
+  --chart-spent: #0e6b5c;
+  --chart-grid: #e1eae6;
+
+  /* Legacy aliases */
+  --bg: var(--ground);
+  --surface-2: var(--soft);
+  --fg: var(--ink);
+  --fg-muted: var(--muted);
+  --border: var(--line);
+  --primary: var(--accent);
+  --primary-fg: var(--accent-ink);
+  --danger-fg: #ffffff;
+  --hero: var(--board);
+  --hero-fg: #ffffff;
+  --ring: var(--focus);
+  --navy: var(--ink);
+  --coral: var(--accent);
+  --gold: #ffb400;
+  --sand: var(--ground);
 
   color-scheme: light;
 }
 
 .dark {
-  --bg: #121826;
-  --surface: #1a2234;
-  --surface-2: #212b40;
-  --fg: #e6e8ef;
-  --fg-muted: #9aa4b8;
-  --border: #2c3650;
-  --primary: #4cc2b3;
-  --primary-fg: #121826;
-  --accent: #4cc2b3;
-  --danger: #f08a70;
-  --danger-fg: #121826;
-  --hero: #0d1220;
-  --hero-fg: #ffffff;
-  --ring: #4cc2b3;
-  --shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 4px 16px rgb(0 0 0 / 0.25);
+  --ground: #0e1917;
+  --surface: #16231f;
+  --soft: #1d2d29;
+  --ink: #e8f0ec;
+  --muted: #9dbdb4;
+  --line: #2a3b36;
+  --line-strong: #3c524b;
+  --accent: #cc4520; /* #e4572e + white is only 3.7:1, so the night fill steps down */
+  --accent-ink: #ffffff;
+  --accent-text: #ff8a66;
+  --accent-tint: #3a211a;
+  --teal: #4fc3ae;
+  --teal-tint: #16312c;
+  --teal-ink: #07211c;
+  --board: #070e0d;
+  --board-digit: #ffb400;
+  --board-seam: #000000;
+  --danger: #ff9a8f;
+  --danger-tint: #3a1e1a;
+  --warn: #e0a93b;
+  --warn-tint: #3a2e0e;
+  --focus: #4fc3ae;
+  --shadow: 0 0 0 1px #2a3b36; /* hairline ring: shadows do not read on deep green */
+  --shadow-float: 0 2px 10px rgb(0 0 0 / 0.5);
+  --shadow-sheet: 0 -8px 28px rgb(0 0 0 / 0.5);
+  --scrim: rgb(0 0 0 / 0.6);
 
-  --chart-1: #2fa898;
-  --chart-2: #db6447;
-  --chart-3: #6487d4;
-  --chart-4: #b38510;
-  --chart-5: #cf62a6;
-  --chart-6: #64a843;
-  --chart-7: #8f78e0;
-  --chart-8: #d9534a;
-  --chart-planned: #6487d4;
-  --chart-spent: #2fa898;
-  --chart-grid: #2c3650;
-  --map-land: #2c3650;
+  --sea: #0a1412;
+  --land: #1a2b26;
+  --coast: #2f4a43;
+  --route: #ff7a52;
+  --map-land: #2f4a43;
+
+  --chart-1: #4fc3ae;
+  --chart-2: #e4572e;
+  --chart-3: #7fa8d6;
+  --chart-4: #e0a93b;
+  --chart-5: #c58bb8;
+  --chart-6: #98bf5b;
+  --chart-7: #c49a6c;
+  --chart-8: #9ca3af;
+  --chart-planned: #7fa8d6;
+  --chart-spent: #4fc3ae;
+  --chart-grid: #2a3b36;
+
+  --danger-fg: #3a0f0a;
+  --hero: var(--board);
 
   color-scheme: dark;
 }
 
 @theme inline {
-  --color-navy: var(--navy);
-  --color-teal: var(--teal);
-  --color-coral: var(--coral);
-  --color-gold: var(--gold);
-  --color-sand: var(--sand);
+  --color-ground: var(--ground);
+  --color-soft: var(--soft);
   --color-ink: var(--ink);
   --color-muted: var(--muted);
   --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-text: var(--accent-text);
+  --color-accent-tint: var(--accent-tint);
+  --color-teal: var(--teal);
+  --color-teal-tint: var(--teal-tint);
+  --color-teal-ink: var(--teal-ink);
+  --color-board: var(--board);
+  --color-board-digit: var(--board-digit);
+  --color-danger: var(--danger);
+  --color-danger-tint: var(--danger-tint);
+  --color-warn: var(--warn);
+  --color-warn-tint: var(--warn-tint);
 
+  /* legacy names used across the existing components */
+  --color-navy: var(--navy);
+  --color-coral: var(--coral);
+  --color-gold: var(--gold);
+  --color-sand: var(--sand);
   --color-bg: var(--bg);
   --color-surface: var(--surface);
   --color-surface-2: var(--surface-2);
@@ -107,16 +165,17 @@
   --color-border: var(--border);
   --color-primary: var(--primary);
   --color-primary-fg: var(--primary-fg);
-  --color-accent: var(--accent);
-  --color-danger: var(--danger);
   --color-danger-fg: var(--danger-fg);
-  --color-warn: var(--warn);
   --color-hero: var(--hero);
   --color-hero-fg: var(--hero-fg);
   --color-ring: var(--ring);
 
   --shadow-card: var(--shadow);
-  --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+  --shadow-float: var(--shadow-float);
+  --shadow-sheet: var(--shadow-sheet);
+  --font-sans: var(--font-dm-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-bricolage), var(--font-dm-sans), ui-sans-serif, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, monospace;
 }
 
 @layer base {
@@ -126,13 +185,28 @@
   }
 
   body {
-    background: var(--bg);
-    color: var(--fg);
+    background: var(--ground);
+    color: var(--ink);
     font-family: var(--font-sans);
+    font-weight: 500;
+  }
+
+  /* Headings carry the display face; utilities like text-2xl still set the size. */
+  h1,
+  h2 {
+    font-family: var(--font-display);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+  }
+
+  ::selection {
+    background: var(--teal);
+    color: var(--teal-ink);
   }
 
   :focus-visible {
-    outline: 2px solid var(--ring);
+    outline: 3px solid var(--focus);
     outline-offset: 2px;
   }
 
@@ -140,6 +214,12 @@
   select,
   textarea {
     font-size: 16px; /* prevents iOS zoom on focus */
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--muted);
+    opacity: 1;
   }
 }
 
@@ -152,4 +232,68 @@
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* Map markers (MapLibre HTML markers): numbered stop discs and the selected-place pin. */
+.map-disc {
+  position: relative;
+  width: 30px;
+  height: 30px;
+}
+.map-disc-n {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--ink);
+  color: var(--ground);
+  font-weight: 700;
+  font-size: 14px;
+}
+.map-disc-l {
+  position: absolute;
+  left: 36px;
+  top: 50%;
+  transform: translateY(-50%);
+  white-space: nowrap;
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--ink);
+  -webkit-text-stroke: 3px var(--surface);
+  paint-order: stroke fill;
+}
+.map-pin {
+  filter: drop-shadow(0 2px 3px rgb(0 0 0 / 0.25));
+}
+.maplibregl-ctrl-attrib {
+  font-size: 11px;
+}
+.dark .maplibregl-ctrl-attrib {
+  background: rgb(14 25 23 / 0.85);
+  color: var(--muted);
+}
+.dark .maplibregl-ctrl-attrib a {
+  color: var(--muted);
+}
+
+/* Keep the map credit clear of the sheet that overlaps the bottom edge of the Home map. */
+.map-lift .maplibregl-ctrl-bottom-right,
+.map-lift .maplibregl-ctrl-bottom-left {
+  margin-bottom: 30px;
+}
+@media (min-width: 1024px) {
+  .map-lift .maplibregl-ctrl-bottom-right,
+  .map-lift .maplibregl-ctrl-bottom-left {
+    margin-bottom: 0;
+  }
+}
+
+/* Small maps: keep the OpenStreetMap credit first and on one line. */
+.map-lift .maplibregl-ctrl-attrib-inner {
+  font-size: 10px;
+  max-width: 230px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }

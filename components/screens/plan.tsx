@@ -4,8 +4,10 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Flights } from "@/components/plan/flights";
 import { HotelIdeas } from "@/components/plan/hotel-ideas";
 import { Itinerary } from "@/components/plan/itinerary";
+import { PlanRoute } from "@/components/plan/plan-route";
 import { Stays } from "@/components/plan/stays";
 import { TripGate } from "@/components/trip-gate";
+import { ViewOnlyBanner } from "@/components/view-only-banner";
 import { Segmented } from "@/components/ui/segmented";
 
 const TABS = [
@@ -33,7 +35,12 @@ function Plan() {
         options={[...TABS]}
         className="flex w-full"
       />
-      {tab === "itinerary" && <Itinerary />}
+      {tab === "itinerary" && (
+        <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:gap-4">
+          <Itinerary />
+          <PlanRoute />
+        </div>
+      )}
       {tab === "flights" && <Flights />}
       {tab === "stays" && <Stays />}
       {tab === "ideas" && <HotelIdeas />}
@@ -44,6 +51,7 @@ function Plan() {
 export function PlanScreen() {
   return (
     <TripGate>
+      <ViewOnlyBanner />
       <Plan />
     </TripGate>
   );

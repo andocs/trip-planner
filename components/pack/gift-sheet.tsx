@@ -79,7 +79,7 @@ export function GiftSheet({ sheet }: { sheet: ReturnType<typeof useSheet<GiftRow
               type="checkbox"
               checked={field.value}
               onChange={(e) => field.onChange(e.target.checked)}
-              className="size-5 accent-[var(--primary)]"
+              className="size-5 accent-[var(--teal)]"
             />
             Bought
           </label>

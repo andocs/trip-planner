@@ -5,7 +5,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { loadExample } from "@/app/actions/load-example";
 import type { ExportData } from "@/lib/export";
-import { ensureUser, getSupabase } from "@/lib/supabase/client";
+import { getCurrentUser, getSupabase } from "@/lib/supabase/client";
 import { errorMessage } from "@/lib/utils";
 import { qk } from "./keys";
 import type { Trip } from "./trip";
@@ -15,7 +15,7 @@ export function useLoadExample() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async () => {
-      await ensureUser(); // the server action reads the session cookie
+      if (!(await getCurrentUser())) throw new Error("Sign in first"); // the server action reads the session cookie
       const res = await loadExample();
       if (!res.ok) throw new Error(res.error);
       return res.notes;

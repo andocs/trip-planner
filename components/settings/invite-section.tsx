@@ -48,7 +48,10 @@ export function InviteSection() {
   return (
     <Card>
       <CardTitle>Invite link</CardTitle>
-      <p className="mt-1 text-sm text-fg-muted">Anyone with this link can open and edit the trip. No sign-up needed.</p>
+      <p className="mt-1 text-sm text-fg-muted">
+        Anyone with this link can view the trip, but only you can change it. A new link signs out everyone who joined
+        with the old one.
+      </p>
       <input
         readOnly
         value={link}
@@ -76,7 +79,7 @@ export function InviteSection() {
           </AlertDialog.Trigger>
           <ConfirmDialog
             title="Create a new invite link?"
-            body="The current link stops working. People who already joined keep access."
+            body="The current link stops working and everyone who joined with it loses access until you send them the new link."
             confirm="Create new link"
             onConfirm={() => regenerate.mutate(trip.id)}
           />

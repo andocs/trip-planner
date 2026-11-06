@@ -76,7 +76,7 @@ export function SettleUp({ settlement }: { settlement: Settlement }) {
                 <td
                   className={cn(
                     "py-2 text-right font-semibold",
-                    r.balance >= 0.5 ? "text-primary" : r.balance <= -0.5 ? "text-danger" : "text-fg-muted",
+                    r.balance >= 0.5 ? "text-teal" : r.balance <= -0.5 ? "text-danger" : "text-fg-muted",
                   )}
                 >
                   {r.balance > 0 ? "+" : ""}

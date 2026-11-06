@@ -1,7 +1,9 @@
 "use client";
 
+import { EmptyText } from "@/components/view-only-banner";
 import { Plus } from "lucide-react";
 import { useState } from "react";
+import { EditOnly } from "@/components/trip-gate";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { CheckButton } from "@/components/ui/check";
@@ -49,7 +51,7 @@ export function Packing() {
   };
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 lg:grid lg:grid-cols-2 lg:items-start lg:gap-4 lg:space-y-0 lg:[&>*:nth-child(-n+2)]:col-span-2">
       <Card>
         <div className="flex items-baseline justify-between">
           <p className="font-semibold">
@@ -79,23 +81,29 @@ export function Packing() {
               type="checkbox"
               checked={hidePacked}
               onChange={(e) => setHidePacked(e.target.checked)}
-              className="size-5 accent-[var(--primary)]"
+              className="size-5 accent-[var(--teal)]"
             />
             Hide packed
           </label>
         )}
-        <Button size="sm" variant="secondary" onClick={() => add()} className="ml-auto">
-          <Plus className="size-4" aria-hidden />
-          Add
-        </Button>
+        <EditOnly>
+          <Button size="sm" variant="secondary" onClick={() => add()} className="ml-auto">
+            <Plus className="size-4" aria-hidden />
+            Add
+          </Button>
+        </EditOnly>
       </div>
 
       {items.length === 0 ? (
         <Card className="text-center">
-          <p className="text-sm text-fg-muted">Make a list by category: documents, clothes, gadgets…</p>
-          <Button className="mt-3" onClick={() => add()}>
-            Add the first item
-          </Button>
+          <p className="text-sm text-fg-muted">
+            <EmptyText>Make a list by category: documents, clothes, gadgets…</EmptyText>
+          </p>
+          <EditOnly>
+            <Button className="mt-3" onClick={() => add()}>
+              Add the first item
+            </Button>
+          </EditOnly>
         </Card>
       ) : (
         categories.map((cat) => {
@@ -104,20 +112,22 @@ export function Packing() {
           if (list.length === 0) return null;
           const p = packedProgress(all);
           return (
-            <section key={cat} aria-label={cat} className="rounded-2xl border border-border bg-surface shadow-card">
+            <section key={cat} aria-label={cat} className="rounded-[20px] bg-surface shadow-card">
               <header className="flex items-center gap-3 border-b border-border py-1 pr-1 pl-4">
                 <div className="min-w-0 flex-1 py-2">
                   <div className="flex items-baseline justify-between gap-2">
-                    <h2 className="truncate text-sm font-bold">{cat}</h2>
+                    <h2 className="truncate font-display text-base font-extrabold">{cat}</h2>
                     <span className="text-xs text-fg-muted tabular-nums">
                       {p.done}/{p.total}
                     </span>
                   </div>
                   <Progress value={p.percent} label={`${cat} packed`} className="mt-1.5 h-1.5" />
                 </div>
-                <Button variant="ghost" size="icon" onClick={() => add(cat)} aria-label={`Add to ${cat}`}>
-                  <Plus className="size-5" aria-hidden />
-                </Button>
+                <EditOnly>
+                  <Button variant="ghost" size="icon" onClick={() => add(cat)} aria-label={`Add to ${cat}`}>
+                    <Plus className="size-5" aria-hidden />
+                  </Button>
+                </EditOnly>
               </header>
               <ul className="p-2">
                 {list.map((i) => (

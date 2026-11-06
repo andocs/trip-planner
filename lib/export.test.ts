@@ -38,6 +38,10 @@ function seededData(): ExportData {
     join_token: "x",
     archived_at: null,
     created_at: now,
+    owner_id: null,
+    status: "active",
+    onboarding_step: 1,
+    invite_rotated_at: now,
     rate_date: null,
     ...plan.trip,
   };

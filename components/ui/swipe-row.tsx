@@ -2,6 +2,7 @@
 
 import { Trash2 } from "lucide-react";
 import { useRef, useState, type PointerEvent, type ReactNode } from "react";
+import { useCanEdit } from "@/components/trip-gate";
 import { cn } from "@/lib/utils";
 
 const THRESHOLD = 96;
@@ -33,6 +34,7 @@ export function SwipeRow({
   label: string;
   className?: string;
 }) {
+  const canEdit = useCanEdit();
   const [dx, setDx] = useState(0);
   const [settling, setSettling] = useState(false);
   const g = useRef({ x: 0, y: 0, dragging: false, suppressClick: false, timer: 0 });
@@ -79,15 +81,30 @@ export function SwipeRow({
     } else setDx(0);
   }
 
+  // Viewers get the same row as plain content: no tap, swipe or long-press.
+  if (!canEdit) {
+    return (
+      <li className={className}>
+        <div className="flex min-h-14 w-full items-center gap-3 bg-surface px-1">
+          {leading}
+          <div className="flex min-h-14 min-w-0 flex-1 items-center gap-3 py-2 text-left">{children}</div>
+          {trailing}
+        </div>
+        {below}
+      </li>
+    );
+  }
   return (
     <li className={className}>
       <div className="relative overflow-hidden rounded-xl">
-        <div
-          className="absolute inset-0 flex items-center justify-end rounded-xl bg-danger px-5 text-danger-fg"
-          aria-hidden
-        >
-          <Trash2 className="size-5" />
-        </div>
+        {dx < 0 && (
+          <div
+            className="absolute inset-0 flex items-center justify-end rounded-xl bg-danger px-5 text-danger-fg"
+            aria-hidden
+          >
+            <Trash2 className="size-5" />
+          </div>
+        )}
         <div
           onPointerDown={down}
           onPointerMove={move}

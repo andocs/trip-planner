@@ -1,7 +1,8 @@
 "use client";
 
+import { EmptyText } from "@/components/view-only-banner";
 import { ExternalLink, Plane, Plus } from "lucide-react";
-import { useTrip } from "@/components/trip-gate";
+import { EditOnly, useTrip } from "@/components/trip-gate";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -42,20 +43,25 @@ export function Flights() {
               <p className="mt-0.5 text-sm text-fg-muted">Fares {formatMoney(total, trip.home_currency)}</p>
             )}
           </div>
-          <Button size="sm" variant="secondary" onClick={sheet.openAdd}>
-            <Plus className="size-4" aria-hidden />
-            Add
-          </Button>
+          <EditOnly>
+            <Button size="sm" variant="secondary" onClick={sheet.openAdd}>
+              <Plus className="size-4" aria-hidden />
+              Add
+            </Button>
+          </EditOnly>
         </div>
         {isPending ? (
           <Skeleton className="mt-3 h-20" />
         ) : flights.length === 0 ? (
-          <p className="py-3 text-sm text-fg-muted">Add your flights to keep times and booking refs in one place.</p>
+          <p className="py-3 text-sm text-fg-muted">
+            <EmptyText>Add your flights to keep times and booking refs in one place.</EmptyText>
+          </p>
         ) : (
-          <ul className="mt-2 space-y-1">
+          <ul className="mt-2 space-y-1 lg:grid lg:grid-cols-2 lg:space-y-0 lg:gap-x-4">
             {flights.map((f) => (
               <SwipeRow
                 key={f.id}
+                className="lg:border-b lg:border-border"
                 label={`${f.from_code ?? "?"} to ${f.to_code ?? "?"} ${f.flight_no ?? ""}. Edit`}
                 onOpen={() => sheet.openEdit(f)}
                 onSwipeDelete={() => remove(f, `${f.from_code ?? ""} → ${f.to_code ?? ""}`)}
@@ -67,7 +73,7 @@ export function Flights() {
                   />
                 }
               >
-                <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-navy text-white dark:bg-surface-2">
+                <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-ink text-ground">
                   <Plane className="size-5" aria-hidden />
                 </span>
                 <span className="min-w-0 flex-1">
@@ -113,22 +119,25 @@ function Transfers() {
     <Card>
       <div className="flex items-center justify-between gap-2">
         <CardTitle>Transfers</CardTitle>
-        <Button size="sm" variant="secondary" onClick={sheet.openAdd}>
-          <Plus className="size-4" aria-hidden />
-          Add
-        </Button>
+        <EditOnly>
+          <Button size="sm" variant="secondary" onClick={sheet.openAdd}>
+            <Plus className="size-4" aria-hidden />
+            Add
+          </Button>
+        </EditOnly>
       </div>
       {isPending ? (
         <Skeleton className="mt-3 h-20" />
       ) : transfers.length === 0 ? (
         <p className="py-3 text-sm text-fg-muted">Buses, trains, airport pickups between your stops.</p>
       ) : (
-        <ul className="mt-2 space-y-1">
+        <ul className="mt-2 space-y-1 lg:grid lg:grid-cols-2 lg:space-y-0 lg:gap-x-4">
           {transfers.map((t) => {
             const href = safeHref(t.link);
             return (
               <SwipeRow
                 key={t.id}
+                className="lg:border-b lg:border-border"
                 label={`${t.route}. Edit`}
                 onOpen={() => sheet.openEdit(t)}
                 onSwipeDelete={() => remove(t, t.route)}
@@ -139,7 +148,7 @@ function Transfers() {
                       target="_blank"
                       rel="noopener noreferrer"
                       onPointerDown={(e) => e.stopPropagation()}
-                      className="grid size-11 shrink-0 place-items-center rounded-full text-primary hover:bg-surface-2"
+                      className="grid size-11 shrink-0 place-items-center rounded-full text-teal hover:bg-surface-2"
                       aria-label={`Open link for ${t.route} (new tab)`}
                     >
                       <ExternalLink className="size-5" aria-hidden />

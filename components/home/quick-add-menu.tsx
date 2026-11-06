@@ -68,7 +68,7 @@ export function QuickAddMenu({
                 onClick={open}
                 className="flex min-h-16 w-full items-center gap-3 rounded-2xl border border-border bg-surface-2 px-4 py-3 text-left transition-colors hover:bg-surface"
               >
-                <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-teal/15 text-primary">
+                <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-teal/15 text-teal">
                   <Icon className="size-5" aria-hidden />
                 </span>
                 <span>

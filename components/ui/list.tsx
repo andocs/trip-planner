@@ -1,5 +1,6 @@
 import { ChevronRight } from "lucide-react";
 import type { ComponentProps, ReactNode } from "react";
+import { useCanEdit } from "@/components/trip-gate";
 import { cn } from "@/lib/utils";
 
 export function List({ className, ...props }: ComponentProps<"ul">) {
@@ -22,6 +23,19 @@ export function ListButton({
   onClick: () => void;
   label?: string;
 }) {
+  const canEdit = useCanEdit();
+  if (!canEdit) {
+    return (
+      <li className="flex min-h-14 items-center gap-3 px-1 py-2">
+        {leading}
+        <span className="min-w-0 flex-1">
+          <span className="block truncate font-semibold">{title}</span>
+          {subtitle && <span className="block truncate text-sm text-fg-muted">{subtitle}</span>}
+        </span>
+        {trailing}
+      </li>
+    );
+  }
   return (
     <li>
       <button

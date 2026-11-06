@@ -2,7 +2,7 @@
 
 import { Plus } from "lucide-react";
 import { useState } from "react";
-import { useTrip } from "@/components/trip-gate";
+import { EditOnly, useCanEdit, useTrip } from "@/components/trip-gate";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { menuHomePrice } from "@/lib/calc";
@@ -69,6 +69,7 @@ export function Food() {
 
 function MenuPanel({ items, onEdit, onAdd }: { items: MenuItem[]; onEdit: (m: MenuItem) => void; onAdd: () => void }) {
   const trip = useTrip();
+  const canEdit = useCanEdit();
   return (
     <div>
       {items.length === 0 ? (
@@ -79,11 +80,11 @@ function MenuPanel({ items, onEdit, onAdd }: { items: MenuItem[]; onEdit: (m: Me
             const home = menuHomePrice(m.price_foreign, trip.rate);
             return (
               <li key={m.id}>
-                <button
-                  type="button"
+                <Row
+                  edit={canEdit}
                   onClick={() => onEdit(m)}
                   className="flex min-h-11 w-full items-center gap-3 py-1.5 text-left text-sm"
-                  aria-label={`${m.dish}. Edit`}
+                  label={`${m.dish}. Edit`}
                 >
                   <span className="min-w-0 flex-1">{m.dish}</span>
                   <span className="shrink-0 text-right tabular-nums">
@@ -98,16 +99,41 @@ function MenuPanel({ items, onEdit, onAdd }: { items: MenuItem[]; onEdit: (m: Me
                       <span className="text-fg-muted">–</span>
                     )}
                   </span>
-                </button>
+                </Row>
               </li>
             );
           })}
         </ul>
       )}
-      <Button variant="ghost" size="sm" className="mt-1 -ml-2" onClick={onAdd}>
-        <Plus className="size-4" aria-hidden />
-        Add dish
-      </Button>
+      <EditOnly>
+        <Button variant="ghost" size="sm" className="mt-1 -ml-2" onClick={onAdd}>
+          <Plus className="size-4" aria-hidden />
+          Add dish
+        </Button>
+      </EditOnly>
     </div>
+  );
+}
+
+/** A button for people who can edit; a plain block for viewers. */
+function Row({
+  edit,
+  onClick,
+  className,
+  label,
+  children,
+}: {
+  edit: boolean;
+  onClick: () => void;
+  className: string;
+  label: string;
+  children: React.ReactNode;
+}) {
+  return edit ? (
+    <button type="button" onClick={onClick} className={className} aria-label={label}>
+      {children}
+    </button>
+  ) : (
+    <div className={className}>{children}</div>
   );
 }

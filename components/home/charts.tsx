@@ -82,7 +82,7 @@ export function PlannedVsSpent({ lines, currency }: { lines: CategoryLine[]; cur
 export function SpendDonut({ slices, total, currency }: { slices: DonutSlice[]; total: number; currency: string }) {
   if (slices.length === 0) return <p className="py-6 text-center text-sm text-fg-muted">No spending yet.</p>;
   return (
-    <div className="grid items-center gap-4 sm:grid-cols-[176px_1fr]">
+    <div className="grid items-center gap-4 sm:grid-cols-[176px_minmax(0,1fr)]">
       <div className="relative mx-auto size-44">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>

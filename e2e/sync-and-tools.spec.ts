@@ -27,11 +27,11 @@ test("edits from another phone appear live", async ({ page }) => {
     note: null,
     created_at: new Date().toISOString(),
   });
-  await expect(page.getByText("Banh mi from the other phone")).toBeVisible();
+  await expect(page.getByText("Banh mi from the other phone").filter({ visible: true })).toBeVisible();
   await expect(page.getByText("PHP 14,723.78").first()).toBeVisible(); // + 100,000 × 0.002457
 
   fake.remoteChange("expenses", "UPDATE", { id: "remote-1", description: "Banh mi (edited)" });
-  await expect(page.getByText("Banh mi (edited)")).toBeVisible();
+  await expect(page.getByText("Banh mi (edited)").filter({ visible: true })).toBeVisible();
 
   fake.remoteChange("expenses", "DELETE", { id: "remote-1" });
   await expect(page.getByText("Banh mi (edited)")).toHaveCount(0);
@@ -93,9 +93,7 @@ test("start a new trip archives the old one and keeps travelers", async ({ page 
   await expect(dialog.getByLabel("Keep travelers, currencies and exchange rate")).toBeChecked();
   await dialog.getByRole("button", { name: "Archive and start new" }).click();
 
-  await expect(page).toHaveURL(/\/$/);
-  await expect(page.getByRole("heading", { name: "My Trip" })).toBeVisible();
-  await expect(page.getByRole("list", { name: "Travelers" }).getByRole("listitem")).toHaveCount(2);
-  await page.goto("/spend");
-  await expect(page.getByText("No expenses yet", { exact: true })).toBeVisible();
+  // The old trip is archived and the owner lands in the setup wizard for the new one.
+  await expect(page.getByRole("heading", { name: "Where are you going first?" })).toBeVisible();
+  expect(fake.tables.get("travelers")).toHaveLength(2); // travelers carry over
 });

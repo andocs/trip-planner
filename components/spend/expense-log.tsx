@@ -1,8 +1,9 @@
 "use client";
 
+import { EmptyText } from "@/components/view-only-banner";
 import { Receipt } from "lucide-react";
 import { useMemo, useState } from "react";
-import { useTrip } from "@/components/trip-gate";
+import { EditOnly, useCanEdit, useTrip } from "@/components/trip-gate";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { Select } from "@/components/ui/field";
@@ -97,10 +98,14 @@ export function ExpenseLog({
         <div className="flex flex-col items-center py-8 text-center">
           <Receipt className="size-10 text-muted" aria-hidden />
           <p className="mt-3 font-semibold">No expenses yet</p>
-          <p className="mt-1 text-sm text-fg-muted">Log what you spend and it&rsquo;s split for you.</p>
-          <Button className="mt-4" onClick={onAdd}>
-            Add the first expense
-          </Button>
+          <p className="mt-1 text-sm text-fg-muted">
+            <EmptyText>Log what you spend and it&rsquo;s split for you.</EmptyText>
+          </p>
+          <EditOnly>
+            <Button className="mt-4" onClick={onAdd}>
+              Add the first expense
+            </Button>
+          </EditOnly>
         </div>
       ) : filtered.length === 0 ? (
         <div className="py-6 text-center text-sm text-fg-muted">
@@ -108,7 +113,7 @@ export function ExpenseLog({
           {isFiltered && (
             <button
               type="button"
-              className="font-semibold text-primary underline"
+              className="font-semibold text-teal underline"
               onClick={() => {
                 setCat(ALL);
                 setPayer(ALL);
@@ -119,8 +124,8 @@ export function ExpenseLog({
           )}
         </div>
       ) : (
-        <div className="mt-2">
-          <p className="mb-1 text-xs text-fg-muted lg:hidden">Swipe left to delete · tap to edit</p>
+        <div className="mt-2 lg:hidden">
+          <p className="mb-1 text-xs text-fg-muted">Swipe left to delete · tap to edit</p>
           {groups.map((g) => (
             <section key={g.date} aria-label={formatDay(g.date, "EEEE d MMMM")}>
               <h3 className="sticky top-0 z-10 flex justify-between bg-surface py-2 text-xs font-bold tracking-wide text-fg-muted uppercase">
@@ -163,6 +168,69 @@ export function ExpenseLog({
           ))}
         </div>
       )}
+      {filtered.length > 0 && (
+        <div className="mt-2 hidden lg:block">
+          <table className="w-full text-[15px]">
+            <thead>
+              <tr className="border-b border-border text-left font-mono text-[11px] tracking-[0.1em] text-fg-muted uppercase">
+                <th scope="col" className="px-3 py-2 font-bold">
+                  Date
+                </th>
+                <th scope="col" className="px-3 py-2 font-bold">
+                  Description
+                </th>
+                <th scope="col" className="px-3 py-2 font-bold">
+                  Category
+                </th>
+                <th scope="col" className="px-3 py-2 font-bold whitespace-nowrap">
+                  Paid by
+                </th>
+                <th scope="col" className="px-3 py-2 text-right font-bold">
+                  {trip.home_currency}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((e) => {
+                const foreign = e.currency !== trip.home_currency;
+                return (
+                  <tr key={e.id} className="border-b border-border last:border-b-0">
+                    <td className="px-3 py-3 whitespace-nowrap text-fg-muted">{formatDay(e.spent_on)}</td>
+                    <td className="px-3 py-3 font-semibold">
+                      <RowEdit
+                        label={`${e.description}, ${formatMoney(e.amount, e.currency)}. Edit`}
+                        onClick={() => onEdit(e)}
+                      >
+                        {e.description}
+                      </RowEdit>
+                    </td>
+                    <td className="px-3 py-3">{(e.category_id && catName.get(e.category_id)) || "–"}</td>
+                    <td className="px-3 py-3">{(e.paid_by && payerName.get(e.paid_by)) || "–"}</td>
+                    <td className="px-3 py-3 text-right whitespace-nowrap tabular-nums">
+                      <span className="font-semibold">{formatMoney(homeAmount(e, trip), trip.home_currency)}</span>
+                      {foreign && (
+                        <span className="block text-xs text-fg-muted">{formatMoney(e.amount, e.currency)}</span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
     </Card>
+  );
+}
+
+/** A button for people who can edit; plain text for viewers. */
+function RowEdit({ label, onClick, children }: { label: string; onClick: () => void; children: React.ReactNode }) {
+  const canEdit = useCanEdit();
+  return canEdit ? (
+    <button type="button" aria-label={label} onClick={onClick} className="min-h-11 text-left hover:underline">
+      {children}
+    </button>
+  ) : (
+    <>{children}</>
   );
 }

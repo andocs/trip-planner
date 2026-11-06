@@ -9,10 +9,11 @@ import { cn } from "@/lib/utils";
 const STYLE: Record<Status, string> = {
   Idea: "bg-surface-2 text-fg-muted ring-border",
   Maybe: "bg-surface-2 text-fg-muted ring-border border-dashed",
-  Planned: "bg-[#3d5a99]/12 text-[#2c4478] ring-[#3d5a99]/30 dark:text-[#a9bdf0]",
+  Planned:
+    "bg-[color-mix(in_srgb,var(--chart-3)_14%,transparent)] text-[var(--chart-3)] ring-[color-mix(in_srgb,var(--chart-3)_35%,transparent)]",
   Priced: "bg-gold/25 text-ink ring-gold/60 dark:text-gold",
-  Booked: "bg-teal/15 text-primary ring-teal/40",
-  Done: "bg-teal text-white ring-teal dark:text-ink",
+  Booked: "bg-teal/15 text-teal ring-teal/40",
+  Done: "bg-teal text-teal-ink ring-teal",
   Cancelled: "bg-surface-2 text-fg-muted line-through ring-border",
 };
 
@@ -76,7 +77,7 @@ export function StatusChip({
               onSelect={() => onChange(s)}
               className="flex min-h-11 cursor-pointer items-center gap-2 rounded-xl px-3 text-sm font-medium outline-none data-[highlighted]:bg-surface-2"
             >
-              <span className="w-4">{s === status && <Check className="size-4 text-primary" aria-hidden />}</span>
+              <span className="w-4">{s === status && <Check className="size-4 text-teal" aria-hidden />}</span>
               {s}
             </DropdownMenu.Item>
           ))}

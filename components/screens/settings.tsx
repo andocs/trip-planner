@@ -9,7 +9,10 @@ import { TripTools } from "@/components/settings/trip-tools";
 import { TravelersSection } from "@/components/settings/travelers-section";
 import { TripForm } from "@/components/settings/trip-form";
 import { useTheme, type ThemePref } from "@/components/theme";
-import { TripGate } from "@/components/trip-gate";
+import { AccountSection } from "@/components/settings/account-section";
+import { ViewersSection } from "@/components/settings/viewers-section";
+import { TripGate, useCanEdit } from "@/components/trip-gate";
+import { ViewOnlyBanner } from "@/components/view-only-banner";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { Segmented } from "@/components/ui/segmented";
@@ -25,8 +28,8 @@ function Appearance() {
         onChange={setPref}
         options={[
           { value: "light", label: "Light" },
-          { value: "system", label: "Auto" },
-          { value: "dark", label: "Dark" },
+          { value: "dark", label: "Night" },
+          { value: "system", label: "System" },
         ]}
       />
     </Card>
@@ -45,20 +48,40 @@ export function SettingsScreen() {
         <h1 className="text-2xl font-bold">Settings</h1>
       </header>
       <TripGate>
-        <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
-          <div className="space-y-4">
-            <TripForm />
-            <InviteSection />
-            <TripTools />
-          </div>
-          <div className="space-y-4">
-            <TravelersSection />
-            <DestinationsSection />
-            <CategoriesSection />
-            <Appearance />
-          </div>
-        </div>
+        <SettingsBody />
       </TripGate>
+    </div>
+  );
+}
+
+function SettingsBody() {
+  const canEdit = useCanEdit();
+  if (!canEdit) {
+    return (
+      <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
+        <div className="lg:col-span-2">
+          <ViewOnlyBanner />
+        </div>
+        <Appearance />
+        <AccountSection />
+      </div>
+    );
+  }
+  return (
+    <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
+      <div className="space-y-4">
+        <TripForm />
+        <InviteSection />
+        <ViewersSection />
+        <TripTools />
+      </div>
+      <div className="space-y-4">
+        <TravelersSection />
+        <DestinationsSection />
+        <CategoriesSection />
+        <Appearance />
+        <AccountSection />
+      </div>
     </div>
   );
 }

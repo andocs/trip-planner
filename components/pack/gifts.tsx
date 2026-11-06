@@ -1,7 +1,8 @@
 "use client";
 
+import { EmptyText } from "@/components/view-only-banner";
 import { Gift, Plus } from "lucide-react";
-import { useTrip } from "@/components/trip-gate";
+import { EditOnly, useTrip } from "@/components/trip-gate";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { CheckButton } from "@/components/ui/check";
@@ -42,10 +43,12 @@ export function Gifts() {
             </p>
             {budget > 0 && <p className="text-sm text-fg-muted">Budget {formatMoney(budget, trip.home_currency)}</p>}
           </div>
-          <Button size="sm" variant="secondary" onClick={sheet.openAdd}>
-            <Plus className="size-4" aria-hidden />
-            Add
-          </Button>
+          <EditOnly>
+            <Button size="sm" variant="secondary" onClick={sheet.openAdd}>
+              <Plus className="size-4" aria-hidden />
+              Add
+            </Button>
+          </EditOnly>
         </div>
         <Progress value={p.percent} label="Gifts bought" className="mt-2" />
       </Card>
@@ -53,10 +56,14 @@ export function Gifts() {
       {gifts.length === 0 ? (
         <Card className="text-center">
           <Gift className="mx-auto size-8 text-muted" aria-hidden />
-          <p className="mt-2 text-sm text-fg-muted">Who are you bringing pasalubong for?</p>
-          <Button className="mt-3" onClick={sheet.openAdd}>
-            Add a gift
-          </Button>
+          <p className="mt-2 text-sm text-fg-muted">
+            <EmptyText>Who are you bringing pasalubong for?</EmptyText>
+          </p>
+          <EditOnly>
+            <Button className="mt-3" onClick={sheet.openAdd}>
+              Add a gift
+            </Button>
+          </EditOnly>
         </Card>
       ) : (
         <Card className="p-2">

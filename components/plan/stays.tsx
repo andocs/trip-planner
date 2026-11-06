@@ -1,7 +1,7 @@
 "use client";
 
 import { BedDouble, Plus } from "lucide-react";
-import { useTrip } from "@/components/trip-gate";
+import { EditOnly, useTrip } from "@/components/trip-gate";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -46,23 +46,26 @@ export function Stays() {
             </p>
           )}
         </div>
-        <Button size="sm" variant="secondary" onClick={sheet.openAdd}>
-          <Plus className="size-4" aria-hidden />
-          Add
-        </Button>
+        <EditOnly>
+          <Button size="sm" variant="secondary" onClick={sheet.openAdd}>
+            <Plus className="size-4" aria-hidden />
+            Add
+          </Button>
+        </EditOnly>
       </div>
       {isPending ? (
         <Skeleton className="mt-3 h-32" />
       ) : stays.length === 0 ? (
         <p className="py-3 text-sm text-fg-muted">Plan where you&rsquo;ll sleep each night and track bookings.</p>
       ) : (
-        <ul className="mt-2 space-y-1">
+        <ul className="mt-2 space-y-1 lg:grid lg:grid-cols-2 lg:space-y-0 lg:gap-x-4">
           {stays.map((s) => {
             const n = stayNights(s.check_in, s.check_out);
             const ppn = pricePerNight(s.total, n);
             return (
               <SwipeRow
                 key={s.id}
+                className="lg:border-b lg:border-border"
                 label={`${s.hotel}, ${s.city ?? ""}. Edit`}
                 onOpen={() => sheet.openEdit(s)}
                 onSwipeDelete={() => remove(s, s.hotel)}
@@ -74,7 +77,7 @@ export function Stays() {
                   />
                 }
               >
-                <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-teal/15 text-primary">
+                <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-teal/15 text-teal">
                   <BedDouble className="size-5" aria-hidden />
                 </span>
                 <span className="min-w-0 flex-1">

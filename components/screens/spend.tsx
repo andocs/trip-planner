@@ -6,6 +6,7 @@ import { ExpenseLog } from "@/components/spend/expense-log";
 import dynamic from "next/dynamic";
 import { SettleUp } from "@/components/spend/settle-up";
 import { PageSkeleton, TripGate } from "@/components/trip-gate";
+import { ViewOnlyBanner } from "@/components/view-only-banner";
 import { Fab } from "@/components/ui/fab";
 import { Segmented } from "@/components/ui/segmented";
 import { useBudget } from "@/lib/queries/budget";
@@ -66,6 +67,7 @@ function Spend() {
 export function SpendScreen() {
   return (
     <TripGate>
+      <ViewOnlyBanner />
       <Spend />
     </TripGate>
   );
