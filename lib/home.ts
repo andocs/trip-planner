@@ -25,9 +25,9 @@ export function nextUp(i: NextUpInput): { items: NextUpItem[]; allDone: boolean 
       href: "/settings",
       done: i.hasDates && i.stops > 0 && i.travelers > 0,
     },
-    { key: "flights", label: "Add your flights", href: "/plan?tab=flights", done: i.flights > 0 },
-    { key: "stays", label: "Add where you are staying", href: "/plan?tab=stays", done: i.stays > 0 },
-    { key: "day1", label: "Plan day 1", href: "/plan", done: i.itineraryItems > 0 },
+    { key: "flights", label: "Add your flights", href: "/flights", done: i.flights > 0 },
+    { key: "stays", label: "Add where you are staying", href: "/stays", done: i.stays > 0 },
+    { key: "day1", label: "Plan day 1", href: "/itinerary", done: i.itineraryItems > 0 },
     { key: "budgets", label: "Set category budgets", href: "/spend", done: i.plannedCategories > 0 },
   ];
   return { items, allDone: items.every((x) => x.done) };

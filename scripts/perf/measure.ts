@@ -129,51 +129,41 @@ async function main() {
     const nav = (name: string) =>
       page.getByRole("navigation", { name: "Main" }).last().getByRole("link", { name, exact: true });
     await step(
-      "cold load /plan",
-      () => page.goto(`${APP}/plan`).then(() => {}),
-      () => page.getByRole("heading", { name: "Plan" }).waitFor(),
+      "cold load /itinerary",
+      () => page.goto(`${APP}/itinerary`).then(() => {}),
+      () => page.getByRole("heading", { name: "Itinerary" }).waitFor(),
     );
     await page.getByText("Day 1").first().waitFor();
     await page.waitForLoadState("networkidle");
     await step(
-      "Plan: Itinerary -> Flights",
-      () => page.getByRole("radio", { name: "Flights" }).click(),
-      () => page.waitForFunction("location.search.includes(" + JSON.stringify("tab=flights") + ")"),
+      "Tab: Itinerary -> Flights",
+      () => nav("Flights").click(),
+      () => page.getByRole("heading", { name: "Flights" }).waitFor(),
     );
     await step(
-      "Plan: Flights -> Stays",
-      () => page.getByRole("radio", { name: "Stays" }).click(),
-      () => page.waitForFunction("location.search.includes(" + JSON.stringify("tab=stays") + ")"),
+      "Tab: Flights -> Stays",
+      () => nav("Stays").click(),
+      () => page.getByRole("heading", { name: "Stays" }).waitFor(),
     );
     await step(
-      "Tab: Plan -> Spend (warm)",
-      () => nav("Spend").click(),
-      () => page.getByRole("heading", { name: "Spend" }).waitFor(),
-    );
-    await step(
-      "Tab: Spend -> Places (cold)",
+      "Tab: Stays -> Places (cold)",
       () => nav("Places").click(),
       () => page.getByRole("heading", { name: "Places" }).waitFor(),
     );
     await step(
-      "Places: Food -> Attractions",
-      () => page.getByRole("radio", { name: "Attractions" }).click(),
-      () => page.waitForFunction("location.search.includes(" + JSON.stringify("tab=attractions") + ")"),
+      "Places: All -> Food",
+      () => page.getByRole("button", { name: /^Food/ }).click(),
+      () => page.waitForFunction("location.search.includes(" + JSON.stringify("cat=food") + ")"),
     );
     await step(
-      "Tab: Places -> Pack (cold)",
-      () => nav("Pack").click(),
-      () => page.getByRole("heading", { name: "Pack" }).waitFor(),
+      "Tab: Places -> Itinerary (warm)",
+      () => nav("Itinerary").click(),
+      () => page.getByRole("heading", { name: "Itinerary" }).waitFor(),
     );
     await step(
-      "Tab: Pack -> Plan (warm)",
-      () => nav("Plan").click(),
-      () => page.getByRole("heading", { name: "Plan" }).waitFor(),
-    );
-    await step(
-      "Tab: Plan -> Spend (warm again)",
-      () => nav("Spend").click(),
-      () => page.getByRole("heading", { name: "Spend" }).waitFor(),
+      "Tab: Itinerary -> Places (warm)",
+      () => nav("Places").click(),
+      () => page.getByRole("heading", { name: "Places" }).waitFor(),
     );
     await step(
       "Hard reload /spend",

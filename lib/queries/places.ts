@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useTrip } from "@/components/trip-gate";
 import { ideaKey, type IdeaTable } from "@/lib/drafts";
+import type { IdeaPayload } from "@/lib/idea-form";
 import {
   PLACES_MESSAGES,
   type PlaceCard,
@@ -148,13 +149,16 @@ export function useSavePlace() {
       city: string | null;
       card: PlaceCard;
       photo: WikiPhoto | null;
+      /** From the shared modal: every column and the category details. Without it, a bare draft is saved. */
+      payload?: IdeaPayload;
     }) => {
       const db = getSupabase();
-      const table = TABLE[v.kind];
+      const table = v.payload ? v.payload.table : TABLE[v.kind];
       const id = newId();
       const base = { id, trip_id: trip.id, city: v.city };
-      const first =
-        table === "hotel_ideas"
+      const first = v.payload
+        ? await db.from(v.payload.table).insert({ ...base, ...v.payload.columns, ...v.payload.insertOnly } as never)
+        : table === "hotel_ideas"
           ? await db.from("hotel_ideas").insert({ ...base, hotel: v.label, nights: 1, total: null })
           : await db.from(table).insert({ ...base, name: v.label, status: "Idea" });
       if (first.error) throw first.error;

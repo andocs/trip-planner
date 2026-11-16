@@ -5,25 +5,30 @@ test.beforeEach(async ({ page }) => {
   await page.clock.setFixedTime(new Date("2026-06-10T09:00:00"));
 });
 
-test("food menu prices show VND and the PHP equivalent; attraction status changes", async ({ page }) => {
+test("food menu prices show VND and the PHP equivalent; a sight's details are edited in the shared form", async ({ page }) => {
   const fake = createFakeSupabase({ withSeed: true });
   await fake.install(page);
-  await page.goto("/places?tab=food");
 
-  await expect(page.getByText(/\d+ food places/)).toBeVisible();
-  const menuToggle = page.getByRole("button", { name: /^Menu for Bun Cha Ta \(\d+ dishes\)/ });
-  await menuToggle.click();
-  await expect(menuToggle).toHaveAttribute("aria-expanded", "true");
-  await expect(page.getByText("VND 80,000.00").first()).toBeVisible();
-  await expect(page.getByText("≈ PHP 196.56").first()).toBeVisible(); // 80,000 × 0.002457
+  // The menu lives in the food idea's detail sheet now.
+  const food = fake.tables.get("food_places")!.find((f) => f.name === "Bun Cha Ta")!;
+  await page.goto(`/places?cat=food&idea=food_places:${food.id}`);
+  const sheet = page.getByRole("dialog", { name: "Bun Cha Ta" });
+  await expect(sheet.getByRole("region", { name: "Menu prices" })).toBeVisible();
+  await expect(sheet.getByText("VND 80,000.00").first()).toBeVisible();
+  await expect(sheet.getByText("≈ PHP 196.56").first()).toBeVisible(); // 80,000 × 0.002457
 
-  await page.getByRole("radio", { name: "Attractions" }).click();
-  await expect(page).toHaveURL(/tab=attractions/);
-  await page.getByRole("button", { name: /One Pillar Pagoda: Planned/ }).click();
-  await page.getByRole("menuitem", { name: "Done" }).click();
+  // Details are edited from "Edit details", in the same form as adding.
+  const sight = fake.tables.get("attractions")!.find((a) => a.name === "One Pillar Pagoda")!;
+  await page.goto(`/places?cat=sight&idea=attractions:${sight.id}`);
+  await page.getByRole("dialog", { name: "One Pillar Pagoda" }).getByRole("button", { name: "Edit details" }).click();
+  const edit = page.getByRole("dialog", { name: "Edit sight" });
+  await edit.getByRole("button", { name: "Strenuous" }).click();
+  await edit.getByRole("switch", { name: /Deal-breaker/ }).click();
+  await edit.getByRole("button", { name: "Save" }).click();
   await expect
-    .poll(() => fake.tables.get("attractions")?.find((a) => a.name === "One Pillar Pagoda")?.status)
-    .toBe("Done");
+    .poll(() => fake.tables.get("attractions")?.find((a) => a.name === "One Pillar Pagoda")?.deal_breaker)
+    .toBe(true);
+  expect(fake.tables.get("attractions")!.find((a) => a.name === "One Pillar Pagoda")!.details).toMatchObject({ effort: "strenuous" });
 });
 
 test("packing, pasalubong and reminders", async ({ page }) => {

@@ -50,6 +50,12 @@ export type Idea = {
   priceUnit: "night" | "person" | "total" | null;
   decision: Decision;
   note: string | null;
+  /** Stays only: nights and the total price they were saved with. */
+  nights: number | null;
+  total: number | null;
+  /** Category fields (see lib/idea-details.ts) and the owner's must-do flag. */
+  details: unknown;
+  dealBreaker: boolean;
   created_at: string;
 };
 
@@ -74,6 +80,10 @@ export function ideasFrom(d: {
       priceUnit: ppn !== null ? "night" : h.total === null || h.total === undefined ? null : "total",
       decision: decisionOf(h.decision),
       note: h.room,
+      nights: h.nights === null || h.nights === undefined ? null : Number(h.nights),
+      total: h.total === null || h.total === undefined ? null : Number(h.total),
+      details: h.details,
+      dealBreaker: h.deal_breaker === true,
       created_at: h.created_at,
     };
   });
@@ -94,6 +104,10 @@ export function ideasFrom(d: {
         priceUnit: hasPrice ? "person" : null,
         decision: decisionOf(r.decision),
         note: r.note,
+        nights: null,
+        total: null,
+        details: r.details,
+        dealBreaker: r.deal_breaker === true,
         created_at: r.created_at,
       };
     });

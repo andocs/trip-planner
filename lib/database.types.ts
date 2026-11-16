@@ -294,6 +294,9 @@ export type Database = {
           at_time: string | null
           city: string | null
           created_at: string
+          details: Json
+          kind: string
+          position: number | null
           day: number | null
           done: boolean
           duration_min: number | null
@@ -311,6 +314,9 @@ export type Database = {
           at_time?: string | null
           city?: string | null
           created_at?: string
+          details?: Json
+          kind?: string
+          position?: number | null
           day?: number | null
           done?: boolean
           duration_min?: number | null
@@ -328,6 +334,9 @@ export type Database = {
           at_time?: string | null
           city?: string | null
           created_at?: string
+          details?: Json
+          kind?: string
+          position?: number | null
           day?: number | null
           done?: boolean
           duration_min?: number | null
@@ -463,6 +472,7 @@ export type Database = {
           city: string | null
           confirmation: string | null
           created_at: string
+          details: Json
           hotel: string
           id: string
           note: string | null
@@ -477,6 +487,7 @@ export type Database = {
           city?: string | null
           confirmation?: string | null
           created_at?: string
+          details?: Json
           hotel: string
           id?: string
           note?: string | null
@@ -491,6 +502,7 @@ export type Database = {
           city?: string | null
           confirmation?: string | null
           created_at?: string
+          details?: Json
           hotel?: string
           id?: string
           note?: string | null
@@ -513,6 +525,8 @@ export type Database = {
         Row: {
           city: string | null
           created_at: string
+          deal_breaker: boolean
+          details: Json
           decision: string
           hotel: string
           id: string
@@ -524,6 +538,8 @@ export type Database = {
         Insert: {
           city?: string | null
           created_at?: string
+          deal_breaker?: boolean
+          details?: Json
           decision?: string
           hotel: string
           id?: string
@@ -535,6 +551,8 @@ export type Database = {
         Update: {
           city?: string | null
           created_at?: string
+          deal_breaker?: boolean
+          details?: Json
           decision?: string
           hotel?: string
           id?: string
@@ -557,6 +575,8 @@ export type Database = {
         Row: {
           city: string | null
           created_at: string
+          deal_breaker: boolean
+          details: Json
           day: number | null
           decision: string
           id: string
@@ -569,6 +589,8 @@ export type Database = {
         Insert: {
           city?: string | null
           created_at?: string
+          deal_breaker?: boolean
+          details?: Json
           day?: number | null
           decision?: string
           id?: string
@@ -581,6 +603,8 @@ export type Database = {
         Update: {
           city?: string | null
           created_at?: string
+          deal_breaker?: boolean
+          details?: Json
           day?: number | null
           decision?: string
           id?: string
@@ -639,6 +663,8 @@ export type Database = {
         Row: {
           city: string | null
           created_at: string
+          deal_breaker: boolean
+          details: Json
           day: number | null
           decision: string
           id: string
@@ -651,6 +677,8 @@ export type Database = {
         Insert: {
           city?: string | null
           created_at?: string
+          deal_breaker?: boolean
+          details?: Json
           day?: number | null
           decision?: string
           id?: string
@@ -663,6 +691,8 @@ export type Database = {
         Update: {
           city?: string | null
           created_at?: string
+          deal_breaker?: boolean
+          details?: Json
           day?: number | null
           decision?: string
           id?: string

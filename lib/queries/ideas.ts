@@ -17,6 +17,7 @@ import {
 import { getSupabase } from "@/lib/supabase/client";
 import { errorMessage } from "@/lib/utils";
 import { qk } from "./keys";
+import { placeAtEndOfDay } from "./itinerary";
 import { newId, useInsertRow, useRows, useUpdateRow, type Row } from "./table";
 import { useUser } from "./trip";
 
@@ -258,10 +259,14 @@ export function useAddIdeas() {
 
 /** Owner/editor only: a dashed placeholder in the itinerary that points back at a draft. */
 export function useAddTentativeStop() {
+  const trip = useTrip();
   const insert = useInsertRow("itinerary_items", "stop");
+  const items = useRows("itinerary_items");
   const canEdit = useCanEdit();
-  return (idea: Idea, when: { day: number | null; on_date: string | null; at_time: string | null }) => {
+  return (idea: Idea, when: { day: number | null; at_time: string | null }) => {
     if (!canEdit) return;
+    // The day is what is stored; the date is worked out from the trip start, and the stop goes to the end of its day.
+    const place = placeAtEndOfDay(items.data ?? [], when.day, trip.start_date);
     insert.mutate([
       {
         id: newId(),
@@ -271,7 +276,8 @@ export function useAddTentativeStop() {
         source_table: idea.table,
         source_id: idea.id,
         tentative: idea.decision === "draft",
-        ...when,
+        ...place,
+        at_time: when.at_time,
       },
     ]);
     toast.success(idea.decision === "draft" ? "Added as a tentative stop." : "Added to the itinerary.");

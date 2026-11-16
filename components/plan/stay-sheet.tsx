@@ -2,14 +2,17 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect } from "react";
-import { useForm, useWatch } from "react-hook-form";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
+import { ChipGroup, ToggleRow } from "@/components/ideas/chips";
 import { useTrip } from "@/components/trip-gate";
 import { Field, Input, Select, Textarea } from "@/components/ui/field";
 import { RowSheet } from "@/components/ui/row-sheet";
 import { pricePerNight, stayNights } from "@/lib/calc";
 import { STATUSES } from "@/lib/constants";
 import { formatMoney } from "@/lib/format";
+import { CANCELLATION } from "@/lib/idea-details";
+import { buildStayDetails, parseStayDetails } from "@/lib/stay-details";
 import { newId, useDeleteRow, useInsertRow, useUpdateRow, type Row } from "@/lib/queries/table";
 import { optionalDate, optionalNumber, optionalText, requiredText, statusField, str } from "@/lib/schemas";
 import { useSheet } from "@/lib/use-sheet";
@@ -27,6 +30,10 @@ const Schema = z
     total: optionalNumber({ min: 0 }),
     confirmation: optionalText(60),
     note: optionalText(500),
+    cancellation: z.enum(CANCELLATION).or(z.literal("")),
+    freeUntil: optionalDate,
+    checkInTime: z.string().refine((v) => v === "" || /^\d{2}:\d{2}$/.test(v), "Use a time like 14:00"),
+    breakfast: z.boolean(),
   })
   .refine((v) => !v.check_in || !v.check_out || v.check_out >= v.check_in, {
     path: ["check_out"],
@@ -48,6 +55,7 @@ export function StaySheet({ sheet }: { sheet: ReturnType<typeof useSheet<Stay>> 
   useEffect(() => {
     if (!sheet.open) return;
     const r = sheet.row;
+    const d = parseStayDetails(r?.details);
     reset({
       status: (r?.status as In["status"]) ?? "Planned",
       city: str(r?.city),
@@ -58,16 +66,22 @@ export function StaySheet({ sheet }: { sheet: ReturnType<typeof useSheet<Stay>> 
       total: str(r?.total),
       confirmation: str(r?.confirmation),
       note: str(r?.note),
+      cancellation: d.cancellation ?? "",
+      freeUntil: d.freeUntil ?? "",
+      checkInTime: d.checkInTime ?? "",
+      breakfast: d.breakfast ?? false,
     });
   }, [sheet.open, sheet.row, reset]);
 
-  const [cin, cout, totalStr] = useWatch({ control, name: ["check_in", "check_out", "total"] });
+  const [cin, cout, totalStr, cancellation] = useWatch({ control, name: ["check_in", "check_out", "total", "cancellation"] });
   const n = stayNights(cin || null, cout || null);
   const ppn = pricePerNight(totalStr ? Number(totalStr.replace(/,/g, "")) : null, n);
 
   const onSubmit = handleSubmit((v) => {
-    if (sheet.row) update.mutate({ id: sheet.row.id, patch: v });
-    else insert.mutate([{ id: newId(), ...v }]);
+    const { cancellation: c, freeUntil, checkInTime, breakfast, ...columns } = v;
+    const row = { ...columns, details: buildStayDetails({ cancellation: c, freeUntil, checkInTime, breakfast }) };
+    if (sheet.row) update.mutate({ id: sheet.row.id, patch: row });
+    else insert.mutate([{ id: newId(), ...row }]);
     sheet.close();
   });
 
@@ -126,6 +140,26 @@ export function StaySheet({ sheet }: { sheet: ReturnType<typeof useSheet<Stay>> 
       >
         {(p) => <Input {...p} {...register("total")} inputMode="decimal" />}
       </Field>
+      <Controller
+        control={control}
+        name="cancellation"
+        render={({ field }) => (
+          <ChipGroup label="Cancellation" options={CANCELLATION} value={field.value} onChange={(v) => field.onChange(v as string)} />
+        )}
+      />
+      {cancellation === "free" && (
+        <Field label="Free until" error={errors.freeUntil?.message} hint="Optional. Adds a reminder on Home before it ends.">
+          {(p) => <Input {...p} type="date" {...register("freeUntil")} />}
+        </Field>
+      )}
+      <Field label="Check-in time" error={errors.checkInTime?.message} hint="Optional">
+        {(p) => <Input {...p} type="time" {...register("checkInTime")} />}
+      </Field>
+      <Controller
+        control={control}
+        name="breakfast"
+        render={({ field }) => <ToggleRow label="Breakfast included" checked={field.value} onChange={field.onChange} />}
+      />
       <Field label="Confirmation no." error={errors.confirmation?.message}>
         {(p) => <Input {...p} {...register("confirmation")} autoComplete="off" className="font-mono" />}
       </Field>

@@ -166,9 +166,11 @@ test("owner: save keeps only the place id, the owner's own label and the license
   const lake = page.getByRole("article", { name: "Hoan Kiem Lake" });
   await expect(lake.getByText(/Wikimedia Commons/)).toBeVisible();
   await lake.getByRole("button", { name: "Save to board" }).click();
-  const sheet = page.getByRole("dialog", { name: "Save to board" });
-  await expect(sheet.getByLabel("Name on your board")).toHaveValue("Hoan Kiem Lake");
-  await sheet.getByLabel("Name on your board").fill("Lake walk at dusk");
+  // The same add form as the Places board, opened with the result's name and area filled in.
+  const sheet = page.getByRole("dialog", { name: "Add sight" });
+  await expect(sheet.getByLabel("Name", { exact: true })).toHaveValue("Hoan Kiem Lake");
+  await expect(sheet.getByLabel("Location or area")).toHaveValue("Hanoi");
+  await sheet.getByLabel("Name", { exact: true }).fill("Lake walk at dusk");
   await sheet.getByRole("button", { name: "Add draft" }).click();
 
   await expect.poll(() => fake.tables.get("attractions")!.length).toBe(before + 1);
@@ -292,7 +294,7 @@ test("viewer: no Discover tab, no Google calls, but the saved photo, credit and 
   const calls = await stubPlaces(page);
   await page.goto("/places?tab=discover"); // the tab does not exist for a viewer: it falls back to the Board
 
-  await expect(page.getByRole("radio", { name: "Board" })).toBeChecked();
+  await expect(page.getByRole("radio", { name: "Board" })).toHaveCount(0); // a viewer gets the Board only, no section switch
   await expect(page.getByRole("radio", { name: "Discover" })).toHaveCount(0);
   const card = page.getByRole("article", { name: String(attraction.name) });
   await expect(card.getByText("Photo: Dung Nguyen, CC BY-SA 4.0 · Wikimedia Commons")).toBeVisible();

@@ -1,10 +1,22 @@
 "use client";
 
-import { Backpack, Home, MapPinned, Route, Settings, Wallet, type LucideIcon } from "lucide-react";
+import {
+  BedDouble,
+  Backpack,
+  Ellipsis,
+  Home,
+  MapPinned,
+  Plane,
+  Route,
+  Settings,
+  Wallet,
+  type LucideIcon,
+} from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Board } from "@/components/ui/board";
+import { Sheet } from "@/components/ui/sheet";
 import { daysToGo, localISODate } from "@/lib/calc";
 import { useActiveTrip } from "@/lib/queries/trip";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
@@ -13,13 +25,18 @@ import { cn } from "@/lib/utils";
 
 type NavItem = { href: string; label: string; icon: LucideIcon };
 
+/** Desktop rail shows all of these. Phones show the first five as tabs and the rest behind "More". */
 export const NAV: NavItem[] = [
   { href: "/", label: "Home", icon: Home },
-  { href: "/spend", label: "Spend", icon: Wallet },
-  { href: "/plan", label: "Plan", icon: Route },
+  { href: "/itinerary", label: "Itinerary", icon: Route },
   { href: "/places", label: "Places", icon: MapPinned },
+  { href: "/stays", label: "Stays", icon: BedDouble },
+  { href: "/flights", label: "Flights", icon: Plane },
+  { href: "/spend", label: "Spend", icon: Wallet },
   { href: "/pack", label: "Pack", icon: Backpack },
 ];
+const TABS = NAV.slice(0, 5);
+const MORE: NavItem[] = [...NAV.slice(5), { href: "/settings", label: "Settings", icon: Settings }];
 
 function isActive(pathname: string, href: string) {
   return href === "/" ? pathname === "/" : pathname.startsWith(href);
@@ -55,6 +72,8 @@ function RailTrip() {
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const [moreOpen, setMoreOpen] = useState(false);
+  const moreActive = MORE.some((m) => isActive(pathname, m.href));
 
   return (
     <div className="min-h-dvh lg:flex">
@@ -91,13 +110,13 @@ export function AppShell({ children }: { children: ReactNode }) {
         {children}
       </main>
 
-      {/* Mobile bottom tab bar */}
+      {/* Mobile bottom tab bar: five tabs and "More" */}
       <nav
         aria-label="Main"
         className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-surface pb-[env(safe-area-inset-bottom)] lg:hidden"
       >
-        <ul className="mx-auto grid h-16 max-w-lg grid-cols-5">
-          {NAV.map(({ href, label, icon: Icon }) => {
+        <ul className="mx-auto grid h-16 max-w-lg grid-cols-6">
+          {TABS.map(({ href, label, icon: Icon }) => {
             const active = isActive(pathname, href);
             return (
               <li key={href}>
@@ -105,26 +124,69 @@ export function AppShell({ children }: { children: ReactNode }) {
                   href={href}
                   aria-current={active ? "page" : undefined}
                   className={cn(
-                    "flex h-full flex-col items-center justify-center gap-0.5 text-xs font-bold transition-colors",
+                    "flex h-full flex-col items-center justify-center gap-0.5 text-[11px] font-bold transition-colors",
                     active ? "text-fg" : "text-fg-muted",
                   )}
                 >
-                  <span
-                    className={cn(
-                      "grid h-[30px] w-[52px] place-items-center rounded-full transition-colors",
-                      active && "bg-teal-tint text-teal",
-                    )}
-                  >
+                  <TabPill active={active}>
                     <Icon className="size-[22px]" aria-hidden />
-                  </span>
+                  </TabPill>
                   {label}
                 </Link>
               </li>
             );
           })}
+          <li>
+            <button
+              type="button"
+              onClick={() => setMoreOpen(true)}
+              aria-haspopup="dialog"
+              aria-current={moreActive ? "page" : undefined}
+              className={cn(
+                "flex h-full w-full flex-col items-center justify-center gap-0.5 text-[11px] font-bold transition-colors",
+                moreActive ? "text-fg" : "text-fg-muted",
+              )}
+            >
+              <TabPill active={moreActive}>
+                <Ellipsis className="size-[22px]" aria-hidden />
+              </TabPill>
+              More
+            </button>
+          </li>
         </ul>
       </nav>
+
+      <Sheet open={moreOpen} onOpenChange={setMoreOpen} title="More">
+        <ul className="pb-2">
+          {MORE.map(({ href, label, icon: Icon }) => (
+            <li key={href} className="border-t border-border first:border-t-0">
+              <Link
+                href={href}
+                onClick={() => setMoreOpen(false)}
+                aria-current={isActive(pathname, href) ? "page" : undefined}
+                className="flex min-h-14 items-center gap-3.5 text-[17px] font-bold"
+              >
+                <Icon className="size-[22px] text-fg-muted" aria-hidden />
+                {label}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </Sheet>
     </div>
+  );
+}
+
+function TabPill({ active, children }: { active: boolean; children: ReactNode }) {
+  return (
+    <span
+      className={cn(
+        "grid h-[30px] w-11 place-items-center rounded-full transition-colors",
+        active && "bg-teal-tint text-teal",
+      )}
+    >
+      {children}
+    </span>
   );
 }
 

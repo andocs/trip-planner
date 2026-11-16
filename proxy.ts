@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { legacyRedirect } from "@/lib/legacy-routes";
 
 /**
  * Two jobs on every page navigation:
@@ -18,6 +19,9 @@ export async function proxy(request: NextRequest) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   const { pathname } = request.nextUrl;
+  // Old /plan and ?tab= links (no data involved, so this is safe before the access gate).
+  const moved = legacyRedirect(pathname, request.nextUrl.searchParams);
+  if (moved) return NextResponse.redirect(new URL(moved, request.url), 307);
   // Tell server code which screen a cold load is for (so it prefetches only that screen's tables).
   // Set here, so a value sent by the client is overwritten.
   request.headers.set("x-pathname", pathname);

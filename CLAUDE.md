@@ -30,6 +30,27 @@
 
 ---
 
+## Revision: Places / Stays / shared modal / itinerary (branch revision/places-stays-nav)
+
+Brief: merge the Plan tabs into Places, one add/edit modal per category, Stays redesign, dashboard reminders, and the
+itinerary rebuilt as mockup variant J (a card per place, drag-and-drop, commute and buffer connectors, day totals).
+Mockups live in `design/mockups/revision.html` (variants A to J; J is the chosen one; the folder is gitignored).
+
+- **Routes:** `/itinerary`, `/flights`, `/stays`, `/places` (Board + Discover; `?cat=stay|food|sight`). Old `/plan` and `?tab=`
+  links redirect in `proxy.ts` via `lib/legacy-routes.ts`. Phones: five tabs + More (Spend, Pack, Settings).
+- **Migrations 15 and 16** (additive, with rollbacks in `supabase/rollback/`): 15 = `details jsonb` on hotel_ideas, food_places, attractions, stays
+  and `deal_breaker` on the idea tables; 16 = `position`, `kind` (stop | commute | buffer) and `details` on itinerary_items, plus a position backfill.
+  Both applied to local Docker. Production: 15 and 16 need the user to run them (no CLI link or login from here).
+- **Shared modal:** `components/ideas/idea-modal.tsx`; pure logic in `lib/idea-details.ts` and `lib/idea-form.ts`.
+  No booking-reference field on ideas (viewers can read them); flights use `flight_refs`.
+- **Itinerary:** pure rules in `lib/itinerary.ts` (order, connector rules, `planMove`, `planInsert`, day totals, stay marks, `LONG_DAY_MINUTES`)
+  and `lib/itinerary-rows.ts`. UI in `components/plan/itinerary*.tsx`, `connector-sheet.tsx`. @dnd-kit does the dragging (Reorder mode, owner/editor only).
+  **The day number is the source of truth:** a day's date is derived from the trip start and written to `on_date` on save; there is no date input.
+  Connectors are rows with `kind <> 'stop'`; `solidStops` (calc.ts) excludes them from every counter and the export.
+  Stays appear on their check-in / check-out days from the Stays page (not stored). The map only mounts when the Map pill is pressed (one Google map load).
+- **Home reminders:** `lib/reminders.ts` + `components/home/reminders-card.tsx`; dismissals live in localStorage.
+- Checks at last run: live RLS 107, SQL suite 267, unit 258, e2e 93 passed / 8 skipped.
+
 ## Architecture Overview
 
 ### Tech Stack

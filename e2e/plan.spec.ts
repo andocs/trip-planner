@@ -5,13 +5,13 @@ test.beforeEach(async ({ page }) => {
   await page.clock.setFixedTime(new Date("2026-06-10T09:00:00"));
 });
 
-test("itinerary groups by day, toggles done, and fills the day from the date", async ({ page }) => {
+test("itinerary groups by day, toggles done, and asks only for the day", async ({ page }) => {
   const fake = createFakeSupabase({ withSeed: true });
   await fake.install(page);
-  await page.goto("/plan");
+  await page.goto("/itinerary");
 
-  // Seed day numbers are kept as-is (Day 1 = 19 Jun in the workbook).
-  await expect(page.getByRole("heading", { name: /^Day 1 · Fri 19 Jun · Sapa/ })).toBeVisible();
+  // A day's date is worked out from the trip start (16 Jun), so Day 1 is Tue 16 Jun whatever the old rows say.
+  await expect(page.getByRole("separator", { name: /^Day 1 · Tue 16 Jun/ })).toBeVisible();
   await expect(page.getByText("0 of 140 done")).toBeVisible();
 
   const done = page.getByRole("checkbox", { name: "Done: Drop off bags @ Ville de Mont" });
@@ -22,25 +22,27 @@ test("itinerary groups by day, toggles done, and fills the day from the date", a
     .poll(() => fake.tables.get("itinerary_items")?.find((i) => i.activity === "Drop off bags @ Ville de Mont")?.done)
     .toBe(true);
 
-  // Add with a date but no day: start is 16 Jun, so 20 Jun → Day 5.
+  // Adding asks for a day, never a date; the date is saved from the day and the trip start.
   await page.getByRole("button", { name: "Add", exact: true }).click();
   const sheet = page.getByRole("dialog", { name: "Add activity" });
+  await expect(sheet.getByLabel("Date")).toHaveCount(0);
   await sheet.getByLabel("Activity").fill("Egg coffee");
-  await sheet.getByLabel("Date").fill("2026-06-20");
-  await expect(sheet.getByText("Leave blank for Day 5")).toBeVisible();
+  await sheet.getByLabel("Day").selectOption("5");
+  await expect(sheet.getByText("The date follows from the trip start.")).toBeVisible();
   await sheet.getByLabel("Time").fill("15:00");
   await sheet.getByRole("button", { name: "Add" }).click();
-  await expect.poll(() => fake.tables.get("itinerary_items")?.find((i) => i.activity === "Egg coffee")?.day).toBe(5);
-  // The seed already has a "Day 5" (workbook numbering), so the new item joins that group.
-  const day5 = page.getByRole("region", { name: /^Day 5 ·/ });
-  await expect(day5.getByRole("button", { name: /15:00 Egg coffee/ })).toBeVisible();
+  await expect.poll(() => fake.tables.get("itinerary_items")?.find((i) => i.activity === "Egg coffee")).toBeTruthy();
+  const row = fake.tables.get("itinerary_items")!.find((i) => i.activity === "Egg coffee")!;
+  expect(row).toMatchObject({ day: 5, on_date: "2026-06-20", at_time: "15:00" });
+  expect(typeof row.position).toBe("number");
+  await expect(page.getByRole("heading", { name: "Egg coffee" })).toBeVisible();
 });
 
-test("flights, stays and hotel ideas", async ({ page }) => {
+test("flights, stays and hotel ideas (now on Flights, Stays and Places)", async ({ page }) => {
   const fake = createFakeSupabase({ withSeed: true });
   await fake.install(page);
 
-  await page.goto("/plan?tab=flights");
+  await page.goto("/flights");
   const pass = page.getByRole("article", { name: /^MNL to HAN/ });
   await expect(pass).toBeVisible();
   await expect(pass).toContainText("22:20");
@@ -51,12 +53,13 @@ test("flights, stays and hotel ideas", async ({ page }) => {
   await expect.poll(() => fake.tables.get("flights")?.find((f) => f.from_code === "MNL")?.status).toBe("Booked");
   await expect(page.getByText("Hanoi → Sapa (sleeper bus)")).toBeVisible(); // transfers
 
-  await page.getByRole("radio", { name: "Stays" }).click();
-  await expect(page).toHaveURL(/tab=stays/);
+  await page.goto("/stays");
   await expect(page.getByText("17 Jun → 19 Jun · 2 nights").first()).toBeVisible();
-  await expect(page.getByText("· PHP 10,972.05/night").first()).toBeVisible();
+  await expect(page.getByText("PHP 10,972.05").first()).toBeVisible(); // the nightly price on the card
 
-  await page.getByRole("radio", { name: "Ideas" }).click();
+  // Hotel ideas are the Stays category on Places (confirmed in the seed).
+  await page.goto("/places?cat=stay");
+  await page.getByRole("radio", { name: /^Confirmed/ }).click();
   await expect(page.getByText("Hotel de Lagom").first()).toBeVisible();
   await expect(page.getByText("PHP 10,972.05").first()).toBeVisible();
 });

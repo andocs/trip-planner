@@ -26,8 +26,7 @@ export function TentativeSheet({ idea, onClose }: { idea: Idea; onClose: () => v
 
   const submit = () => {
     const n = day === "" ? null : Number(day);
-    const sample = (items.data ?? []).find((i) => i.day === n && i.on_date);
-    addStop(idea, { day: n, on_date: sample?.on_date ?? null, at_time: time || null });
+    addStop(idea, { day: n, at_time: time || null });
     onClose();
   };
 

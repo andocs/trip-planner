@@ -236,10 +236,10 @@ export const packedProgress = (items: { packed: boolean }[]) => progress(items, 
 export const counts = (row: { decision: string }): boolean => row.decision === "confirmed";
 export const onlyConfirmed = <T extends { decision: string }>(rows: T[]): T[] => rows.filter(counts);
 /** A tentative stop is a placeholder for a draft; it never counts toward totals, progress or exports. */
-export const solidStops = <T extends { tentative?: boolean | null }>(rows: T[]): T[] =>
-  rows.filter((r) => !r.tentative);
+export const solidStops = <T extends { tentative?: boolean | null; kind?: string | null }>(rows: T[]): T[] =>
+  rows.filter((r) => !r.tentative && (r.kind ?? "stop") === "stop");
 
-export const itineraryProgress = (items: { done: boolean; tentative?: boolean | null }[]) =>
+export const itineraryProgress = (items: { done: boolean; tentative?: boolean | null; kind?: string | null }[]) =>
   progress(solidStops(items), (i) => i.done);
 export const bookedProgress = (items: { status: string }[]) =>
   progress(

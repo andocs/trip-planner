@@ -20,6 +20,7 @@ declare
   item_f uuid;      -- a draft food place on trip_a
   item_old uuid;    -- an attraction on another trip (trip_old)
   stop_id uuid;
+  conn_id uuid;     -- a commute connector on trip_a (migration 16)
   vote_o uuid;
   cm_o uuid;
   cm_v uuid;
@@ -372,6 +373,47 @@ begin
   select decision into r from public.attractions where id = item_a;
   if r is distinct from 'draft' then failures := failures || format('new items should default to draft, got %s', r); end if;
 
+  -- details + deal_breaker (migration 15): the owner writes them; the database keeps details a small JSON object
+  update public.attractions set details = '{"type":"nature","entranceFee":0}'::jsonb, deal_breaker = true where id = item_a;
+  checks := checks + 1;
+  select details->>'type' into r from public.attractions where id = item_a;
+  if r is distinct from 'nature' then failures := failures || 'owner could not save details'::text; end if;
+  checks := checks + 1;
+  select deal_breaker into ok from public.attractions where id = item_a;
+  if ok is not true then failures := failures || 'owner could not set the deal-breaker flag'::text; end if;
+  checks := checks + 1;
+  begin
+    update public.attractions set details = '[1]'::jsonb where id = item_a;
+    failures := failures || 'details accepted a JSON array'::text;
+  exception when check_violation then null; end;
+  checks := checks + 1;
+  begin
+    update public.attractions set details = jsonb_build_object('blob', repeat('x', 9000)) where id = item_a;
+    failures := failures || 'details accepted an oversized value'::text;
+  exception when check_violation then null; end;
+
+  -- order and connectors (migration 16): the owner adds a commute; kind and details are guarded by the database
+  insert into public.itinerary_items (trip_id, activity, kind, day, position, duration_min, details)
+    values (trip_a, 'Walk', 'commute', 1, 1500, 12, '{"mode":"walk"}'::jsonb) returning id into conn_id;
+  checks := checks + 1;
+  select kind into r from public.itinerary_items where id = conn_id;
+  if r is distinct from 'commute' then failures := failures || 'owner could not add a commute'::text; end if;
+  checks := checks + 1;
+  begin
+    update public.itinerary_items set kind = 'nonsense' where id = conn_id;
+    failures := failures || 'kind accepted an unknown value'::text;
+  exception when check_violation then null; end;
+  checks := checks + 1;
+  begin
+    update public.itinerary_items set details = '[1]'::jsonb where id = conn_id;
+    failures := failures || 'connector details accepted a JSON array'::text;
+  exception when check_violation then null; end;
+  checks := checks + 1;
+  begin
+    update public.itinerary_items set position = 'Infinity'::float8 where id = conn_id;
+    failures := failures || 'position accepted infinity'::text;
+  exception when check_violation then null; end;
+
   insert into public.votes (trip_id, item_table, item_id, value) values (trip_a, 'attractions', item_a, 'in') returning id into vote_o;
   insert into public.comments (trip_id, item_table, item_id, body) values (trip_a, 'attractions', item_a, 'owner comment') returning id into cm_o;
 
@@ -510,6 +552,20 @@ begin
   update public.attractions set decision = 'confirmed' where id = item_a;
   get diagnostics rc = row_count;
   if rc <> 0 then failures := failures || 'viewer changed a decision'::text; end if;
+  checks := checks + 1;
+  update public.attractions set details = '{"type":"other"}'::jsonb, deal_breaker = false where id = item_a;
+  get diagnostics rc = row_count;
+  if rc <> 0 then failures := failures || 'viewer changed details or the deal-breaker flag'::text; end if;
+  checks := checks + 1;
+  select details->>'type' into r from public.attractions where id = item_a;
+  if r is distinct from 'nature' then failures := failures || 'viewer could not read details'::text; end if;
+  checks := checks + 1;
+  update public.itinerary_items set position = 1, kind = 'stop' where id = conn_id;
+  get diagnostics rc = row_count;
+  if rc <> 0 then failures := failures || 'viewer moved an item or changed its kind'::text; end if;
+  checks := checks + 1;
+  select kind into r from public.itinerary_items where id = conn_id;
+  if r is distinct from 'commute' then failures := failures || 'viewer could not read a connector'::text; end if;
   checks := checks + 1;
   begin
     insert into public.attractions (trip_id, name) values (trip_a, 'sneaky');

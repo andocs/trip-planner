@@ -7,6 +7,7 @@ import {
   CircleOff,
   ExternalLink,
   MapPin,
+  Pencil,
   SendHorizontal,
   Trash2,
   X,
@@ -23,6 +24,8 @@ import { useDeleteRow } from "@/lib/queries/table";
 import { formatDay } from "@/lib/format";
 import { mapsLinkFor } from "@/lib/places/normalize";
 import { IdeaPhotos } from "@/components/photos/idea-photos";
+import { DetailsList, MustFlag } from "@/components/ideas/idea-chips";
+import { MenuSection } from "@/components/places/menu-panel";
 import type { ImageRow } from "@/lib/queries/images";
 import type { PlaceRef } from "@/lib/queries/places";
 import { Hero, PriceTag } from "./idea-card";
@@ -53,6 +56,7 @@ export function IdeaSheet({
   onVote,
   onDecision,
   onAddStop,
+  onEdit,
   onClose,
 }: {
   idea: Idea;
@@ -66,6 +70,8 @@ export function IdeaSheet({
   onVote: (v: VoteValue | null) => void;
   onDecision: (d: Decision) => void;
   onAddStop: () => void;
+  /** Owner or editor: open this idea's own details (name, city, price, notes, status) for editing. */
+  onEdit: () => void;
   onClose: () => void;
 }) {
   const trip = useTrip();
@@ -88,7 +94,7 @@ export function IdeaSheet({
       open
       onOpenChange={(o) => !o && onClose()}
       title={idea.name}
-      description={`${KIND_LABEL[idea.kind]} · ${idea.decision === "draft" ? "Draft" : idea.decision === "confirmed" ? "Confirmed" : "Dropped"}`}
+      description={`${KIND_LABEL[idea.kind]} · ${idea.decision === "draft" ? "Draft" : idea.decision === "confirmed" ? "Confirmed" : "Dropped"}${idea.dealBreaker ? " · Must-do" : ""}`}
       className="md:top-0 md:right-0 md:left-auto md:h-dvh md:max-h-none md:w-[27.5rem] md:translate-x-0 md:translate-y-0 md:rounded-l-3xl md:rounded-r-none"
       footer={
         <form
@@ -156,6 +162,13 @@ export function IdeaSheet({
         )}
 
         {canEdit && (
+          <Button variant="outline" className="-mt-1 w-full" onClick={onEdit}>
+            <Pencil className="size-[18px]" aria-hidden />
+            Edit details
+          </Button>
+        )}
+
+        {canEdit && (
           <section aria-label="Decide" className="space-y-2">
             {idea.decision === "draft" && (
               <div className="grid grid-cols-2 gap-2">
@@ -197,9 +210,16 @@ export function IdeaSheet({
           </section>
         )}
 
+        <DetailsList idea={idea} />
+
+        {idea.kind === "food" && <MenuSection restaurant={idea.name} />}
+
         {!decided && (
           <section aria-label="Your vote" className="space-y-2">
-            <h3 className="font-display text-[17px] font-extrabold">Your vote</h3>
+            <h3 className="flex items-center gap-2 font-display text-[17px] font-extrabold">
+              Your vote
+              {idea.dealBreaker && <MustFlag />}
+            </h3>
             <VoteButtons value={myVote} onVote={onVote} label="Your vote" />
           </section>
         )}

@@ -27,9 +27,9 @@ describe("Next up", () => {
   it("links each item to the screen where it is done", () => {
     expect(nextUp(base).items.map((i) => i.href)).toEqual([
       "/settings",
-      "/plan?tab=flights",
-      "/plan?tab=stays",
-      "/plan",
+      "/flights",
+      "/stays",
+      "/itinerary",
       "/spend",
     ]);
   });

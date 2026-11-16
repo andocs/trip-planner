@@ -1,69 +1,70 @@
 "use client";
 
 import { Plus } from "lucide-react";
+import dynamic from "next/dynamic";
 import { useState } from "react";
 import { EditOnly, useCanEdit, useTrip } from "@/components/trip-gate";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { menuHomePrice } from "@/lib/calc";
 import { formatMoney } from "@/lib/format";
-import { useRows, useUpdateRow, type Row } from "@/lib/queries/table";
+import { useRows, type Row } from "@/lib/queries/table";
 import { useSheet } from "@/lib/use-sheet";
-import { PlaceList, type Place } from "./place-list";
-import dynamic from "next/dynamic";
 
 /** Form sheets load on first open, keeping zod / react-hook-form / vaul out of the page's initial JS. */
 const MenuItemSheet = dynamic(() => import("./menu-item-sheet").then((m) => m.MenuItemSheet), { ssr: false });
 
 type MenuItem = Row<"menu_items">;
-const key = (s: string) => s.trim().toLowerCase();
+export const menuKey = (s: string) => s.trim().toLowerCase();
 
-export function Food() {
+/** The dishes saved for one restaurant (linked by name), with add and edit for people who can edit. */
+export function MenuSection({ restaurant }: { restaurant: string }) {
   const { data: menu = [] } = useRows("menu_items");
-  const { data: places = [] } = useRows("food_places");
-  const updateMenu = useUpdateRow("menu_items", "menu item");
+  const sheet = useSheet<MenuItem>();
+  const items = menu.filter((m) => menuKey(m.restaurant) === menuKey(restaurant));
+  return (
+    <section aria-label="Menu prices" className="space-y-2">
+      <h3 className="flex items-baseline justify-between font-display text-[17px] font-extrabold">
+        Menu prices
+        <span className="font-sans text-[13px] font-medium text-fg-muted">{items.length}</span>
+      </h3>
+      <MenuPanel items={items} onEdit={sheet.openEdit} onAdd={sheet.openAdd} />
+      {sheet.mounted && <MenuItemSheet sheet={sheet} restaurant={restaurant} />}
+    </section>
+  );
+}
+
+/** Menus saved for restaurants that are not on the board (by name). Shown under the Food filter so none are lost. */
+export function OtherMenus({ restaurants }: { restaurants: string[] }) {
+  const { data: menu = [] } = useRows("menu_items");
   const sheet = useSheet<MenuItem>();
   const [restaurant, setRestaurant] = useState("");
-
-  const byRestaurant = new Map<string, MenuItem[]>();
-  for (const m of menu) byRestaurant.set(key(m.restaurant), [...(byRestaurant.get(key(m.restaurant)) ?? []), m]);
-  const placeKeys = new Set(places.map((p) => key(p.name)));
-  const orphans = [...byRestaurant.entries()].filter(([k]) => !placeKeys.has(k));
-
-  const addFor = (name: string) => {
-    setRestaurant(name);
-    sheet.openAdd();
-  };
-
+  const known = new Set(restaurants.map(menuKey));
+  const groups = new Map<string, MenuItem[]>();
+  for (const m of menu) if (!known.has(menuKey(m.restaurant))) groups.set(menuKey(m.restaurant), [...(groups.get(menuKey(m.restaurant)) ?? []), m]);
+  if (groups.size === 0) return null;
   return (
-    <div className="space-y-4">
-      <PlaceList
-        table="food_places"
-        noun="food place"
-        emptyHint="Save restaurants and street-food spots you want to try."
-        panelLabel={(p) => `Menu for ${p.name} (${byRestaurant.get(key(p.name))?.length ?? 0} dishes)`}
-        renderPanel={(p: Place) => (
-          <MenuPanel items={byRestaurant.get(key(p.name)) ?? []} onEdit={sheet.openEdit} onAdd={() => addFor(p.name)} />
-        )}
-        onRenamed={(from, to) => {
-          // Menu items are linked by restaurant name, so carry them over on rename.
-          for (const m of byRestaurant.get(key(from)) ?? []) updateMenu.mutate({ id: m.id, patch: { restaurant: to } });
-        }}
-      />
-      {orphans.length > 0 && (
-        <Card>
-          <CardTitle>Other menus</CardTitle>
-          <p className="mt-1 text-sm text-fg-muted">Prices saved for places that aren&rsquo;t in your list.</p>
-          {orphans.map(([k, items]) => (
-            <div key={k} className="mt-3">
-              <h3 className="mb-1 text-sm font-semibold">{items[0].restaurant}</h3>
-              <MenuPanel items={items} onEdit={sheet.openEdit} onAdd={() => addFor(items[0].restaurant)} />
-            </div>
-          ))}
-        </Card>
-      )}
+    <Card>
+      <CardTitle>Other menus</CardTitle>
+      <p className="mt-1 text-sm text-fg-muted">Prices saved for places that aren&rsquo;t on the board.</p>
+      {[...groups.values()].map((items) => (
+        <div key={menuKey(items[0].restaurant)} className="mt-3">
+          <h3 className="mb-1 text-sm font-semibold">{items[0].restaurant}</h3>
+          <MenuPanel
+            items={items}
+            onEdit={(m) => {
+              setRestaurant(m.restaurant);
+              sheet.openEdit(m);
+            }}
+            onAdd={() => {
+              setRestaurant(items[0].restaurant);
+              sheet.openAdd();
+            }}
+          />
+        </div>
+      ))}
       {sheet.mounted && <MenuItemSheet sheet={sheet} restaurant={restaurant} />}
-    </div>
+    </Card>
   );
 }
 

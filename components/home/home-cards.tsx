@@ -108,9 +108,9 @@ export function ReadinessCard() {
 
   const items = [
     { label: "Packed", href: "/pack", p: packedProgress(packing.data ?? []) },
-    { label: "Itinerary done", href: "/plan", p: itineraryProgress(itin.data ?? []) },
-    { label: "Stays booked", href: "/plan?tab=stays", p: bookedProgress(stays.data ?? []) },
-    { label: "Flights booked", href: "/plan?tab=flights", p: bookedProgress(flights.data ?? []) },
+    { label: "Itinerary done", href: "/itinerary", p: itineraryProgress(itin.data ?? []) },
+    { label: "Stays booked", href: "/stays", p: bookedProgress(stays.data ?? []) },
+    { label: "Flights booked", href: "/flights", p: bookedProgress(flights.data ?? []) },
     { label: "Gifts bought", href: "/pack?tab=gifts", p: giftsProgress(gifts.data ?? []) },
   ];
 
