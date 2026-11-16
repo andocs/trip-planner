@@ -29,7 +29,7 @@ const MapView = dynamic(() => import("@/components/map/map-view").then((m) => m.
   loading: () => <Skeleton className="absolute inset-0 rounded-none" />,
 });
 const PlaceSheet = dynamic(() => import("./place-sheet").then((m) => m.PlaceSheet), { ssr: false });
-const SavePlaceSheet = dynamic(() => import("./save-place-sheet").then((m) => m.SavePlaceSheet), { ssr: false });
+const SavePlaceModal = dynamic(() => import("./save-place-modal").then((m) => m.SavePlaceModal), { ssr: false });
 
 const KINDS: PlaceKind[] = ["sight", "food", "stay"];
 
@@ -239,7 +239,7 @@ export function Discover() {
         />
       )}
       {saving && city && (
-        <SavePlaceSheet
+        <SavePlaceModal
           card={saving}
           kind={kind}
           cities={cities.map((c) => c.name)}

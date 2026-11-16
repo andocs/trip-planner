@@ -28,7 +28,7 @@ import { setSearchParam } from "@/lib/tab-param";
 import { cn } from "@/lib/utils";
 import { OtherMenus } from "@/components/places/menu-panel";
 import { openAddIdea } from "./capture-host";
-import { EditIdea } from "./edit-idea";
+import { IdeaModal } from "@/components/ideas/idea-modal";
 import { IdeaCard } from "./idea-card";
 
 const IdeaSheet = dynamic(() => import("./idea-sheet").then((m) => m.IdeaSheet), { ssr: false });
@@ -71,6 +71,8 @@ export function Board() {
   const [naming, setNaming] = useState<{ idea: Idea; value: VoteValue } | null>(null);
   const [stopFor, setStopFor] = useState<Idea | null>(null);
   const [editing, setEditing] = useState<Idea | null>(null);
+  const [adding, setAdding] = useState<IdeaKind | null>(null);
+  const cities = [...new Set(ideas.map((i) => i.city).filter(Boolean) as string[])].sort();
 
   const me = user.data?.id;
   const myVote = (idea: Idea): Vote | undefined => (votesBy.get(idea.key) ?? []).find((v) => v.user_id === me);
@@ -110,11 +112,11 @@ export function Board() {
             { value: "dropped", label: `Dropped ${counts.dropped}` },
           ]}
         />
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 lg:flex-nowrap">
           <div
             role="group"
             aria-label="Type"
-            className="flex flex-1 [scrollbar-width:none] gap-2 overflow-x-auto py-0.5"
+            className="flex basis-full [scrollbar-width:none] gap-2 overflow-x-auto py-0.5 lg:flex-1 lg:basis-0"
           >
             {KINDS.map((k) => (
               <button
@@ -132,7 +134,13 @@ export function Board() {
               </button>
             ))}
           </div>
-          <label className="relative shrink-0">
+          <EditOnly>
+            <Button size="sm" variant="secondary" className="shrink-0" onClick={() => setAdding(kind === "all" ? "stay" : kind)}>
+              <Plus className="size-4" aria-hidden />
+              Add
+            </Button>
+          </EditOnly>
+          <label className="relative ml-auto shrink-0">
             <span className="sr-only">Sort</span>
             <ArrowUpDown
               className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-fg-muted"
@@ -251,13 +259,8 @@ export function Board() {
         />
       )}
       {stopFor && <TentativeSheet idea={stopFor} onClose={() => setStopFor(null)} />}
-      {editing && (
-        <EditIdea
-          idea={editing}
-          cities={[...new Set(ideas.map((i) => i.city).filter(Boolean) as string[])].sort()}
-          onClose={() => setEditing(null)}
-        />
-      )}
+      {editing && <IdeaModal kind={editing.kind} idea={editing} cities={cities} onClose={() => setEditing(null)} />}
+      {adding && <IdeaModal kind={adding} cities={cities} onClose={() => setAdding(null)} />}
     </div>
   );
 }

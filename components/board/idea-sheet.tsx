@@ -24,6 +24,7 @@ import { useDeleteRow } from "@/lib/queries/table";
 import { formatDay } from "@/lib/format";
 import { mapsLinkFor } from "@/lib/places/normalize";
 import { IdeaPhotos } from "@/components/photos/idea-photos";
+import { DetailsList, MustFlag } from "@/components/ideas/idea-chips";
 import { MenuSection } from "@/components/places/menu-panel";
 import type { ImageRow } from "@/lib/queries/images";
 import type { PlaceRef } from "@/lib/queries/places";
@@ -93,7 +94,7 @@ export function IdeaSheet({
       open
       onOpenChange={(o) => !o && onClose()}
       title={idea.name}
-      description={`${KIND_LABEL[idea.kind]} · ${idea.decision === "draft" ? "Draft" : idea.decision === "confirmed" ? "Confirmed" : "Dropped"}`}
+      description={`${KIND_LABEL[idea.kind]} · ${idea.decision === "draft" ? "Draft" : idea.decision === "confirmed" ? "Confirmed" : "Dropped"}${idea.dealBreaker ? " · Must-do" : ""}`}
       className="md:top-0 md:right-0 md:left-auto md:h-dvh md:max-h-none md:w-[27.5rem] md:translate-x-0 md:translate-y-0 md:rounded-l-3xl md:rounded-r-none"
       footer={
         <form
@@ -209,11 +210,16 @@ export function IdeaSheet({
           </section>
         )}
 
+        <DetailsList idea={idea} />
+
         {idea.kind === "food" && <MenuSection restaurant={idea.name} />}
 
         {!decided && (
           <section aria-label="Your vote" className="space-y-2">
-            <h3 className="font-display text-[17px] font-extrabold">Your vote</h3>
+            <h3 className="flex items-center gap-2 font-display text-[17px] font-extrabold">
+              Your vote
+              {idea.dealBreaker && <MustFlag />}
+            </h3>
             <VoteButtons value={myVote} onVote={onVote} label="Your vote" />
           </section>
         )}

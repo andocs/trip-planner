@@ -24,6 +24,8 @@ import { KIND_LABEL, type Idea, type IdeaKind, type VoteValue } from "@/lib/draf
 import { tally } from "@/lib/drafts";
 import type { Comment, Vote } from "@/lib/queries/ideas";
 import { cn } from "@/lib/utils";
+import { IdeaChips, MustFlag } from "@/components/ideas/idea-chips";
+import { parseDetails } from "@/lib/idea-details";
 import { VoteButtons } from "./vote-buttons";
 
 export const KIND_ICON = { stay: BedDouble, food: Utensils, sight: Landmark } as const;
@@ -74,6 +76,7 @@ export function Hero({
 }
 
 export function PriceTag({ idea, currency }: { idea: Idea; currency: string }) {
+  currency = parseDetails(idea.kind, idea.details).currency ?? currency;
   if (idea.price === null) return <span className="shrink-0 text-[13px] text-fg-muted">Price not set</span>;
   return (
     <span className="shrink-0 text-right font-mono text-sm font-bold tabular-nums">
@@ -197,6 +200,7 @@ export function IdeaCard({
                 {idea.city}
               </>
             )}
+            {idea.dealBreaker && <MustFlag />}
             {idea.decision === "confirmed" && (
               <span className="inline-flex min-h-6 items-center rounded-full bg-teal-tint px-2.5 text-xs font-bold text-teal">
                 Confirmed
@@ -208,6 +212,7 @@ export function IdeaCard({
               </span>
             )}
           </span>
+          <IdeaChips idea={idea} currency={currency} />
           <Tally votes={votes} commentCount={comments.length} nameOf={nameOf} />
         </button>
         {place && (

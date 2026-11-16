@@ -30,6 +30,21 @@
 
 ---
 
+## Revision in progress: Places / Stays / shared modal (branch revision/places-stays-nav)
+
+Brief: merge the Plan tabs into Places, one add/edit modal per category, Stays redesign, dashboard reminders.
+The itinerary page redesign is deliberately deferred (the user is choosing between mockup variants A to J in
+`design/mockups/revision.html`).
+
+- **Routes:** `/itinerary`, `/flights`, `/stays`, `/places` (Board + Discover; `?cat=stay|food|sight` is the category filter).
+  Old `/plan` and `?tab=` links redirect in `proxy.ts` via `lib/legacy-routes.ts`. Phones: five tabs + More (Spend, Pack, Settings).
+- **Migration 15** (`20261115000015_idea_details.sql`, rollback `rollback_000015.sql`): `details jsonb` on hotel_ideas, food_places,
+  attractions and stays; `deal_breaker` on the three idea tables. Applied to local Docker. **Production: not applied until the user says so.**
+- **Shared modal:** `components/ideas/idea-modal.tsx` (Stay / Food / Sight). Pure logic: `lib/idea-details.ts` (zod per category, card chips,
+  detail rows) and `lib/idea-form.ts` (form schema, mapping to columns). Opened from the Board (Add, Edit details) and from Discover (save).
+- **Security call:** the modal has no booking-reference field. Ideas are readable by viewers; references stay owner-only (flights use `flight_refs`).
+- Checks: live RLS 102, SQL suite 261, unit 218, e2e 76 passed / 8 skipped.
+
 ## Architecture Overview
 
 ### Tech Stack

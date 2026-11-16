@@ -185,6 +185,30 @@ async function main() {
       ((await viewer.from("attractions").update({ decision: "confirmed" }).eq("id", ideaId).select()).data ?? [])
         .length === 0,
     );
+    // Category details and the deal-breaker flag (migration 15): the owner writes them, a viewer reads but never writes.
+    check(
+      "owner can save details and the deal-breaker flag",
+      ((await owner.from("attractions").update({ details: { type: "nature", entranceFee: 0 }, deal_breaker: true }).eq("id", ideaId).select("id")).data ?? [])
+        .length === 1,
+    );
+    const seen = await viewer.from("attractions").select("details, deal_breaker").eq("id", ideaId).single();
+    check("a viewer can read details", (seen.data?.details as { type?: string } | null)?.type === "nature" && seen.data?.deal_breaker === true);
+    check(
+      "viewer cannot change details or the deal-breaker flag",
+      ((await viewer.from("attractions").update({ details: { type: "other" }, deal_breaker: false }).eq("id", ideaId).select()).data ?? [])
+        .length === 0,
+    );
+    check(
+      "details must be a JSON object",
+      !!(await owner.from("attractions").update({ details: [1] as never }).eq("id", ideaId)).error,
+    );
+    const stayRow = await owner.from("stays").insert({ trip_id: tripId, hotel: "rls-check stay", details: { cancellation: "free" } }).select("id").single();
+    check(
+      "viewer cannot change a stay's details",
+      ((await viewer.from("stays").update({ details: { cancellation: "none" } }).eq("id", stayRow.data!.id).select()).data ?? []).length === 0,
+    );
+    await owner.from("stays").delete().eq("id", stayRow.data!.id);
+
     check(
       "viewer cannot add an idea",
       !!(await viewer.from("attractions").insert({ trip_id: tripId, name: "nope" })).error,
