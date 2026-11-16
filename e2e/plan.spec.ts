@@ -8,7 +8,7 @@ test.beforeEach(async ({ page }) => {
 test("itinerary groups by day, toggles done, and fills the day from the date", async ({ page }) => {
   const fake = createFakeSupabase({ withSeed: true });
   await fake.install(page);
-  await page.goto("/plan");
+  await page.goto("/itinerary");
 
   // Seed day numbers are kept as-is (Day 1 = 19 Jun in the workbook).
   await expect(page.getByRole("heading", { name: /^Day 1 · Fri 19 Jun · Sapa/ })).toBeVisible();
@@ -36,11 +36,11 @@ test("itinerary groups by day, toggles done, and fills the day from the date", a
   await expect(day5.getByRole("button", { name: /15:00 Egg coffee/ })).toBeVisible();
 });
 
-test("flights, stays and hotel ideas", async ({ page }) => {
+test("flights, stays and hotel ideas (now on Flights, Stays and Places)", async ({ page }) => {
   const fake = createFakeSupabase({ withSeed: true });
   await fake.install(page);
 
-  await page.goto("/plan?tab=flights");
+  await page.goto("/flights");
   const pass = page.getByRole("article", { name: /^MNL to HAN/ });
   await expect(pass).toBeVisible();
   await expect(pass).toContainText("22:20");
@@ -51,12 +51,13 @@ test("flights, stays and hotel ideas", async ({ page }) => {
   await expect.poll(() => fake.tables.get("flights")?.find((f) => f.from_code === "MNL")?.status).toBe("Booked");
   await expect(page.getByText("Hanoi → Sapa (sleeper bus)")).toBeVisible(); // transfers
 
-  await page.getByRole("radio", { name: "Stays" }).click();
-  await expect(page).toHaveURL(/tab=stays/);
+  await page.goto("/stays");
   await expect(page.getByText("17 Jun → 19 Jun · 2 nights").first()).toBeVisible();
   await expect(page.getByText("· PHP 10,972.05/night").first()).toBeVisible();
 
-  await page.getByRole("radio", { name: "Ideas" }).click();
+  // Hotel ideas are the Stays category on Places (confirmed in the seed).
+  await page.goto("/places?cat=stay");
+  await page.getByRole("radio", { name: /^Confirmed/ }).click();
   await expect(page.getByText("Hotel de Lagom").first()).toBeVisible();
   await expect(page.getByText("PHP 10,972.05").first()).toBeVisible();
 });

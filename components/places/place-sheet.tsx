@@ -1,6 +1,5 @@
 "use client";
 
-import type { Place, PlaceTable } from "./place-list";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
@@ -8,9 +7,12 @@ import { z } from "zod";
 import { Field, Input, Select, Textarea } from "@/components/ui/field";
 import { RowSheet } from "@/components/ui/row-sheet";
 import { STATUSES } from "@/lib/constants";
-import { newId, useDeleteRow, useInsertRow, useUpdateRow } from "@/lib/queries/table";
+import { newId, useDeleteRow, useInsertRow, useUpdateRow, type Row } from "@/lib/queries/table";
 import { optionalNumber, optionalText, requiredText, statusField, str } from "@/lib/schemas";
 import { useSheet } from "@/lib/use-sheet";
+
+export type PlaceTable = "food_places" | "attractions";
+export type Place = Row<"food_places"> | Row<"attractions">;
 
 const Schema = z.object({
   name: requiredText("Name", 120),

@@ -7,6 +7,7 @@ import {
   CircleOff,
   ExternalLink,
   MapPin,
+  Pencil,
   SendHorizontal,
   Trash2,
   X,
@@ -23,6 +24,7 @@ import { useDeleteRow } from "@/lib/queries/table";
 import { formatDay } from "@/lib/format";
 import { mapsLinkFor } from "@/lib/places/normalize";
 import { IdeaPhotos } from "@/components/photos/idea-photos";
+import { MenuSection } from "@/components/places/menu-panel";
 import type { ImageRow } from "@/lib/queries/images";
 import type { PlaceRef } from "@/lib/queries/places";
 import { Hero, PriceTag } from "./idea-card";
@@ -53,6 +55,7 @@ export function IdeaSheet({
   onVote,
   onDecision,
   onAddStop,
+  onEdit,
   onClose,
 }: {
   idea: Idea;
@@ -66,6 +69,8 @@ export function IdeaSheet({
   onVote: (v: VoteValue | null) => void;
   onDecision: (d: Decision) => void;
   onAddStop: () => void;
+  /** Owner or editor: open this idea's own details (name, city, price, notes, status) for editing. */
+  onEdit: () => void;
   onClose: () => void;
 }) {
   const trip = useTrip();
@@ -156,6 +161,13 @@ export function IdeaSheet({
         )}
 
         {canEdit && (
+          <Button variant="outline" className="-mt-1 w-full" onClick={onEdit}>
+            <Pencil className="size-[18px]" aria-hidden />
+            Edit details
+          </Button>
+        )}
+
+        {canEdit && (
           <section aria-label="Decide" className="space-y-2">
             {idea.decision === "draft" && (
               <div className="grid grid-cols-2 gap-2">
@@ -196,6 +208,8 @@ export function IdeaSheet({
             )}
           </section>
         )}
+
+        {idea.kind === "food" && <MenuSection restaurant={idea.name} />}
 
         {!decided && (
           <section aria-label="Your vote" className="space-y-2">

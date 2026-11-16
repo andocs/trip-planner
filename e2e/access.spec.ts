@@ -9,7 +9,7 @@ test.beforeEach(async ({ page }) => {
 test.describe("blocked visitor (no session, no invite)", () => {
   test("sees only Invite only, on every route, with no trip data", async ({ page }) => {
     await createFakeSupabase({ withSeed: true, role: "signedout" }).install(page);
-    for (const path of ["/", "/spend", "/plan", "/places", "/pack", "/settings"]) {
+    for (const path of ["/", "/spend", "/itinerary", "/stays", "/flights", "/places", "/pack", "/settings"]) {
       await page.goto(path);
       await expect(page.getByRole("heading", { name: "Invite only" })).toBeVisible();
       await expect(page.getByRole("link", { name: "Owner sign in" })).toBeVisible();
@@ -64,7 +64,7 @@ test.describe("viewer (joined with an invite link)", () => {
     await expect(page.getByRole("button", { name: "Add expense" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: /^Edit / })).toHaveCount(0);
 
-    await page.goto("/plan");
+    await page.goto("/itinerary");
     await expect(page.getByRole("button", { name: /^Add\b/ })).toHaveCount(0);
     await expect(page.getByRole("checkbox")).toHaveCount(0); // done ticks are display-only
 

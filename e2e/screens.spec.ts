@@ -14,13 +14,13 @@ test.describe("screens", () => {
         "/",
         "/spend",
         "/settings",
-        "/plan",
-        "/plan?tab=flights",
-        "/plan?tab=stays",
-        "/plan?tab=ideas",
+        "/itinerary",
+        "/flights",
+        "/stays",
         "/places",
-        "/places?tab=food",
-        "/places?tab=attractions",
+        "/places?cat=stay",
+        "/places?cat=food",
+        "/places?cat=sight",
         "/pack",
         "/pack?tab=gifts",
         "/pack?tab=reminders",
@@ -31,15 +31,10 @@ test.describe("screens", () => {
         const name = path === "/" ? "home" : path.slice(1).replace(/[?=]/g, "-");
         await page.screenshot({
           path: `e2e/screens/${name}-${theme}.png`,
-          fullPage: !["/plan", "/pack", "/places"].includes(path),
+          fullPage: !["/itinerary", "/pack", "/places"].includes(path),
         });
       }
-      await page.goto("/places?tab=food");
-      await page.getByRole("button", { name: /^Menu for Bun Cha Ta/ }).click();
-      await page.waitForTimeout(400);
-      await page.screenshot({ path: `e2e/screens/food-menu-${theme}.png` });
-
-      await page.goto("/spend");
+            await page.goto("/spend");
       await page.getByRole("button", { name: "Add expense" }).click();
       await page.getByRole("dialog").getByRole("radio", { name: "VND" }).click();
       await page.getByRole("dialog").getByLabel("Amount").fill("80000");
@@ -59,7 +54,7 @@ test.describe("screens desktop", () => {
       await page.clock.setFixedTime(new Date("2026-06-10T09:00:00"));
       await page.addInitScript((t) => localStorage.setItem("tp-theme", t), theme);
       await createFakeSupabase({ withSeed: true }).install(page);
-      for (const path of ["/", "/spend", "/plan", "/places", "/pack", "/settings"]) {
+      for (const path of ["/", "/spend", "/itinerary", "/stays", "/flights", "/places", "/pack", "/settings"]) {
         await page.goto(path);
         await page.waitForLoadState("networkidle");
         await page.waitForTimeout(2500);
@@ -115,7 +110,7 @@ for (const [label, viewport] of [
         const viewer = createFakeSupabase({ withSeed: true, role: "viewer" });
         await page.context().clearCookies();
         await viewer.install(page);
-        for (const path of ["/", "/plan", "/settings"]) {
+        for (const path of ["/", "/itinerary", "/settings"]) {
           await page.goto(path);
           await page.waitForLoadState("networkidle");
           await page.waitForTimeout(2200);

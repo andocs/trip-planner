@@ -8,7 +8,7 @@ test.beforeEach(async ({ page }) => {
 test("a flight is a boarding pass, and the next-day landing shows +1", async ({ page }) => {
   const fake = createFakeSupabase({ withSeed: true });
   await fake.install(page);
-  await page.goto("/plan?tab=flights");
+  await page.goto("/flights");
   const pass = page.getByRole("article", { name: /^MNL to HAN/ });
   await expect(pass).toBeVisible();
   await expect(pass).toContainText("22:20");
@@ -21,7 +21,7 @@ test("a flight is a boarding pass, and the next-day landing shows +1", async ({ 
 test("details and the booking reference save; the reference goes to its own table", async ({ page }) => {
   const fake = createFakeSupabase({ withSeed: true });
   await fake.install(page);
-  await page.goto("/plan?tab=flights");
+  await page.goto("/flights");
   await page.getByRole("button", { name: /^MNL to HAN.*Edit$/ }).click();
   const sheet = page.getByRole("dialog", { name: "Edit flight" });
   await sheet.getByLabel("Terminal").fill("3");
@@ -45,7 +45,7 @@ test("details and the booking reference save; the reference goes to its own tabl
 test("a flight time that can't be read is refused", async ({ page }) => {
   const fake = createFakeSupabase({ withSeed: true });
   await fake.install(page);
-  await page.goto("/plan?tab=flights");
+  await page.goto("/flights");
   await page.getByRole("button", { name: /^MNL to HAN.*Edit$/ }).click();
   const sheet = page.getByRole("dialog", { name: "Edit flight" });
   await sheet.getByLabel("Flight time (optional)").fill("soon");
@@ -64,7 +64,7 @@ test("a viewer sees the reference hidden, and the real one never reaches the pag
     fake.tables.get("flights")!.map((f) => (f.id === flight.id ? { ...f, has_ref: true, booking_ref: null } : f)),
   );
   await fake.install(page);
-  await page.goto("/plan?tab=flights");
+  await page.goto("/flights");
   const pass = page.getByRole("article", { name: /^MNL to HAN/ });
   await expect(pass.getByLabel("Hidden for viewers")).toBeVisible();
   await expect(pass.getByText("Only the owner can see this.")).toBeVisible();
@@ -80,7 +80,7 @@ test("an old reference still in the flight row moves to the owner-only table on 
     fake.tables.get("flights")!.map((f) => (f.id === flight.id ? { ...f, booking_ref: "OLD123" } : f)),
   );
   await fake.install(page);
-  await page.goto("/plan?tab=flights");
+  await page.goto("/flights");
   await expect(page.getByRole("article", { name: /^MNL to HAN/ })).toContainText("OLD123");
   await page.getByRole("button", { name: /^MNL to HAN.*Edit$/ }).click();
   const sheet = page.getByRole("dialog", { name: "Edit flight" });
@@ -99,7 +99,7 @@ test("deleting a flight removes its reference", async ({ page }) => {
     { id: "fr1", flight_id: flight.id, booking_ref: "GONE11", created_at: "2026-06-01T00:00:00Z" },
   ]);
   await fake.install(page);
-  await page.goto("/plan?tab=flights");
+  await page.goto("/flights");
   await page.getByRole("button", { name: /^MNL to HAN.*Edit$/ }).click();
   await page.getByRole("dialog", { name: "Edit flight" }).getByRole("button", { name: "Delete", exact: true }).click();
   await expect.poll(() => fake.tables.get("flights")?.some((f) => f.id === flight.id)).toBe(false);
@@ -114,7 +114,7 @@ test("a booked flight can be logged as an expense once", async ({ page }) => {
     fake.tables.get("flights")!.map((f) => (f.id === flight.id ? { ...f, status: "Booked", fare: 5000 } : f)),
   );
   await fake.install(page);
-  await page.goto("/plan?tab=flights");
+  await page.goto("/flights");
   await page
     .getByRole("article", { name: /^MNL to HAN/ })
     .getByRole("button", { name: /Log as expense/ })
@@ -136,6 +136,6 @@ test("with no flights there is an empty state", async ({ page }) => {
   const fake = createFakeSupabase({ withSeed: true });
   fake.tables.set("flights", []);
   await fake.install(page);
-  await page.goto("/plan?tab=flights");
+  await page.goto("/flights");
   await expect(page.getByRole("heading", { name: "No flights yet" })).toBeVisible();
 });

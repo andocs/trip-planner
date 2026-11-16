@@ -26,8 +26,10 @@ export const SCREEN_TABLES = {
     "gifts",
   ],
   spend: ["expenses", "categories", "travelers", "flights", "stays"],
-  plan: ["itinerary_items", "flights", "transfers", "stays", "hotel_ideas"],
-  places: ["food_places", "menu_items", "attractions", "hotel_ideas", "votes", "comments"],
+  itinerary: ["itinerary_items", "stays", "destinations"],
+  flights: ["flights", "transfers", "stays", "expenses", "categories"],
+  stays: ["stays", "flights", "expenses", "categories"],
+  places:["food_places", "menu_items", "attractions", "hotel_ideas", "votes", "comments"],
   pack: ["packing_items", "travelers", "gifts", "reminders"],
   settings: ["travelers", "destinations", "categories"],
 } satisfies Record<string, ChildTable[]>;

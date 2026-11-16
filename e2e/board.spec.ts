@@ -62,7 +62,7 @@ test("owner: a tentative stop is dashed and uncounted; confirming makes it solid
   await sheet.getByRole("button", { name: "Add stop" }).click();
 
   await expect.poll(() => fake.tables.get("itinerary_items")!.find((i) => i.activity === CARD)?.tentative).toBe(true);
-  await page.goto("/plan");
+  await page.goto("/itinerary");
   await expect(page.getByText("0 of 140 done")).toBeVisible(); // not counted
   const stop = page.getByRole("button", { name: new RegExp(`Tentative: ${CARD}`) });
   await expect(stop).toBeVisible();
@@ -77,7 +77,7 @@ test("owner: a tentative stop is dashed and uncounted; confirming makes it solid
     .getByRole("button", { name: /^Confirm this sight/ })
     .click();
   await expect.poll(() => fake.tables.get("itinerary_items")!.find((i) => i.activity === CARD)?.tentative).toBe(false);
-  await page.goto("/plan");
+  await page.goto("/itinerary");
   await expect(page.getByText("0 of 141 done")).toBeVisible();
   await expect(page.getByRole("link", { name: "On the board" })).toHaveCount(0);
 });
@@ -194,7 +194,7 @@ test("votes and comments from another phone appear live, with names", async ({ p
 test("N opens quick add from any screen for the owner, and does nothing for a viewer", async ({ page }) => {
   const owner = createFakeSupabase({ withSeed: true });
   await owner.install(page);
-  await page.goto("/plan");
+  await page.goto("/itinerary");
   await expect(page.getByText("0 of 140 done")).toBeVisible();
   await page.waitForLoadState("networkidle");
   await page.keyboard.press("n");
@@ -206,7 +206,7 @@ test("N opens quick add from any screen for the owner, and does nothing for a vi
 
 test("viewer: N and the quick-add button do not exist", async ({ page }) => {
   await createFakeSupabase({ withSeed: true, role: "viewer" }).install(page);
-  await page.goto("/plan");
+  await page.goto("/itinerary");
   await expect(page.getByText("0 of 140 done")).toBeVisible();
   await page.waitForLoadState("networkidle");
   await page.keyboard.press("n");

@@ -26,7 +26,9 @@ import { usePlaceRefs } from "@/lib/queries/places";
 import { useUser } from "@/lib/queries/trip";
 import { setSearchParam } from "@/lib/tab-param";
 import { cn } from "@/lib/utils";
+import { OtherMenus } from "@/components/places/menu-panel";
 import { openAddIdea } from "./capture-host";
+import { EditIdea } from "./edit-idea";
 import { IdeaCard } from "./idea-card";
 
 const IdeaSheet = dynamic(() => import("./idea-sheet").then((m) => m.IdeaSheet), { ssr: false });
@@ -61,10 +63,14 @@ export function Board() {
   const cast = useCastVote();
   const setDecision = useSetDecision();
   const [decision, setDecisionTab] = useState<Decision>("draft");
-  const [kind, setKind] = useState<Kind>("all");
+  // The category filter lives in the address (?cat=stay|food|sight), so Places links and old tab links can open it.
+  const rawCat = params.get("cat");
+  const kind: Kind = rawCat === "stay" || rawCat === "food" || rawCat === "sight" ? rawCat : "all";
+  const setKind = (k: Kind) => setSearchParam("cat", k === "all" ? null : k);
   const [sort, setSort] = useState<"votes" | "new">("votes");
   const [naming, setNaming] = useState<{ idea: Idea; value: VoteValue } | null>(null);
   const [stopFor, setStopFor] = useState<Idea | null>(null);
+  const [editing, setEditing] = useState<Idea | null>(null);
 
   const me = user.data?.id;
   const myVote = (idea: Idea): Vote | undefined => (votesBy.get(idea.key) ?? []).find((v) => v.user_id === me);
@@ -198,6 +204,10 @@ export function Board() {
         </div>
       )}
 
+      {kind === "food" && (
+        <OtherMenus restaurants={ideas.filter((i) => i.kind === "food").map((i) => i.name)} />
+      )}
+
       <EditOnly>
         <Button
           onClick={() => openAddIdea()}
@@ -225,6 +235,7 @@ export function Board() {
             setSearchParam("idea", null); // the idea moves to another tab, so close its sheet
           }}
           onAddStop={() => setStopFor(opened)}
+          onEdit={() => setEditing(opened)}
           onClose={() => setSearchParam("idea", null)}
         />
       )}
@@ -240,6 +251,13 @@ export function Board() {
         />
       )}
       {stopFor && <TentativeSheet idea={stopFor} onClose={() => setStopFor(null)} />}
+      {editing && (
+        <EditIdea
+          idea={editing}
+          cities={[...new Set(ideas.map((i) => i.city).filter(Boolean) as string[])].sort()}
+          onClose={() => setEditing(null)}
+        />
+      )}
     </div>
   );
 }

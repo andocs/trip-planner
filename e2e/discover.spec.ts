@@ -292,7 +292,7 @@ test("viewer: no Discover tab, no Google calls, but the saved photo, credit and 
   const calls = await stubPlaces(page);
   await page.goto("/places?tab=discover"); // the tab does not exist for a viewer: it falls back to the Board
 
-  await expect(page.getByRole("radio", { name: "Board" })).toBeChecked();
+  await expect(page.getByRole("radio", { name: "Board" })).toHaveCount(0); // a viewer gets the Board only, no section switch
   await expect(page.getByRole("radio", { name: "Discover" })).toHaveCount(0);
   const card = page.getByRole("article", { name: String(attraction.name) });
   await expect(card.getByText("Photo: Dung Nguyen, CC BY-SA 4.0 · Wikimedia Commons")).toBeVisible();
