@@ -46,7 +46,8 @@ Mockups live in `design/mockups/revision.html` (variants A to J; J is the chosen
 - **Add/edit anatomy:** every form uses `components/ui/form-footer.tsx` ([Delete] [Cancel] [Add or Save], "Keep adding" above the buttons;
   `RowSheet` and the idea modal both use it). The primary label is "Add" (adding) or "Save" (editing); draft or confirmed is the Status field.
   "Keep adding" is on by default for places and expenses. The add sheet (button, N, Discover's "add by hand") is the idea modal with
-  **One place | Paste a list** (`components/ideas/paste-list.tsx`; opened from anywhere by `components/board/add-place.tsx`).
+  **One place | Paste a list**, titled "Add place" (the category's own details fold away under "Stay/Food/Sight details" and open on edit; price is Price | Per | Currency)
+  (`components/ideas/paste-list.tsx`; opened from anywhere by `components/board/add-place.tsx`).
   A save from Discover always closes. The old separate "Add ideas" sheet is gone.
 - **Itinerary:** pure rules in `lib/itinerary.ts` (order, connector rules, `planMove`, `planInsert`, day totals, stay marks, `LONG_DAY_MINUTES`)
   and `lib/itinerary-rows.ts`. UI in `components/plan/itinerary*.tsx`, `connector-sheet.tsx`. @dnd-kit does the dragging (Reorder mode, owner/editor only).

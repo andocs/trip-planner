@@ -58,7 +58,7 @@ export function PasteList({
         submit();
       }}
     >
-      <Field label="Places, one per line" hint="Add a price after a dash: Sky Hotel - 3800. Every line becomes a draft; drafts don’t count toward the budget.">
+      <Field label="Places, one per line" hint="A price can follow a dash: “Sky Hotel - 3800”.">
         {(p) => (
           <Textarea
             {...p}
@@ -77,7 +77,7 @@ export function PasteList({
           />
         )}
       </Field>
-      <Field label="City" hint="Used for every draft. You can change one later.">
+      <Field label="Location or area (for all)">
         {(p) => <Input {...p} value={city} onChange={(e) => setCity(e.target.value)} list="paste-cities" autoComplete="off" />}
       </Field>
       <datalist id="paste-cities">
@@ -86,18 +86,15 @@ export function PasteList({
         ))}
       </datalist>
 
-      {items.length > 1 && (
-        <section aria-label="Preview" className="space-y-2">
-          <h3 className="font-display text-[17px] font-extrabold">
-            {kept.length} {kept.length === 1 ? "draft" : "drafts"} will be created
-          </h3>
+      {items.length > 0 && (
+        <section aria-label="What will be added" className="space-y-2">
           <ul className="overflow-hidden rounded-2xl bg-surface-2">
             {kept.map((i) => (
               <li key={i.name} className="flex min-h-12 items-center gap-2.5 border-b border-line py-1 pr-1 pl-3.5 last:border-b-0">
                 <Icon className="size-4 shrink-0 text-fg-muted" aria-hidden />
                 <span className="min-w-0 flex-1 truncate font-bold">{i.name}</span>
                 {i.price !== null ? (
-                  <span className="shrink-0 rounded-full bg-surface px-2.5 py-0.5 text-sm font-bold">{formatMoney(i.price, trip.home_currency)}</span>
+                  <span className="shrink-0 font-mono text-sm font-bold">{formatMoney(i.price, trip.home_currency)}</span>
                 ) : (
                   <span className="shrink-0 text-sm font-medium text-fg-muted">No price</span>
                 )}
@@ -112,11 +109,10 @@ export function PasteList({
               </li>
             ))}
           </ul>
-          {skipped > 0 && (
-            <p className="text-[13px] text-fg-muted">
-              {skipped} duplicate or extra {skipped === 1 ? "line was" : "lines were"} skipped.
-            </p>
-          )}
+          <p className="text-[13px] text-fg-muted">
+            {kept.length} {kept.length === 1 ? "place" : "places"}, added as drafts.
+            {skipped > 0 && ` ${skipped} repeated ${skipped === 1 ? "line was" : "lines were"} skipped.`}
+          </p>
         </section>
       )}
     </form>
