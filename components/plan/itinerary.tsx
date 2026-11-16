@@ -14,7 +14,7 @@ import {
 } from "@dnd-kit/core";
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { ArrowUpDown, Check, CalendarPlus, Ellipsis, GripVertical, Plus } from "lucide-react";
+import { ArrowUpDown, Check, CalendarPlus, Ellipsis, GripVertical } from "lucide-react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useState, type ReactNode } from "react";
@@ -37,6 +37,7 @@ import {
   planMove,
   stayMarks,
   type DayGroup,
+  type InsertPlan,
   type StayMark,
 } from "@/lib/itinerary";
 import { useIdeas } from "@/lib/queries/ideas";
@@ -45,6 +46,7 @@ import { useMoveItems } from "@/lib/queries/itinerary";
 import { useRows, useUpdateRow } from "@/lib/queries/table";
 import { useSheet } from "@/lib/use-sheet";
 import { cn } from "@/lib/utils";
+import { AddHere } from "./add-here";
 import type { ConnectorTarget } from "./connector-sheet";
 import { ConnectorRow, DaySplit, StayRow, StopCard } from "./itinerary-entries";
 import type { ItineraryItem } from "./itinerary-sheet";
@@ -94,9 +96,8 @@ export function Itinerary() {
   const update = useUpdateRow("itinerary_items", "activity");
   const move = useMoveItems();
   const sheet = useSheet<ItineraryItem>();
-  const [defaults, setDefaults] = useState<{ day?: string }>();
+  const [defaults, setDefaults] = useState<{ day?: string; plan?: InsertPlan }>();
   const [connector, setConnector] = useState<ConnectorTarget | null>(null);
-  const [chooser, setChooser] = useState<string | null>(null);
   const [reorder, setReorder] = useState(false);
   const [showMap, setShowMap] = useState(false);
   const [dragging, setDragging] = useState<string | null>(null);
@@ -165,21 +166,31 @@ export function Itinerary() {
     move.mutate(result.updates);
   };
 
+  /** Add a commute or a rest right after `item`; refused where the connector rules don't allow it. */
   const openChooser = (item: ItineraryItem, kind: "commute" | "buffer") => {
     const day = groups.find((g) => g.items.some((i) => i.id === item.id));
     if (!day) return;
     const index = day.items.findIndex((i) => i.id === item.id) + 1;
     const problem = insertProblem(day.items, index, kind);
-    setChooser(null);
     if (problem) return void toast.error(problem);
     setConnector({ kind, day: day.day, plan: planInsert(day.items, index, day.day, start) });
+  };
+
+  /** Add an activity right after `item`, on the same day. */
+  const openActivity = (item: ItineraryItem) => {
+    const day = groups.find((g) => g.items.some((i) => i.id === item.id));
+    if (!day) return;
+    const index = day.items.findIndex((i) => i.id === item.id) + 1;
+    setDefaults({ day: day.day === null ? "" : String(day.day), plan: planInsert(day.items, index, day.day, start) });
+    sheet.openAdd();
   };
 
   const renderItem = (item: ItineraryItem, handle: ReactNode, next: ItineraryItem | undefined) => {
     if (!isStop(item))
       return <ConnectorRow item={item} currency={trip.home_currency} canEdit={canEdit && !editing} onOpen={() => setConnector({ kind: kindOf(item) as "commute" | "buffer", day: item.day, existing: item })} handle={handle} />;
     const idea = item.source_table && item.source_id ? ideaOf.get(`${item.source_table}:${item.source_id}`) : undefined;
-    const addBetween = canEdit && !editing && next && isStop(next);
+    // Never next to an existing commute or rest, while reordering, or for viewers.
+    const addAfter = canEdit && !editing && !(next && !isStop(next));
     return (
       <StopCard
         item={item}
@@ -194,28 +205,13 @@ export function Itinerary() {
         onDone={(done) => update.mutate({ id: item.id, patch: { done } })}
         handle={handle}
       >
-        {addBetween && (
-          <div className="mt-3 flex min-h-11 items-center gap-2">
-            {chooser === item.id ? (
-              <span className="inline-flex gap-2 rounded-[18px] bg-surface p-1.5 shadow-float ring-1 ring-border">
-                <Button size="sm" variant="secondary" onClick={() => openChooser(item, "commute")}>
-                  Commute
-                </Button>
-                <Button size="sm" variant="secondary" onClick={() => openChooser(item, "buffer")}>
-                  Buffer
-                </Button>
-              </span>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setChooser(item.id)}
-                aria-label={`Add a commute or buffer after ${item.activity}`}
-                className="grid size-9 place-items-center rounded-full bg-surface text-fg-muted shadow-[inset_0_0_0_2px_var(--line-strong)]"
-              >
-                <Plus className="size-4" strokeWidth={3} aria-hidden />
-              </button>
-            )}
-          </div>
+        {addAfter && (
+          <AddHere
+            label={item.activity}
+            onCommute={() => openChooser(item, "commute")}
+            onRest={() => openChooser(item, "buffer")}
+            onActivity={() => openActivity(item)}
+          />
         )}
       </StopCard>
     );

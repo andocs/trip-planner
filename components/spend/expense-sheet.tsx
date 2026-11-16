@@ -40,7 +40,7 @@ export function ExpenseSheet({
   const insert = useInsertRow("expenses", "expense");
   const update = useUpdateRow("expenses", "expense");
   const remove = useDeleteRow("expenses", "expense");
-  const [keepAdding, setKeepAdding] = useState(false);
+  const [keepAdding, setKeepAdding] = useState(true);
 
   const { register, handleSubmit, reset, formState, control, getValues, setFocus } = useForm<In, unknown, Out>({
     resolver: zodResolver(Schema),

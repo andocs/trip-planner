@@ -43,13 +43,20 @@ Mockups live in `design/mockups/revision.html` (variants A to J; J is the chosen
   Both applied to local Docker. Production: 15 and 16 need the user to run them (no CLI link or login from here).
 - **Shared modal:** `components/ideas/idea-modal.tsx`; pure logic in `lib/idea-details.ts` and `lib/idea-form.ts`.
   No booking-reference field on ideas (viewers can read them); flights use `flight_refs`.
+- **Add/edit anatomy:** every form uses `components/ui/form-footer.tsx` ([Delete] [Cancel] [Add or Save], "Keep adding" above the buttons;
+  `RowSheet` and the idea modal both use it). The primary label is "Add" (adding) or "Save" (editing); draft or confirmed is the Status field.
+  "Keep adding" is on by default for places and expenses. The add sheet (button, N, Discover's "add by hand") is the idea modal with
+  **One place | Paste a list** (`components/ideas/paste-list.tsx`; opened from anywhere by `components/board/add-place.tsx`).
+  A save from Discover always closes. The old separate "Add ideas" sheet is gone.
 - **Itinerary:** pure rules in `lib/itinerary.ts` (order, connector rules, `planMove`, `planInsert`, day totals, stay marks, `LONG_DAY_MINUTES`)
   and `lib/itinerary-rows.ts`. UI in `components/plan/itinerary*.tsx`, `connector-sheet.tsx`. @dnd-kit does the dragging (Reorder mode, owner/editor only).
   **The day number is the source of truth:** a day's date is derived from the trip start and written to `on_date` on save; there is no date input.
   Connectors are rows with `kind <> 'stop'`; `solidStops` (calc.ts) excludes them from every counter and the export.
   Stays appear on their check-in / check-out days from the Stays page (not stored). The map only mounts when the Map pill is pressed (one Google map load).
+  Under each activity, `components/plan/add-here.tsx` is a 44px circle (shown on hover of the card's bottom edge, always on touch) that opens into
+  **Commute | Rest | Activity**; Activity inserts at that spot (`planInsert`). Not offered next to a commute or rest, in Reorder mode, or to viewers.
 - **Home reminders:** `lib/reminders.ts` + `components/home/reminders-card.tsx`; dismissals live in localStorage.
-- Checks at last run: live RLS 107, SQL suite 267, unit 258, e2e 93 passed / 8 skipped.
+- Checks at last run: live RLS 107, SQL suite 267, unit 258, e2e 96 passed / 8 skipped (RLS numbers unchanged: no database changes since).
 
 ## Architecture Overview
 

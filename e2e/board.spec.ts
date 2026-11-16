@@ -18,7 +18,8 @@ test("owner: paste several ideas and get one draft per line", async ({ page }) =
 
   const before = fake.tables.get("hotel_ideas")!.length;
   await page.getByRole("button", { name: "Add idea" }).click();
-  const sheet = page.getByRole("dialog", { name: "Add ideas" });
+  await page.getByRole("radio", { name: "Paste a list" }).click();
+  const sheet = page.getByRole("dialog", { name: "Add a list" });
   await sheet
     .getByRole("textbox")
     .first()
@@ -27,7 +28,7 @@ test("owner: paste several ideas and get one draft per line", async ({ page }) =
   await expect(sheet.getByText("3 drafts will be created")).toBeVisible();
   await expect(sheet.getByText(/PHP 3,800/)).toBeVisible();
   await sheet.getByRole("button", { name: "Remove Train Street cafe" }).click();
-  await sheet.getByRole("button", { name: "Add 2 drafts" }).click();
+  await sheet.getByRole("button", { name: "Add 2", exact: true }).click();
 
   await expect.poll(() => fake.tables.get("hotel_ideas")!.length).toBe(before + 2);
   const added = fake.tables
@@ -198,9 +199,9 @@ test("N opens quick add from any screen for the owner, and does nothing for a vi
   await expect(page.getByText("0 of 140 done")).toBeVisible();
   await page.waitForLoadState("networkidle");
   await page.keyboard.press("n");
-  await expect(page.getByRole("dialog", { name: "Add ideas" })).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "Add stay" })).toBeVisible();
   await page.keyboard.press("Escape");
-  await expect(page.getByRole("dialog", { name: "Add ideas" })).toHaveCount(0);
+  await expect(page.getByRole("dialog", { name: "Add stay" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Add idea" })).toBeVisible(); // the floating button works on every screen
 });
 

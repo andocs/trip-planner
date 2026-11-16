@@ -7,11 +7,11 @@ import { useEffect, useState } from "react";
 import { useCanEdit } from "@/components/trip-gate";
 import { cn } from "@/lib/utils";
 
-const AddIdeasSheet = dynamic(() => import("./add-ideas-sheet").then((m) => m.AddIdeasSheet), { ssr: false });
+const AddPlace = dynamic(() => import("./add-place").then((m) => m.AddPlace), { ssr: false });
 
 const EVENT = "trip:add-idea";
 
-/** Open the quick-add sheet from anywhere (a button, the Board, a keyboard shortcut). */
+/** Open the add sheet ("One place | Paste a list") from anywhere (a button, the Board, a keyboard shortcut). */
 export function openAddIdea(opts: { paste?: boolean } = {}) {
   window.dispatchEvent(new CustomEvent(EVENT, { detail: opts }));
 }
@@ -29,16 +29,11 @@ export function CaptureHost() {
   const canEdit = useCanEdit();
   const pathname = usePathname();
   const tab = useSearchParams().get("tab");
-  const [state, setState] = useState<{ open: boolean; paste: boolean; mounted: boolean; n: number }>({
-    open: false,
-    paste: false,
-    mounted: false,
-    n: 0,
-  });
+  const [state, setState] = useState<{ open: boolean; paste: boolean; n: number }>({ open: false, paste: false, n: 0 });
 
   useEffect(() => {
     if (!canEdit) return;
-    const open = (paste = false) => setState((s) => ({ open: true, paste, mounted: true, n: s.n + 1 }));
+    const open = (paste = false) => setState((s) => ({ open: true, paste, n: s.n + 1 }));
     const onEvent = (e: Event) => open(!!(e as CustomEvent<{ paste?: boolean }>).detail?.paste);
     const onKey = (e: KeyboardEvent) => {
       if (e.key.toLowerCase() !== "n" || e.ctrlKey || e.metaKey || e.altKey || e.shiftKey || e.repeat) return;
@@ -64,8 +59,8 @@ export function CaptureHost() {
     <>
       <button
         type="button"
-        onClick={() => setState((s) => ({ open: true, paste: false, mounted: true, n: s.n + 1 }))}
-        onPointerEnter={() => void import("./add-ideas-sheet")}
+        onClick={() => setState((s) => ({ open: true, paste: false, n: s.n + 1 }))}
+        onPointerEnter={() => void import("./add-place")}
         aria-label="Add idea"
         aria-keyshortcuts="N"
         aria-hidden={boardShowing || undefined}
@@ -84,14 +79,7 @@ export function CaptureHost() {
           N
         </kbd>
       </button>
-      {state.mounted && (
-        <AddIdeasSheet
-          key={state.n}
-          open={state.open}
-          startPaste={state.paste}
-          onOpenChange={(open) => setState((s) => ({ ...s, open }))}
-        />
-      )}
+      {state.open && <AddPlace key={state.n} startPaste={state.paste} onClose={() => setState((s) => ({ ...s, open: false }))} />}
     </>
   );
 }

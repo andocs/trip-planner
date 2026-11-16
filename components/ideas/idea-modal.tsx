@@ -1,12 +1,12 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { BedDouble, Flag, Landmark, Link2, Trash2, Utensils } from "lucide-react";
+import { BedDouble, Flag, Landmark, Link2, Utensils } from "lucide-react";
 import { useState } from "react";
 import { Controller, useForm, useWatch, type Control, type Resolver, type UseFormRegister } from "react-hook-form";
 import { toast } from "sonner";
 import { useTrip } from "@/components/trip-gate";
-import { Button } from "@/components/ui/button";
+import { FormFooter } from "@/components/ui/form-footer";
 import { Field, Input, Select, Textarea } from "@/components/ui/field";
 import { Segmented } from "@/components/ui/segmented";
 import { Sheet } from "@/components/ui/sheet";
@@ -36,6 +36,7 @@ import { blankForm, FORM_SCHEMA, formFromIdea, toPayload, type IdeaFormValues, t
 import { newId, useDeleteRow, useInsertRow, useRows, useUpdateRow } from "@/lib/queries/table";
 import { COMMON_CURRENCIES } from "@/lib/schemas";
 import { ChipGroup, SectionLabel, ToggleRow } from "./chips";
+import { PasteList, type PasteSummary } from "./paste-list";
 
 const KINDS: { value: IdeaKind; icon: typeof BedDouble }[] = [
   { value: "stay", icon: BedDouble },
@@ -60,6 +61,8 @@ export type IdeaModalProps = {
   submitLabel?: string;
   /** Shown above the fields (e.g. what is kept from Google). */
   note?: string;
+  /** Add mode only: open on "Paste a list" instead of "One place". */
+  startMode?: "one" | "paste";
 };
 
 /**
@@ -67,11 +70,28 @@ export type IdeaModalProps = {
  * sights. Everything is short inputs, chips and switches. It never calls Google: a name or area that came from a
  * saved Google result is only prefilled. Used from the Places board (add and edit) and from Discover.
  */
-export function IdeaModal({ kind: startKind, idea, prefill, cities, onClose, onCreate, pending, submitLabel, note }: IdeaModalProps) {
+export function IdeaModal({ kind: startKind, idea, prefill, cities, onClose, onCreate, pending, submitLabel, note, startMode }: IdeaModalProps) {
   const [kind, setKind] = useState<IdeaKind>(idea?.kind ?? startKind);
   // Switching category (add mode) keeps what was typed in the shared fields.
   const [carry, setCarry] = useState<Partial<IdeaFormValues>>({ name: prefill?.name ?? "", city: prefill?.city ?? "" });
   const editing = !!idea;
+  // Keep adding (on by default for places): after a save the name clears and the area and category stay.
+  // A save from Discover is for one Google place, so it always closes.
+  const canPaste = !editing && !onCreate;
+  const [mode, setMode] = useState<"one" | "paste">(canPaste && startMode === "paste" ? "paste" : "one");
+  const pasting = canPaste && mode === "paste";
+  const [paste, setPaste] = useState<PasteSummary>({ count: 0, pending: false });
+  const canKeep = canPaste && !pasting;
+  const [keep, setKeep] = useState(true);
+  const [round, setRound] = useState(0);
+  const finish = (city: string) => {
+    if (canKeep && keep) {
+      setCarry({ name: "", city });
+      setRound((r) => r + 1);
+      return;
+    }
+    onClose();
+  };
   const remove = {
     hotel_ideas: useDeleteRow("hotel_ideas", "hotel idea"),
     food_places: useDeleteRow("food_places", "food place"),
@@ -92,23 +112,31 @@ export function IdeaModal({ kind: startKind, idea, prefill, cities, onClose, onC
       open
       side
       onOpenChange={(o) => !o && onClose()}
-      title={`${editing ? "Edit" : "Add"} ${KIND_LABEL[kind].toLowerCase()}`}
+      title={pasting ? "Add a list" : `${editing ? "Edit" : "Add"} ${KIND_LABEL[kind].toLowerCase()}`}
       footer={
-        <div className="flex items-center gap-3">
-          {editing && (
-            <Button type="button" variant="secondary" size="icon" onClick={onDelete} aria-label="Delete">
-              <Trash2 className="size-5 text-danger" aria-hidden />
-            </Button>
-          )}
-          <Button type="button" variant="outline" size="lg" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button type="submit" form={FORM_ID} size="lg" className="flex-1" disabled={pending}>
-            {submitLabel ?? (editing ? "Save" : "Save draft")}
-          </Button>
-        </div>
+        <FormFooter
+          mode={editing ? "edit" : "add"}
+          formId={FORM_ID}
+          submitLabel={pasting ? (paste.count > 1 ? `Add ${paste.count}` : "Add") : submitLabel}
+          pending={pasting ? pending || paste.pending || paste.count === 0 : pending}
+          onCancel={onClose}
+          onDelete={onDelete}
+          keepAdding={canKeep ? { value: keep, onChange: setKeep } : undefined}
+        />
       }
     >
+      {canPaste && (
+        <Segmented<"one" | "paste">
+          label="How many"
+          value={mode}
+          onChange={setMode}
+          className="mb-3 flex w-full"
+          options={[
+            { value: "one", label: "One place" },
+            { value: "paste", label: "Paste a list" },
+          ]}
+        />
+      )}
       {!editing && (
         <Segmented<IdeaKind>
           label="Category"
@@ -118,18 +146,22 @@ export function IdeaModal({ kind: startKind, idea, prefill, cities, onClose, onC
           options={KINDS.map((k) => ({ value: k.value, label: KIND_LABEL[k.value] }))}
         />
       )}
-      <IdeaForm
-        key={kind}
-        kind={kind}
-        idea={idea}
-        carry={carry}
-        onCarry={setCarry}
-        cities={cities}
-        onClose={onClose}
-        onCreate={onCreate}
-        note={note}
-        fromGoogle={!!prefill?.name}
-      />
+      {pasting ? (
+        <PasteList formId={FORM_ID} kind={kind} cities={cities} onDone={onClose} onSummary={setPaste} />
+      ) : (
+        <IdeaForm
+          key={`${kind}-${round}`}
+          kind={kind}
+          idea={idea}
+          carry={carry}
+          onCarry={setCarry}
+          cities={cities}
+          onDone={finish}
+          onCreate={onCreate}
+          note={note}
+          fromGoogle={!!prefill?.name}
+        />
+      )}
     </Sheet>
   );
 }
@@ -140,7 +172,7 @@ function IdeaForm({
   carry,
   onCarry,
   cities,
-  onClose,
+  onDone,
   onCreate,
   note,
   fromGoogle,
@@ -150,7 +182,8 @@ function IdeaForm({
   carry: Partial<IdeaFormValues>;
   onCarry: (c: Partial<IdeaFormValues>) => void;
   cities: string[];
-  onClose: () => void;
+  /** Called after a save with the area that was saved (keep adding reuses it). */
+  onDone: (city: string) => void;
   onCreate?: (payload: IdeaPayload, done: () => void) => void;
   note?: string;
   fromGoogle: boolean;
@@ -189,13 +222,13 @@ function IdeaForm({
         // Menu items are linked by restaurant name, so carry them over on rename.
         for (const m of menu.filter((x) => menuKey(x.restaurant) === menuKey(idea.name)))
           updateMenu.mutate({ id: m.id, patch: { restaurant: payload.name } });
-      onClose();
+      onDone(out.city);
       return;
     }
-    if (onCreate) return onCreate(payload, onClose);
+    if (onCreate) return onCreate(payload, () => onDone(out.city));
     (insert[payload.table].mutate as (v: unknown) => void)([{ id: newId(), ...payload.columns, ...payload.insertOnly }]);
     toast.success(payload.columns.decision === "confirmed" ? "Added." : "Added as a draft.");
-    onClose();
+    onDone(out.city);
   });
 
   const listId = "idea-areas";

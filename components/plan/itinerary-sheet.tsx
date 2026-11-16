@@ -10,8 +10,8 @@ import { RowSheet } from "@/components/ui/row-sheet";
 import { tripLength } from "@/lib/calc";
 import { ITINERARY_TYPES } from "@/lib/constants";
 import { formatDay } from "@/lib/format";
-import { dateForDay } from "@/lib/itinerary";
-import { placeAtEndOfDay } from "@/lib/queries/itinerary";
+import { dateForDay, type InsertPlan } from "@/lib/itinerary";
+import { placeAtEndOfDay, useMoveItems } from "@/lib/queries/itinerary";
 import { newId, useDeleteRow, useInsertRow, useRows, useUpdateRow, type Row } from "@/lib/queries/table";
 import { optionalNumber, optionalText, requiredText, str } from "@/lib/schemas";
 import type { useSheet } from "@/lib/use-sheet";
@@ -41,11 +41,14 @@ export function ItinerarySheet({
 }: {
   sheet: ReturnType<typeof useSheet<ItineraryItem>>;
   cities: string[];
-  /** Prefill for "add" (e.g. the day you tapped + on). */
-  defaults?: Partial<Pick<In, "day">>;
+  /** Prefill for "add": the day you tapped + on, and where in that day (right after a place) the new activity goes. */
+  defaults?: Partial<Pick<In, "day">> & { plan?: InsertPlan };
 }) {
   const trip = useTrip();
   const all = useRows("itinerary_items").data ?? [];
+  const move = useMoveItems();
+  // The spot is used once; with "Keep adding" the next ones go to the end of the day.
+  const [usedPlan, setUsedPlan] = useState<InsertPlan | null>(null);
   const insert = useInsertRow("itinerary_items", "activity");
   const update = useUpdateRow("itinerary_items", "activity");
   const remove = useDeleteRow("itinerary_items", "activity");
@@ -90,7 +93,12 @@ export function ItinerarySheet({
       sheet.close();
       return;
     }
-    insert.mutate([{ id: newId(), ...fields, ...placeAtEndOfDay(all, day, trip.start_date) }]);
+    const spot = defaults?.plan && defaults.plan !== usedPlan && String(day ?? "") === (defaults.day ?? "") ? defaults.plan : null;
+    if (spot?.renumber.length) move.mutate(spot.renumber);
+    insert.mutate([
+      { id: newId(), ...fields, ...(spot ? { day, on_date: dateForDay(trip.start_date, day), position: spot.position } : placeAtEndOfDay(all, day, trip.start_date)) },
+    ]);
+    if (spot) setUsedPlan(spot);
     if (keepAdding) {
       const keep = getValues();
       reset({ ...keep, activity: "", at_time: "", duration_min: "", note: "", done: false });

@@ -1,14 +1,12 @@
 "use client";
 
-import { Trash2 } from "lucide-react";
 import type { FormEvent, ReactNode } from "react";
-import { Button } from "./button";
+import { FormFooter } from "./form-footer";
 import { Sheet } from "./sheet";
 
 /**
- * Standard add/edit bottom sheet: fields in the body, the primary action pinned at the
- * bottom, and Delete when editing. `keepAdding` (add mode only) renders the
- * "keep adding" toggle used for rapid entry.
+ * Standard add/edit bottom sheet: fields in the body, and the shared footer pinned at the bottom
+ * ([Delete] [Cancel] [Add or Save]). `keepAdding` (add mode only) renders the "keep adding" toggle above the buttons.
  */
 export function RowSheet({
   open,
@@ -40,27 +38,15 @@ export function RowSheet({
       onOpenChange={onOpenChange}
       title={title}
       footer={
-        <div className="flex items-center gap-3">
-          {mode === "edit" && onDelete && (
-            <Button type="button" variant="secondary" size="icon" onClick={onDelete} aria-label="Delete">
-              <Trash2 className="size-5 text-danger" aria-hidden />
-            </Button>
-          )}
-          {mode === "add" && keepAdding && (
-            <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm font-medium select-none">
-              <input
-                type="checkbox"
-                className="size-5 accent-[var(--teal)]"
-                checked={keepAdding.value}
-                onChange={(e) => keepAdding.onChange(e.target.checked)}
-              />
-              Keep adding
-            </label>
-          )}
-          <Button type="submit" form={formId} size="lg" className="flex-1" disabled={pending}>
-            {submitLabel ?? (mode === "add" ? "Add" : "Save")}
-          </Button>
-        </div>
+        <FormFooter
+          mode={mode}
+          formId={formId}
+          submitLabel={submitLabel}
+          pending={pending}
+          onCancel={() => onOpenChange(false)}
+          onDelete={onDelete}
+          keepAdding={keepAdding}
+        />
       }
     >
       <form id={formId} onSubmit={onSubmit} className="space-y-4 pt-1" noValidate>

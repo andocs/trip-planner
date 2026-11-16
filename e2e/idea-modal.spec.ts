@@ -24,7 +24,8 @@ test("owner: add a stay with its details; the card shows the key facts", async (
   await modal.getByLabel("Free until day").fill("1");
   await modal.getByRole("button", { name: "Wifi" }).click();
   await modal.getByRole("switch", { name: /Breakfast included/ }).click();
-  await modal.getByRole("button", { name: "Save draft" }).click();
+  await modal.getByRole("checkbox", { name: "Keep adding" }).uncheck();
+  await modal.getByRole("button", { name: "Add", exact: true }).click();
 
   await expect.poll(() => fake.tables.get("hotel_ideas")?.find((h) => h.hotel === "Canal view hostel")).toBeTruthy();
   const row = fake.tables.get("hotel_ideas")!.find((h) => h.hotel === "Canal view hostel")!;
@@ -66,7 +67,8 @@ test("owner: add a food place; switching category keeps the name; the must-do fl
   await modal.getByRole("switch", { name: /Queue-prone/ }).click();
   await modal.getByRole("switch", { name: /Reservation needed/ }).click();
   await modal.getByRole("switch", { name: /Deal-breaker/ }).click();
-  await modal.getByRole("button", { name: "Save draft" }).click();
+  await modal.getByRole("checkbox", { name: "Keep adding" }).uncheck();
+  await modal.getByRole("button", { name: "Add", exact: true }).click();
 
   await expect.poll(() => fake.tables.get("food_places")?.find((f) => f.name === "Pho Gia Truyen")).toBeTruthy();
   const row = fake.tables.get("food_places")!.find((f) => f.name === "Pho Gia Truyen")!;
@@ -84,14 +86,15 @@ test("a name is required, and a bad number is refused", async ({ page }) => {
   await page.goto("/places?cat=sight");
   await page.getByRole("button", { name: "Add", exact: true }).click();
   const modal = page.getByRole("dialog", { name: "Add sight" });
-  await modal.getByRole("button", { name: "Save draft" }).click();
+  await modal.getByRole("button", { name: "Add", exact: true }).click();
   await expect(modal.getByText("Name is required")).toBeVisible();
   await modal.getByLabel("Name", { exact: true }).fill("Cave");
   await modal.getByLabel("Entrance fee per person").fill("abc");
-  await modal.getByRole("button", { name: "Save draft" }).click();
+  await modal.getByRole("button", { name: "Add", exact: true }).click();
   await expect(modal.getByText("Enter a number")).toBeVisible();
   await modal.getByLabel("Entrance fee per person").fill("0"); // free is allowed
-  await modal.getByRole("button", { name: "Save draft" }).click();
+  await modal.getByRole("checkbox", { name: "Keep adding" }).uncheck();
+  await modal.getByRole("button", { name: "Add", exact: true }).click();
   await expect(page.getByRole("dialog", { name: "Add sight" })).toHaveCount(0);
 });
 

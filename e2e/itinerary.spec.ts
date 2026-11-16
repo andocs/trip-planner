@@ -45,7 +45,7 @@ test("owner: a commute goes between two places, with its length and cost, and co
   await page.goto("/itinerary");
 
   await expect(page.getByRole("separator", { name: /^Day 1 ·/ })).toBeVisible();
-  await page.getByRole("button", { name: "Add a commute or buffer after Lake walk" }).click();
+  await page.getByRole("button", { name: "Add after Lake walk" }).click();
   await page.getByRole("button", { name: "Commute", exact: true }).click();
   const sheet = page.getByRole("dialog", { name: "Add commute" });
   await sheet.getByRole("button", { name: "Taxi / Grab" }).click();
@@ -66,7 +66,58 @@ test("owner: a commute goes between two places, with its length and cost, and co
   await expect(page.getByText("0 of 4 done")).toBeVisible();
 });
 
-test("a commute can't sit next to another commute, so the + only appears between two places", async ({ page }) => {
+test("owner: the + under a place opens into Commute, Rest and Activity, and an activity lands right after it", async ({ page }) => {
+  const fake = createFakeSupabase({ withSeed: true });
+  plan(fake);
+  await fake.install(page);
+  await page.goto("/itinerary");
+
+  await page.getByRole("button", { name: "Add after Lake walk" }).click();
+  const options = page.getByRole("group", { name: "After Lake walk" });
+  await expect(options.getByRole("button", { name: "Commute" })).toBeVisible();
+  await expect(options.getByRole("button", { name: "Rest" })).toBeVisible();
+  await options.getByRole("button", { name: "Activity" }).click();
+
+  const sheet = page.getByRole("dialog", { name: "Add activity" });
+  await expect(sheet.getByLabel("Day")).toHaveValue("1");
+  await sheet.getByLabel("Activity", { exact: true }).fill("Egg coffee stop");
+  await sheet.getByRole("button", { name: "Add", exact: true }).click();
+
+  await expect.poll(() => fake.tables.get("itinerary_items")?.find((i) => i.activity === "Egg coffee stop")).toBeTruthy();
+  const added = fake.tables.get("itinerary_items")!.find((i) => i.activity === "Egg coffee stop")!;
+  expect(added).toMatchObject({ day: 1, position: 1500 }); // between Lake walk (1000) and the next place (2000)
+});
+
+test("the + opens from the keyboard", async ({ page }) => {
+  const fake = createFakeSupabase({ withSeed: true });
+  plan(fake);
+  await fake.install(page);
+  await page.goto("/itinerary");
+
+  await page.getByRole("button", { name: "Add after Lake walk" }).focus();
+  const options = page.getByRole("group", { name: "After Lake walk" });
+  await expect(options.getByRole("button", { name: "Activity" })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(options.getByRole("button", { name: "Activity" })).toHaveCount(0);
+});
+
+test("owner: Rest from the + adds a rest between two places", async ({ page }) => {
+  const fake = createFakeSupabase({ withSeed: true });
+  plan(fake);
+  await fake.install(page);
+  await page.goto("/itinerary");
+
+  await page.getByRole("button", { name: "Add after Lake walk" }).click();
+  await page.getByRole("group", { name: "After Lake walk" }).getByRole("button", { name: "Rest" }).click();
+  const sheet = page.getByRole("dialog", { name: "Add rest" });
+  await sheet.getByLabel("Or any number of minutes").fill("20");
+  await sheet.getByRole("button", { name: "Add", exact: true }).click();
+
+  await expect.poll(() => fake.tables.get("itinerary_items")?.find((i) => i.kind === "buffer")).toBeTruthy();
+  expect(fake.tables.get("itinerary_items")!.find((i) => i.kind === "buffer")).toMatchObject({ duration_min: 20, day: 1, position: 1500 });
+});
+
+test("a commute can't sit next to another commute, so the + is not offered next to one", async ({ page }) => {
   const fake = createFakeSupabase({ withSeed: true });
   plan(fake);
   const items = fake.tables.get("itinerary_items")!;
@@ -75,8 +126,8 @@ test("a commute can't sit next to another commute, so the + only appears between
   await page.goto("/itinerary");
 
   // Lake walk is followed by a commute, so there is no + after it; Bun cha lunch -> Temple visit still has one.
-  await expect(page.getByRole("button", { name: "Add a commute or buffer after Lake walk" })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Add a commute or buffer after Bun cha lunch" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Add after Lake walk" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Add after Bun cha lunch" })).toBeAttached();
   await expect(page.getByRole("button", { name: /^Walk, 12m\. Edit/ })).toBeVisible();
 });
 
@@ -151,7 +202,7 @@ test("viewer: a static list with no reorder, no add and no handles", async ({ pa
   await expect(page.getByRole("button", { name: "Reorder" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Add", exact: true })).toHaveCount(0);
   await expect(page.getByRole("button", { name: /^Drag / })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: /Add a commute or buffer/ })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /^Add after / })).toHaveCount(0);
   await expect(page.getByRole("checkbox")).toHaveCount(0);
 });
 

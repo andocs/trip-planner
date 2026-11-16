@@ -48,6 +48,7 @@ test("add a VND expense and see it converted and split", async ({ page }) => {
   await expect(sheet.getByText("≈ PHP 2,457.00")).toBeVisible();
   await sheet.getByLabel("Description").fill("Pho tour");
   await sheet.getByLabel("Paid by").selectOption({ label: "Aq" });
+  await sheet.getByRole("checkbox", { name: "Keep adding" }).uncheck(); // on by default; this test closes the sheet
   await sheet.getByRole("button", { name: "Add expense" }).click();
 
   await expect(page.getByText("Pho tour").filter({ visible: true })).toBeVisible();
