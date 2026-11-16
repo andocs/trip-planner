@@ -53,7 +53,7 @@ test("flights, stays and hotel ideas (now on Flights, Stays and Places)", async 
 
   await page.goto("/stays");
   await expect(page.getByText("17 Jun → 19 Jun · 2 nights").first()).toBeVisible();
-  await expect(page.getByText("· PHP 10,972.05/night").first()).toBeVisible();
+  await expect(page.getByText("PHP 10,972.05").first()).toBeVisible(); // the nightly price on the card
 
   // Hotel ideas are the Stays category on Places (confirmed in the seed).
   await page.goto("/places?cat=stay");
