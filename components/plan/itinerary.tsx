@@ -19,10 +19,8 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useState, type ReactNode } from "react";
 import { toast } from "sonner";
-import { RouteMap, StopsCard } from "@/components/home/dashboard";
 import { EditOnly, useCanEdit, useTrip } from "@/components/trip-gate";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyText } from "@/components/view-only-banner";
 import { itineraryProgress, tripLength } from "@/lib/calc";
@@ -40,7 +38,9 @@ import {
   type StayMark,
 } from "@/lib/itinerary";
 import { useIdeas } from "@/lib/queries/ideas";
+import type { MapStop } from "@/components/map/map-view";
 import { useImages, usePhotoUrls } from "@/lib/queries/images";
+import { freshCoords, usePlaceRefs } from "@/lib/queries/places";
 import { useMoveItems } from "@/lib/queries/itinerary";
 import { useRows, useUpdateRow } from "@/lib/queries/table";
 import { useMedia } from "@/lib/use-media";
@@ -49,6 +49,7 @@ import { cn } from "@/lib/utils";
 import { AddHere } from "./add-here";
 import type { ConnectorTarget } from "./connector-sheet";
 import { ConnectorRow, DaySplit, StayRow, StopCard } from "./itinerary-entries";
+import { ItineraryRoute } from "./itinerary-route";
 import type { ActivityDefaults, ItineraryItem } from "./itinerary-sheet";
 
 const ItinerarySheet = dynamic(() => import("./itinerary-sheet").then((m) => m.ItinerarySheet), { ssr: false });
@@ -92,6 +93,7 @@ export function Itinerary() {
   const stays = useRows("stays");
   const { ideas } = useIdeas();
   const { byIdea: imagesBy } = useImages();
+  const refs = usePlaceRefs();
   const urlOf = usePhotoUrls();
   const update = useUpdateRow("itinerary_items", "activity");
   const move = useMoveItems();
@@ -135,6 +137,17 @@ export function Itinerary() {
     for (const m of marks.filter((x) => x.day === g.day && x.kind === "in")) entries.push({ kind: "mark", id: m.id, mark: m });
   }
   const nothing = items.length === 0 && marks.length === 0;
+
+  // The route: solid stops only (a tentative stop is a draft placeholder), in the order of the list, numbered as in the list.
+  // A stop's position is its saved place's coordinates while they are fresh (30 days); a stop without one is counted, not drawn.
+  const routeStops: MapStop[] = [];
+  let missing = 0;
+  for (const e of entries) {
+    if (e.kind !== "item" || !isStop(e.item) || e.item.tentative) continue;
+    const coords = e.item.source_table && e.item.source_id ? freshCoords(refs.byIdea.get(`${e.item.source_table}:${e.item.source_id}`)) : null;
+    if (coords) routeStops.push({ id: e.item.id, name: e.item.activity, label: number.get(e.item.id), ...coords });
+    else missing++;
+  }
 
   const addToDay = (day: number | null) => {
     setDefaults({ day: day === null ? "" : String(day) });
@@ -220,7 +233,7 @@ export function Itinerary() {
         <SortableRow key={e.id} id={e.id} locked label="day" cover={k === 0}>
           {() => (
             <>
-              <DaySplit group={e.group} totals={totals} stops={stops + tentative} onAdd={canEdit && !editing ? () => addToDay(e.group.day) : undefined} />
+              <DaySplit group={e.group} totals={totals} stops={stops + tentative} />
               {tentative > 0 && !editing && (
                 <p className="mb-4 ml-[54px] text-[13px] text-fg-muted">
                   {tentative} tentative {tentative === 1 ? "stop isn’t" : "stops aren’t"} in this day’s count or the export until confirmed on the board.
@@ -296,13 +309,8 @@ export function Itinerary() {
       <div className="relative z-[1] -mt-8 rounded-t-[28px] bg-ground px-4 pt-5 pb-8 lg:mt-0 lg:grid lg:grid-cols-[minmax(0,1fr)_300px] lg:items-start lg:gap-6 lg:rounded-none lg:px-8">
         {showMap && !wide && (
           // On a phone or tablet the map (and the one Google map load it costs) only appears when asked for.
-          <div className="mb-5 space-y-3">
-            <Card className="p-3">
-              <div className="relative h-[220px] overflow-hidden rounded-2xl bg-[var(--sea)]">
-                <RouteMap bottomInset={40} />
-              </div>
-            </Card>
-            <StopsCard />
+          <div className="mb-5">
+            <ItineraryRoute stops={routeStops} missing={missing} />
           </div>
         )}
 
@@ -367,12 +375,7 @@ export function Itinerary() {
         {wide && (
           // On a wide screen the route sits beside the list, as in the mockup.
           <aside aria-label="Route" className="sticky top-6 self-start">
-            <Card className="p-3">
-              <div className="relative h-[260px] overflow-hidden rounded-2xl bg-[var(--sea)]">
-                <RouteMap bottomInset={40} />
-              </div>
-              <p className="mt-2 text-sm text-fg-muted">Stops in order. Straight lines, no routing service.</p>
-            </Card>
+            <ItineraryRoute stops={routeStops} missing={missing} />
           </aside>
         )}
       </div>

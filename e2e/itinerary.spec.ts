@@ -212,8 +212,19 @@ test("on a wide screen the route sits beside the list, with no Map pill", async 
   await createFakeSupabase({ withSeed: true }).install(page);
   await page.goto("/itinerary");
   await expect(page.getByRole("complementary", { name: "Route" })).toBeVisible();
-  await expect(page.getByText("Stops in order. Straight lines, no routing service.")).toBeVisible();
+  await expect(page.getByText(/Numbered as in the list, in the order you travel/)).toBeVisible();
   await expect(page.getByRole("button", { name: "Map", exact: true })).toBeHidden();
+});
+
+test("the route links to directions through the stops in order (no map position, no link)", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  const fake = createFakeSupabase({ withSeed: true });
+  plan(fake);
+  await fake.install(page);
+  await page.goto("/itinerary");
+  // The seeded stops have no saved place coordinates, so none is drawn and the panel says so instead of inventing a route.
+  await expect(page.getByText(/stops? (has|have) no map position yet/)).toBeVisible();
+  await expect(page.getByRole("link", { name: "Open directions in Google Maps" })).toHaveCount(0);
 });
 
 test("the + sits centred under its place and opens into one 340 by 44 line", async ({ page }) => {

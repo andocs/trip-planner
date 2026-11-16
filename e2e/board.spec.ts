@@ -67,11 +67,11 @@ test("owner: a tentative stop is dashed and uncounted; confirming makes it solid
   await expect(page.getByText("0 of 140 done")).toBeVisible(); // not counted
   const stop = page.getByRole("button", { name: new RegExp(`Tentative: ${CARD}`) });
   await expect(stop).toBeVisible();
-  await expect(page.getByRole("link", { name: "On the board" })).toBeVisible();
+  await expect(page.getByRole("link", { name: /on the board/ })).toBeVisible();
   await expect(page.getByText(/1 tentative stop isn.t in this day.s count/)).toBeVisible();
 
   // Confirm the source on the board: the stop becomes a normal, counted stop.
-  await page.getByRole("link", { name: "On the board" }).click();
+  await page.getByRole("link", { name: /on the board/ }).click();
   await expect(page.getByRole("dialog", { name: CARD })).toBeVisible();
   await page
     .getByRole("dialog")
@@ -80,7 +80,7 @@ test("owner: a tentative stop is dashed and uncounted; confirming makes it solid
   await expect.poll(() => fake.tables.get("itinerary_items")!.find((i) => i.activity === CARD)?.tentative).toBe(false);
   await page.goto("/itinerary");
   await expect(page.getByText("0 of 141 done")).toBeVisible();
-  await expect(page.getByRole("link", { name: "On the board" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: /on the board/ })).toHaveCount(0);
 });
 
 test("owner: dropping an idea removes its tentative stop and lists it under Dropped", async ({ page }) => {
