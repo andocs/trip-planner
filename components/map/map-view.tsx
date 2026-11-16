@@ -40,6 +40,7 @@ export function MapView({
   insets = { top: 80, right: 24, bottom: 24, left: 24 },
   label = "Trip map",
   interactive = true,
+  cooperative = false,
   arrows = false,
   className,
 }: {
@@ -53,6 +54,8 @@ export function MapView({
   label?: string;
   /** false for a picture-only map (Home): no dragging or zooming, so the page scrolls normally. */
   interactive?: boolean;
+  /** A map inside a scrolling page (a hero): Ctrl + scroll zooms and two fingers move it, so the page still scrolls over it. */
+  cooperative?: boolean;
   /** Solid lines with an arrow on each leg, in the order of the stops (the order of travel). Otherwise a dashed line. */
   arrows?: boolean;
   className?: string;
@@ -81,7 +84,7 @@ export function MapView({
             colorScheme={dark ? "DARK" : "LIGHT"}
             defaultCenter={{ lat: 20, lng: 105 }}
             defaultZoom={3}
-            gestureHandling={interactive ? "greedy" : "none"}
+            gestureHandling={interactive ? (cooperative ? "cooperative" : "greedy") : "none"}
             disableDefaultUI
             zoomControl={interactive}
             keyboardShortcuts={interactive}

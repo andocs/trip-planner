@@ -207,13 +207,62 @@ test("viewer: a static list with no reorder, no add and no handles", async ({ pa
   await expect(page.getByRole("checkbox")).toHaveCount(0);
 });
 
-test("on a wide screen the route sits beside the list, with no Map pill", async ({ page }) => {
+test("the route map is the hero, behind the title, and there is no side column or Map pill", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   await createFakeSupabase({ withSeed: true }).install(page);
   await page.goto("/itinerary");
-  await expect(page.getByRole("complementary", { name: "Route" })).toBeVisible();
-  await expect(page.getByText(/Numbered as in the list, in the order you travel/)).toBeVisible();
-  await expect(page.getByRole("button", { name: "Map", exact: true })).toBeHidden();
+  const hero = page.locator("header").filter({ has: page.getByRole("group", { name: "Itinerary view" }) });
+  await expect(hero.getByText("Map unavailable here.")).toBeVisible(); // the stand-in when the e2e run has no Google key
+  await expect(page.getByRole("complementary", { name: "Route" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Map", exact: true })).toHaveCount(0);
+});
+
+test("Enlarge map makes the hero taller, and Reduce map puts it back", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await createFakeSupabase({ withSeed: true }).install(page);
+  await page.goto("/itinerary");
+  const hero = page.locator("header").filter({ has: page.getByRole("group", { name: "Itinerary view" }) });
+  const height = async () => Math.round((await hero.boundingBox())!.height);
+  const small = await height();
+  await page.getByRole("button", { name: "Enlarge map" }).click();
+  await expect(page.getByRole("button", { name: "Reduce map" })).toHaveAttribute("aria-pressed", "true");
+  await expect.poll(height).toBeGreaterThan(small + 100);
+  await page.getByRole("button", { name: "Reduce map" }).click();
+  await expect.poll(height).toBe(small);
+});
+
+test("each card has one menu: edit, mark complete, remove (with undo)", async ({ page }) => {
+  const fake = createFakeSupabase({ withSeed: true });
+  plan(fake);
+  await fake.install(page);
+  await page.goto("/itinerary");
+  // The Done circle and the edit chevron are folded into the menu.
+  await expect(page.getByRole("checkbox")).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Lake walk. Menu" }).click();
+  await page.getByRole("menuitem", { name: "Mark complete" }).click();
+  await expect.poll(() => fake.tables.get("itinerary_items")!.find((i) => i.activity === "Lake walk")?.done).toBe(true);
+  await page.getByRole("button", { name: "Lake walk. Menu" }).click();
+  await expect(page.getByRole("menuitem", { name: "Mark incomplete" })).toBeVisible();
+  await page.keyboard.press("Escape");
+
+  await page.getByRole("button", { name: "Lake walk. Menu" }).click();
+  await page.getByRole("menuitem", { name: "Edit" }).click();
+  await expect(page.getByRole("dialog", { name: "Edit activity" })).toBeVisible();
+  await page.getByRole("dialog", { name: "Edit activity" }).getByRole("button", { name: "Cancel" }).click();
+
+  await page.getByRole("button", { name: "Temple visit. Menu" }).click();
+  await page.getByRole("menuitem", { name: "Remove from itinerary" }).click();
+  await expect.poll(() => fake.tables.get("itinerary_items")!.some((i) => i.activity === "Temple visit")).toBe(false);
+});
+
+test("viewer: no card menu", async ({ page }) => {
+  const fake = createFakeSupabase({ withSeed: true, role: "viewer" });
+  plan(fake);
+  await fake.install(page);
+  await page.goto("/itinerary");
+  await expect(page.getByRole("heading", { name: "Lake walk" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /\. Menu$/ })).toHaveCount(0);
 });
 
 test("the route links to directions through the stops in order (no map position, no link)", async ({ page }) => {
@@ -224,7 +273,7 @@ test("the route links to directions through the stops in order (no map position,
   await page.goto("/itinerary");
   // The seeded stops have no saved place coordinates, so none is drawn and the panel says so instead of inventing a route.
   await expect(page.getByText(/stops? (has|have) no map position yet/)).toBeVisible();
-  await expect(page.getByRole("link", { name: "Open directions in Google Maps" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: /^Directions/ })).toHaveCount(0);
 });
 
 test("the + sits centred under its place and opens into one 340 by 44 line", async ({ page }) => {
@@ -240,12 +289,12 @@ test("the + sits centred under its place and opens into one 340 by 44 line", asy
   await zone.hover();
   const trigger = page.getByRole("button", { name: "Add after Lake walk" });
   const pill = page.getByRole("group", { name: "After Lake walk" });
-  // The whole control stays centred in the list whether it is a circle or the open line (the wide layout also
-  // settles just after hydration, so measure until it holds still).
+  // The whole control stays centred on the cards (the list minus the 54px dotted-line column on the left), whether it is
+  // a circle or the open line.
   await expect
     .poll(async () => {
       const [t, list] = [await pill.boundingBox(), await pill.locator("xpath=ancestor::ol[1]").boundingBox()];
-      return Math.abs(t!.x + t!.width / 2 - (list!.x + list!.width / 2));
+      return Math.abs(t!.x + t!.width / 2 - (list!.x + 54 + (list!.width - 54) / 2));
     })
     .toBeLessThan(2);
   // Opened, it is one 340 by 44 line.
@@ -255,13 +304,3 @@ test("the + sits centred under its place and opens into one 340 by 44 line", asy
   expect(Math.round((await pill.boundingBox())!.height)).toBe(44);
 });
 
-test("the map only loads when asked for (phone)", async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
-  await createFakeSupabase({ withSeed: true }).install(page);
-  await page.goto("/itinerary");
-  const map = page.getByRole("button", { name: "Map", exact: true });
-  await expect(map).toHaveAttribute("aria-pressed", "false");
-  await expect(page.getByRole("heading", { name: "Stops" })).toHaveCount(0);
-  await map.click();
-  await expect(map).toHaveAttribute("aria-pressed", "true");
-});

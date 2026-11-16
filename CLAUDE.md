@@ -53,7 +53,8 @@ Mockups live in `design/mockups/revision.html` (variants A to J; J is the chosen
   and `lib/itinerary-rows.ts`. UI in `components/plan/itinerary*.tsx`, `connector-sheet.tsx`. @dnd-kit does the dragging (Reorder mode, owner/editor only).
   **The day number is the source of truth:** a day's date is derived from the trip start and written to `on_date` on save; there is no date input.
   Connectors are rows with `kind <> 'stop'`; `solidStops` (calc.ts) excludes them from every counter and the export.
-  Stays appear on their check-in / check-out days from the Stays page (not stored). On a wide screen (1024px up) the route map sits in a right-hand column beside the list (one Google map load per visit, as in the mockup); on a phone or tablet it only mounts when the Map pill is pressed. The map (`components/plan/itinerary-route.tsx`) draws the solid, non-tentative stops that have a fresh saved place position (`place_refs`, 30 days), numbered as in the list, with an arrow on each leg in travel order. Stops without a position are counted, not drawn. "Open directions in Google Maps" opens the road route through those stops (a browser link, so no Google API call or quota).
+  Stays appear on their check-in / check-out days from the Stays page (not stored). The route map is the page hero: the header's background (`MapView` with `cooperative` gestures: Ctrl + scroll or two fingers zoom, the page still scrolls), with the title and pills on a dark gradient in the existing colours. The "Enlarge map" / "Reduce map" pill makes the header taller. It draws the solid, non-tentative stops that have a fresh saved place position (`place_refs`, 30 days), numbered as in the list, with an arrow on each leg in travel order. Stops without a position are counted ("N stops have no map position yet"), not drawn. The "Directions" pill opens the road route through those stops in Google Maps (`directionsUrl` in `lib/itinerary.ts`; a browser link, so no Google API call or quota). One Google map load per Itinerary visit, on every screen size.
+  Each stop card has one hamburger menu at its upper right (Radix DropdownMenu, `CardMenu` in `itinerary-entries.tsx`): Edit, Mark complete / Mark incomplete, Open on the board (drafts), Remove from itinerary (with the usual undo toast). It replaces the old Done circle, edit chevron and board link. In Reorder mode the drag handle takes its place; viewers get no menu.
   Under each activity, `components/plan/add-here.tsx` is a 44px circle (shown on hover of the card's bottom edge, always on touch) that opens into
   **Commute | Rest | Activity**; Activity inserts at that spot (`planInsert`). Not offered next to a commute or rest, in Reorder mode, or to viewers.
 - **Home reminders:** `lib/reminders.ts` + `components/home/reminders-card.tsx`; dismissals live in localStorage.
@@ -226,6 +227,21 @@ APP_URL=http://localhost:3000 (local only)
 4. Test in accessibility inspector (Windows + Shift + F10 → Ease of Access)
 
 ---
+
+## Phase 7: Itinerary map hero + card menu (branch revision/itinerary-map-hero) — MOCKUPS ONLY, AWAITING APPROVAL
+
+Map becomes the page hero (pan/zoom, enlarge, stop chips, day filter); per-card upper-right menu (Edit / Mark complete / Remove from
+itinerary) replaces the Reorder and Add buttons at the top (grip handle on hover replaces Reorder mode); add control redone as one
+outlined shape that fills and stretches; days with no items are hidden, with a "Plan Day N" button after the last one.
+Mockups: **`design/mockups/itinerary-hero-redo.html`** (gitignored folder; one interactive file with Light/Night, Desktop/Phone, Map hero/enlarged,
+Days only-with-items vs all-11, card-menu and add-control state toggles, a Guides overlay for the spacing, and the proposal and open decisions
+under the frame). It replaces `phase7-map-hero.html`, `-v2` and `-v3`, which the user told us to disregard. No app code written yet.
+Do not build the rest of it until the user approves it; build to the file's CSS and sizes. Open decisions are listed at the bottom of the mockup page.
+
+**Built so far, as a deliberately minimal version (user: "make minimal changes to the existing UI, follow the colors, layout and fonts")**:
+the map is the hero background (Enlarge map pill, Directions pill), each card has the hamburger menu, and the "+" is centred on the card column
+and stays white (it does NOT follow the mockup's teal fill). **Not built:** removing the Reorder and Add buttons at the top, the hover grip,
+hiding days with no items and "Plan Day N", the teal-filling add control, stop chips and day filter on the map.
 
 ## Next Phase (Planned but Not Started)
 

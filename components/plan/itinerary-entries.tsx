@@ -7,24 +7,27 @@ import {
   Bus,
   CalendarDays,
   Car,
-  ChevronRight,
+  CircleCheck,
   Coffee,
   Footprints,
   Hourglass,
   Landmark,
   LogIn,
+  Menu,
+  Pencil,
   Plane,
   Timer,
+  Trash2,
   TriangleAlert,
   Train,
   Utensils,
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
+import { DropdownMenu } from "radix-ui";
 import type { ReactNode } from "react";
 import { CHIP_ICONS, MustFlag } from "@/components/ideas/idea-chips";
 import { PhotoImg } from "@/components/photos/photo-img";
-import { CheckButton } from "@/components/ui/check";
 import { formatDay, formatDuration, formatMoney } from "@/lib/format";
 import { KIND_LABEL, type Idea } from "@/lib/drafts";
 import { connectorDetails, connectorLabel, formatTotal, kindOf, type DayGroup, type DayTotals, type StayMark } from "@/lib/itinerary";
@@ -92,6 +95,7 @@ export function StopCard({
   compact,
   onOpen,
   onDone,
+  onRemove,
   handle,
   children,
 }: {
@@ -106,6 +110,7 @@ export function StopCard({
   compact: boolean;
   onOpen: () => void;
   onDone: (done: boolean) => void;
+  onRemove: () => void;
   handle?: ReactNode;
   children?: ReactNode;
 }) {
@@ -114,7 +119,7 @@ export function StopCard({
   const type = item.type ?? (idea ? KIND_LABEL[idea.kind] : "Stop");
   const sub = item.note && !/^https?:\/\//i.test(item.note) ? item.note.split("\n")[0] : (item.city ?? "");
   return (
-    <div className="group/card grid grid-cols-[40px_1fr] gap-3.5 pb-5">
+    <div className="grid grid-cols-[40px_1fr] gap-3.5 pb-5">
       <Node tone={item.tentative ? "tentative" : "ink"}>{number}</Node>
       <div className="min-w-0">
         <div className="flex items-start gap-1">
@@ -129,31 +134,7 @@ export function StopCard({
             </h3>
             {!compact && sub && <p className="mt-1 line-clamp-1 text-sm text-fg-muted">{sub}</p>}
           </div>
-          {canEdit && !compact && !item.tentative && (
-            <CheckButton checked={item.done} onChange={onDone} label={`Done: ${item.activity}`} className="-mt-1" />
-          )}
-          {item.tentative && item.source_id && !compact && (
-            // The draft's place on the board: shown when the card is hovered or focused, and always on a touch screen.
-            <Link
-              href={`/places?idea=${item.source_table}:${item.source_id}`}
-              aria-label={`Open ${item.activity} on the board`}
-              title="Open on the board"
-              className="-mt-1 grid size-11 shrink-0 place-items-center rounded-full bg-surface text-fg shadow-[inset_0_0_0_1.5px_var(--line)] opacity-0 transition-opacity group-hover/card:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-100"
-            >
-              <ArrowUpRight className="size-5" strokeWidth={2.4} aria-hidden />
-            </Link>
-          )}
-          {handle ??
-            (canEdit ? (
-              <button
-                type="button"
-                onClick={onOpen}
-                aria-label={`${item.tentative ? "Tentative: " : ""}${item.activity}. Edit`}
-                className="-mt-1 -mr-1.5 grid size-11 shrink-0 place-items-center rounded-full bg-surface text-fg shadow-[inset_0_0_0_1.5px_var(--line)]"
-              >
-                <ChevronRight className="size-[22px]" strokeWidth={2.4} aria-hidden />
-              </button>
-            ) : null)}
+          {handle ?? (canEdit ? <CardMenu item={item} onEdit={onOpen} onDone={onDone} onRemove={onRemove} /> : null)}
         </div>
         <div
           className={cn(
@@ -181,6 +162,47 @@ export function StopCard({
         {children}
       </div>
     </div>
+  );
+}
+
+/** The card's one menu, at its upper right: edit it, mark it done, open its place on the board (drafts), or take it out of the itinerary. */
+function CardMenu({ item, onEdit, onDone, onRemove }: { item: Item; onEdit: () => void; onDone: (done: boolean) => void; onRemove: () => void }) {
+  const row = "flex min-h-11 cursor-pointer items-center gap-2.5 rounded-xl px-3 text-sm font-medium outline-none data-[highlighted]:bg-surface-2";
+  return (
+    <DropdownMenu.Root>
+      <DropdownMenu.Trigger
+        aria-label={`${item.tentative ? "Tentative: " : ""}${item.activity}. Menu`}
+        className="mt-1 -mr-1.5 grid size-11 shrink-0 place-items-center rounded-full bg-surface text-fg shadow-[inset_0_0_0_1.5px_var(--line)]"
+      >
+        <Menu className="size-[22px]" strokeWidth={2.4} aria-hidden />
+      </DropdownMenu.Trigger>
+      <DropdownMenu.Portal>
+        <DropdownMenu.Content align="end" sideOffset={4} className="z-50 min-w-52 rounded-2xl border border-border bg-surface p-1.5 shadow-card">
+          <DropdownMenu.Item onSelect={onEdit} className={row}>
+            <Pencil className="size-4 text-fg-muted" aria-hidden />
+            Edit
+          </DropdownMenu.Item>
+          {!item.tentative && (
+            <DropdownMenu.Item onSelect={() => onDone(!item.done)} className={row}>
+              <CircleCheck className="size-4 text-fg-muted" aria-hidden />
+              {item.done ? "Mark incomplete" : "Mark complete"}
+            </DropdownMenu.Item>
+          )}
+          {item.tentative && item.source_id && (
+            <DropdownMenu.Item asChild className={row}>
+              <Link href={`/places?idea=${item.source_table}:${item.source_id}`}>
+                <ArrowUpRight className="size-4 text-fg-muted" aria-hidden />
+                Open on the board
+              </Link>
+            </DropdownMenu.Item>
+          )}
+          <DropdownMenu.Item onSelect={onRemove} className={cn(row, "text-danger")}>
+            <Trash2 className="size-4" aria-hidden />
+            Remove from itinerary
+          </DropdownMenu.Item>
+        </DropdownMenu.Content>
+      </DropdownMenu.Portal>
+    </DropdownMenu.Root>
   );
 }
 

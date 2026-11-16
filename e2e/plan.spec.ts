@@ -14,9 +14,9 @@ test("itinerary groups by day, toggles done, and asks only for the day", async (
   await expect(page.getByRole("separator", { name: /^Day 1 · Tue 16 Jun/ })).toBeVisible();
   await expect(page.getByText("0 of 140 done")).toBeVisible();
 
-  const done = page.getByRole("checkbox", { name: "Done: Drop off bags @ Ville de Mont" });
-  await done.click();
-  await expect(done).toHaveAttribute("aria-checked", "true");
+  // Done is in the card's menu now.
+  await page.getByRole("button", { name: "Drop off bags @ Ville de Mont. Menu" }).click();
+  await page.getByRole("menuitem", { name: "Mark complete" }).click();
   await expect(page.getByText("1 of 140 done")).toBeVisible();
   await expect
     .poll(() => fake.tables.get("itinerary_items")?.find((i) => i.activity === "Drop off bags @ Ville de Mont")?.done)

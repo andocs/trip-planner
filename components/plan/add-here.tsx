@@ -37,7 +37,8 @@ export function AddHere({
     fn();
   };
   return (
-    <li className="add-zone relative z-[6] -mt-5 flex h-16 items-center justify-center">
+    // The 54px on the left is the dotted line's column (40px node + 14px gap): the control is centred on the cards, not on the whole list.
+    <li className="add-zone relative z-[6] -mt-5 ml-[54px] flex h-16 items-center justify-center">
       <div
         role="group"
         aria-label={`After ${label}`}

@@ -14,7 +14,7 @@ import {
 } from "@dnd-kit/core";
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { ArrowUpDown, Check, CalendarPlus, Ellipsis, GripVertical } from "lucide-react";
+import { ArrowUpDown, ArrowUpRight, Check, CalendarPlus, Ellipsis, GripVertical } from "lucide-react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useState, type ReactNode } from "react";
@@ -27,6 +27,7 @@ import { itineraryProgress, tripLength } from "@/lib/calc";
 import { formatDateRange } from "@/lib/format";
 import {
   dayTotals,
+  directionsUrl,
   groupDays,
   insertProblem,
   isStop,
@@ -38,18 +39,17 @@ import {
   type StayMark,
 } from "@/lib/itinerary";
 import { useIdeas } from "@/lib/queries/ideas";
-import type { MapStop } from "@/components/map/map-view";
+import { MapView, type MapStop } from "@/components/map/map-view";
 import { useImages, usePhotoUrls } from "@/lib/queries/images";
 import { freshCoords, usePlaceRefs } from "@/lib/queries/places";
 import { useMoveItems } from "@/lib/queries/itinerary";
-import { useRows, useUpdateRow } from "@/lib/queries/table";
+import { useDeleteRow, useRows, useUpdateRow } from "@/lib/queries/table";
 import { useMedia } from "@/lib/use-media";
 import { useSheet } from "@/lib/use-sheet";
 import { cn } from "@/lib/utils";
 import { AddHere } from "./add-here";
 import type { ConnectorTarget } from "./connector-sheet";
 import { ConnectorRow, DaySplit, StayRow, StopCard } from "./itinerary-entries";
-import { ItineraryRoute } from "./itinerary-route";
 import type { ActivityDefaults, ItineraryItem } from "./itinerary-sheet";
 
 const ItinerarySheet = dynamic(() => import("./itinerary-sheet").then((m) => m.ItinerarySheet), { ssr: false });
@@ -94,6 +94,7 @@ export function Itinerary() {
   const { ideas } = useIdeas();
   const { byIdea: imagesBy } = useImages();
   const refs = usePlaceRefs();
+  const removeRow = useDeleteRow("itinerary_items", "activity");
   const urlOf = usePhotoUrls();
   const update = useUpdateRow("itinerary_items", "activity");
   const move = useMoveItems();
@@ -101,7 +102,7 @@ export function Itinerary() {
   const [defaults, setDefaults] = useState<ActivityDefaults>();
   const [connector, setConnector] = useState<ConnectorTarget | null>(null);
   const [reorder, setReorder] = useState(false);
-  const [showMap, setShowMap] = useState(false);
+  const [big, setBig] = useState(false);
   const wide = useMedia("(min-width: 1024px)");
   const [dragging, setDragging] = useState<string | null>(null);
 
@@ -148,6 +149,7 @@ export function Itinerary() {
     if (coords) routeStops.push({ id: e.item.id, name: e.item.activity, label: number.get(e.item.id), ...coords });
     else missing++;
   }
+  const directions = directionsUrl(routeStops);
 
   const addToDay = (day: number | null) => {
     setDefaults({ day: day === null ? "" : String(day) });
@@ -219,6 +221,7 @@ export function Itinerary() {
         compact={editing}
         onOpen={() => sheet.openEdit(item)}
         onDone={(done) => update.mutate({ id: item.id, patch: { done } })}
+        onRemove={() => removeRow(item, `“${item.activity}”`)}
         handle={handle}
       />
     );
@@ -276,9 +279,26 @@ export function Itinerary() {
 
   return (
     <div className="-mx-4 -mt-4 lg:mx-0 lg:mt-0 lg:overflow-hidden lg:rounded-[28px] lg:bg-ground lg:shadow-card">
-      <header className="relative overflow-hidden bg-[#12392f] px-4 pt-5 pb-14 text-white dark:bg-[#0f2a24] dark:text-[#e8f0ec] lg:px-8 lg:pt-8 lg:pb-16">
+      <header
+        className={cn(
+          "relative overflow-hidden bg-[#12392f] px-4 pt-5 pb-14 text-white transition-[min-height] duration-300 motion-reduce:transition-none dark:bg-[#0f2a24] dark:text-[#e8f0ec] lg:px-8 lg:pt-8 lg:pb-16",
+          big ? "min-h-[480px] lg:min-h-[560px]" : "min-h-[300px] lg:min-h-[340px]",
+        )}
+      >
+        {/* The route map is the hero: stops numbered as in the list, an arrow on each leg. Ctrl + scroll zooms it; the page still scrolls. */}
+        <div className="absolute inset-0">
+          <MapView
+            stops={routeStops}
+            arrows
+            interactive
+            cooperative
+            label="Route through the stops"
+            insets={wide ? { top: 40, right: 40, bottom: 70, left: 360 } : { top: 130, right: 24, bottom: 90, left: 24 }}
+          />
+        </div>
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-[#12392f] via-[#12392f]/55 to-transparent dark:from-[#0f2a24] dark:via-[#0f2a24]/55 lg:bg-gradient-to-r lg:from-[#12392f] lg:via-[#12392f]/70 lg:to-transparent lg:dark:from-[#0f2a24] lg:dark:via-[#0f2a24]/70" aria-hidden />
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(120%_90%_at_85%_0%,color-mix(in_srgb,var(--teal)_38%,transparent),transparent_60%)]" aria-hidden />
-        <div className="relative flex items-start justify-between gap-3">
+        <div className="pointer-events-none relative flex items-start justify-between gap-3">
           <div className="min-w-0">
             <h1 className="sr-only">Itinerary</h1>
             <p className="font-display text-[32px] leading-[1.05] font-extrabold tracking-tight text-balance lg:text-[40px]" aria-hidden>
@@ -287,36 +307,42 @@ export function Itinerary() {
             <p className="mt-1.5 text-sm text-[#b9d6cc]">{[len ? `${len} days` : null, formatDateRange(trip.start_date, trip.end_date)].filter(Boolean).join(" · ")}</p>
           </div>
         </div>
-        <div className="relative mt-5 flex gap-2 overflow-x-auto [scrollbar-width:none]" role="group" aria-label="Itinerary view">
-          <span aria-current="page" className="inline-flex min-h-11 items-center rounded-full bg-[#ffb400] px-[18px] text-[15px] font-bold text-[#1a1100]">
+        <div className="pointer-events-none relative mt-5 flex gap-2 overflow-x-auto [scrollbar-width:none]" role="group" aria-label="Itinerary view">
+          <span aria-current="page" className="pointer-events-auto inline-flex min-h-11 items-center rounded-full bg-[#ffb400] px-[18px] text-[15px] font-bold text-[#1a1100]">
             Itinerary
           </span>
           <button
             type="button"
-            aria-pressed={showMap}
-            onClick={() => setShowMap((v) => !v)}
-            className={cn("inline-flex min-h-11 items-center rounded-full px-[18px] text-[15px] font-bold lg:hidden", showMap ? "bg-[#ffb400] text-[#1a1100]" : "bg-white/15 text-inherit")}
+            aria-pressed={big}
+            onClick={() => setBig((v) => !v)}
+            className={cn("pointer-events-auto inline-flex min-h-11 shrink-0 items-center rounded-full px-[18px] text-[15px] font-bold", big ? "bg-[#ffb400] text-[#1a1100]" : "bg-white/15 text-inherit")}
           >
-            Map
+            {big ? "Reduce map" : "Enlarge map"}
           </button>
-          <Link href="/places" className="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-white/15 px-[18px] text-[15px] font-bold">
+          {directions && (
+            // The road route through the stops, in Google Maps: a link, so no API call and no quota.
+            <a href={directions} target="_blank" rel="noopener noreferrer" className="pointer-events-auto inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full bg-white/15 px-[18px] text-[15px] font-bold">
+              Directions
+              <ArrowUpRight className="size-4" strokeWidth={2.6} aria-hidden />
+            </a>
+          )}
+          <Link href="/places" className="pointer-events-auto inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full bg-white/15 px-[18px] text-[15px] font-bold">
             Drafts
             {draftCount > 0 && <span className="font-mono text-xs opacity-85">{draftCount}</span>}
           </Link>
         </div>
       </header>
 
-      <div className="relative z-[1] -mt-8 rounded-t-[28px] bg-ground px-4 pt-5 pb-8 lg:mt-0 lg:grid lg:grid-cols-[minmax(0,1fr)_300px] lg:items-start lg:gap-6 lg:rounded-none lg:px-8">
-        {showMap && !wide && (
-          // On a phone or tablet the map (and the one Google map load it costs) only appears when asked for.
-          <div className="mb-5">
-            <ItineraryRoute stops={routeStops} missing={missing} />
-          </div>
-        )}
-
-        <div className="min-w-0">
+      <div className="relative z-[1] -mt-8 rounded-t-[28px] bg-ground px-4 pt-5 pb-8 lg:mt-0 lg:rounded-none lg:px-8">
         <div className="mb-4 flex min-h-11 items-center justify-between gap-3">
-          <p className="text-sm font-bold text-fg-muted">{progress.total ? `${progress.done} of ${progress.total} done` : "Nothing planned yet"}</p>
+          <div className="min-w-0">
+            <p className="text-sm font-bold text-fg-muted">{progress.total ? `${progress.done} of ${progress.total} done` : "Nothing planned yet"}</p>
+            {missing > 0 && (
+              <p className="text-[13px] text-fg-muted">
+                {missing} {missing === 1 ? "stop has" : "stops have"} no map position yet.
+              </p>
+            )}
+          </div>
           <EditOnly>
             <div className="flex items-center gap-2">
               {!nothing && (
@@ -370,13 +396,6 @@ export function Itinerary() {
               ) : null}
             </DragOverlay>
           </DndContext>
-        )}
-        </div>
-        {wide && (
-          // On a wide screen the route sits beside the list, as in the mockup.
-          <aside aria-label="Route" className="sticky top-6 self-start">
-            <ItineraryRoute stops={routeStops} missing={missing} />
-          </aside>
         )}
       </div>
 

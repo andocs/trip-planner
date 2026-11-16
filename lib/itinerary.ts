@@ -263,3 +263,14 @@ export function stayMarks(stays: StayLike[], start: string | null | undefined): 
 /** "08:00 · 1h", "08:00", "1h" or "Any time". */
 export const timeLine = (i: Pick<Item, "at_time" | "duration_min">): string =>
   [formatTime(i.at_time), formatDuration(i.duration_min)].filter(Boolean).join(" · ") || "Any time";
+
+/* ---------- directions ---------- */
+
+/**
+ * A Google Maps directions link through the stops, in the order given. It opens in the browser, so it costs no API call
+ * and no quota. Two stops are the least a route needs.
+ */
+export function directionsUrl(stops: { lat: number; lng: number }[]): string | null {
+  if (stops.length < 2) return null;
+  return `https://www.google.com/maps/dir/${stops.map((s) => `${s.lat},${s.lng}`).join("/")}`;
+}
