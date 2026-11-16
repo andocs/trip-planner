@@ -12,6 +12,8 @@ export function RowSheet({
   open,
   onOpenChange,
   title,
+  description,
+  side,
   mode,
   onSubmit,
   onDelete,
@@ -23,6 +25,10 @@ export function RowSheet({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title: string;
+  /** A short line under the title (e.g. the day an activity is being added to). */
+  description?: string;
+  /** From 768px up, a right-hand panel instead of a centred dialog (the standard for the larger forms). */
+  side?: boolean;
   mode: "add" | "edit";
   onSubmit: (e: FormEvent<HTMLFormElement>) => void;
   onDelete?: () => void;
@@ -37,6 +43,8 @@ export function RowSheet({
       open={open}
       onOpenChange={onOpenChange}
       title={title}
+      description={description}
+      side={side}
       footer={
         <FormFooter
           mode={mode}

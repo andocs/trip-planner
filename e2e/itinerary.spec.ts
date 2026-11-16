@@ -79,7 +79,8 @@ test("owner: the + under a place opens into Commute, Rest and Activity, and an a
   await options.getByRole("button", { name: "Activity" }).click();
 
   const sheet = page.getByRole("dialog", { name: "Add activity" });
-  await expect(sheet.getByLabel("Day")).toHaveValue("1");
+  await expect(sheet.getByRole("button", { name: /^Day 1(?!\d)/ })).toHaveAttribute("aria-pressed", "true");
+  await expect(sheet.getByText(/Goes between/)).toContainText("Lake walk and Bun cha lunch on Day 1 · Tue 16 Jun");
   await sheet.getByLabel("Activity", { exact: true }).fill("Egg coffee stop");
   await sheet.getByRole("button", { name: "Add", exact: true }).click();
 
@@ -206,7 +207,45 @@ test("viewer: a static list with no reorder, no add and no handles", async ({ pa
   await expect(page.getByRole("checkbox")).toHaveCount(0);
 });
 
-test("the map only loads when asked for", async ({ page }) => {
+test("on a wide screen the route sits beside the list, with no Map pill", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await createFakeSupabase({ withSeed: true }).install(page);
+  await page.goto("/itinerary");
+  await expect(page.getByRole("complementary", { name: "Route" })).toBeVisible();
+  await expect(page.getByText("Stops in order. Straight lines, no routing service.")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Map", exact: true })).toBeHidden();
+});
+
+test("the + sits centred under its place and opens into one 340 by 44 line", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  const fake = createFakeSupabase({ withSeed: true });
+  plan(fake);
+  await fake.install(page);
+  await page.goto("/itinerary");
+
+  const row = page.getByRole("heading", { name: "Lake walk" });
+  const card = row.locator("xpath=ancestor::li[1]");
+  const zone = card.locator("xpath=following-sibling::li[1]");
+  await zone.hover();
+  const trigger = page.getByRole("button", { name: "Add after Lake walk" });
+  const pill = page.getByRole("group", { name: "After Lake walk" });
+  // The whole control stays centred in the list whether it is a circle or the open line (the wide layout also
+  // settles just after hydration, so measure until it holds still).
+  await expect
+    .poll(async () => {
+      const [t, list] = [await pill.boundingBox(), await pill.locator("xpath=ancestor::ol[1]").boundingBox()];
+      return Math.abs(t!.x + t!.width / 2 - (list!.x + list!.width / 2));
+    })
+    .toBeLessThan(2);
+  // Opened, it is one 340 by 44 line.
+  await trigger.hover();
+  await expect(pill.getByRole("button", { name: "Activity" })).toBeVisible();
+  await expect.poll(async () => Math.round((await pill.boundingBox())!.width)).toBe(340);
+  expect(Math.round((await pill.boundingBox())!.height)).toBe(44);
+});
+
+test("the map only loads when asked for (phone)", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
   await createFakeSupabase({ withSeed: true }).install(page);
   await page.goto("/itinerary");
   const map = page.getByRole("button", { name: "Map", exact: true });

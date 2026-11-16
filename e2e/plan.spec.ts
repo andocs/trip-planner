@@ -27,8 +27,8 @@ test("itinerary groups by day, toggles done, and asks only for the day", async (
   const sheet = page.getByRole("dialog", { name: "Add activity" });
   await expect(sheet.getByLabel("Date")).toHaveCount(0);
   await sheet.getByLabel("Activity").fill("Egg coffee");
-  await sheet.getByLabel("Day").selectOption("5");
-  await expect(sheet.getByText("The date follows from the trip start.")).toBeVisible();
+  await sheet.getByRole("button", { name: /^Day 5/ }).click();
+  await expect(sheet.getByText("The date follows from the trip start: Sat 20 Jun.")).toBeVisible();
   await sheet.getByLabel("Time").fill("15:00");
   await sheet.getByRole("button", { name: "Add" }).click();
   await expect.poll(() => fake.tables.get("itinerary_items")?.find((i) => i.activity === "Egg coffee")).toBeTruthy();

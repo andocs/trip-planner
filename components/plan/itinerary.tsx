@@ -37,19 +37,19 @@ import {
   planMove,
   stayMarks,
   type DayGroup,
-  type InsertPlan,
   type StayMark,
 } from "@/lib/itinerary";
 import { useIdeas } from "@/lib/queries/ideas";
 import { useImages, usePhotoUrls } from "@/lib/queries/images";
 import { useMoveItems } from "@/lib/queries/itinerary";
 import { useRows, useUpdateRow } from "@/lib/queries/table";
+import { useMedia } from "@/lib/use-media";
 import { useSheet } from "@/lib/use-sheet";
 import { cn } from "@/lib/utils";
 import { AddHere } from "./add-here";
 import type { ConnectorTarget } from "./connector-sheet";
 import { ConnectorRow, DaySplit, StayRow, StopCard } from "./itinerary-entries";
-import type { ItineraryItem } from "./itinerary-sheet";
+import type { ActivityDefaults, ItineraryItem } from "./itinerary-sheet";
 
 const ItinerarySheet = dynamic(() => import("./itinerary-sheet").then((m) => m.ItinerarySheet), { ssr: false });
 const ConnectorSheet = dynamic(() => import("./connector-sheet").then((m) => m.ConnectorSheet), { ssr: false });
@@ -79,7 +79,7 @@ function SortableRow({ id, locked, label, cover, children }: { id: string; locke
     </button>
   );
   return (
-    <li ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }} className={cn(isDragging && "z-10 opacity-50", cover && "relative z-[2] bg-ground")}>
+    <li ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }} className={cn(isDragging && "z-10 opacity-50", cover && "relative z-[2] flow-root bg-ground pb-4 after:absolute after:top-full after:left-0 after:h-4 after:w-10 after:bg-ground after:content-['']")}>
       {children(handle)}
     </li>
   );
@@ -96,10 +96,11 @@ export function Itinerary() {
   const update = useUpdateRow("itinerary_items", "activity");
   const move = useMoveItems();
   const sheet = useSheet<ItineraryItem>();
-  const [defaults, setDefaults] = useState<{ day?: string; plan?: InsertPlan }>();
+  const [defaults, setDefaults] = useState<ActivityDefaults>();
   const [connector, setConnector] = useState<ConnectorTarget | null>(null);
   const [reorder, setReorder] = useState(false);
   const [showMap, setShowMap] = useState(false);
+  const wide = useMedia("(min-width: 1024px)");
   const [dragging, setDragging] = useState<string | null>(null);
 
   const sensors = useSensors(
@@ -181,16 +182,18 @@ export function Itinerary() {
     const day = groups.find((g) => g.items.some((i) => i.id === item.id));
     if (!day) return;
     const index = day.items.findIndex((i) => i.id === item.id) + 1;
-    setDefaults({ day: day.day === null ? "" : String(day.day), plan: planInsert(day.items, index, day.day, start) });
+    setDefaults({
+      day: day.day === null ? "" : String(day.day),
+      plan: planInsert(day.items, index, day.day, start),
+      between: { before: item.activity, after: day.items[index]?.activity },
+    });
     sheet.openAdd();
   };
 
-  const renderItem = (item: ItineraryItem, handle: ReactNode, next: ItineraryItem | undefined) => {
+  const renderItem = (item: ItineraryItem, handle: ReactNode) => {
     if (!isStop(item))
       return <ConnectorRow item={item} currency={trip.home_currency} canEdit={canEdit && !editing} onOpen={() => setConnector({ kind: kindOf(item) as "commute" | "buffer", day: item.day, existing: item })} handle={handle} />;
     const idea = item.source_table && item.source_id ? ideaOf.get(`${item.source_table}:${item.source_id}`) : undefined;
-    // Never next to an existing commute or rest, while reordering, or for viewers.
-    const addAfter = canEdit && !editing && !(next && !isStop(next));
     return (
       <StopCard
         item={item}
@@ -204,16 +207,7 @@ export function Itinerary() {
         onOpen={() => sheet.openEdit(item)}
         onDone={(done) => update.mutate({ id: item.id, patch: { done } })}
         handle={handle}
-      >
-        {addAfter && (
-          <AddHere
-            label={item.activity}
-            onCommute={() => openChooser(item, "commute")}
-            onRest={() => openChooser(item, "buffer")}
-            onActivity={() => openActivity(item)}
-          />
-        )}
-      </StopCard>
+      />
     );
   };
 
@@ -247,11 +241,22 @@ export function Itinerary() {
     }
     const nextItem = entries.slice(k + 1).find((x) => x.kind === "item" || x.kind === "day");
     const next = nextItem?.kind === "item" ? nextItem.item : undefined;
-    return (
+    // The "+" belongs to this activity. Never next to an existing commute or rest, while reordering, or for viewers.
+    const addAfter = canEdit && !editing && isStop(e.item) && !(next && !isStop(next));
+    return [
       <SortableRow key={e.id} id={e.id} locked={!editing} label={e.item.activity}>
-        {(handle) => renderItem(e.item, editing ? handle : null, next)}
-      </SortableRow>
-    );
+        {(handle) => renderItem(e.item, editing ? handle : null)}
+      </SortableRow>,
+      addAfter && (
+        <AddHere
+          key={`add-${e.id}`}
+          label={e.item.activity}
+          onCommute={() => openChooser(e.item, "commute")}
+          onRest={() => openChooser(e.item, "buffer")}
+          onActivity={() => openActivity(e.item)}
+        />
+      ),
+    ];
   });
 
   const dragged = dragging ? items.find((i) => i.id === dragging) : undefined;
@@ -277,7 +282,7 @@ export function Itinerary() {
             type="button"
             aria-pressed={showMap}
             onClick={() => setShowMap((v) => !v)}
-            className={cn("inline-flex min-h-11 items-center rounded-full px-[18px] text-[15px] font-bold", showMap ? "bg-[#ffb400] text-[#1a1100]" : "bg-white/15 text-inherit")}
+            className={cn("inline-flex min-h-11 items-center rounded-full px-[18px] text-[15px] font-bold lg:hidden", showMap ? "bg-[#ffb400] text-[#1a1100]" : "bg-white/15 text-inherit")}
           >
             Map
           </button>
@@ -288,9 +293,9 @@ export function Itinerary() {
         </div>
       </header>
 
-      <div className="relative z-[1] -mt-8 rounded-t-[28px] bg-ground px-4 pt-5 pb-8 lg:mt-0 lg:rounded-none lg:px-8">
-        {showMap && (
-          // The map (and the one Google map load it costs) only appears when asked for.
+      <div className="relative z-[1] -mt-8 rounded-t-[28px] bg-ground px-4 pt-5 pb-8 lg:mt-0 lg:grid lg:grid-cols-[minmax(0,1fr)_300px] lg:items-start lg:gap-6 lg:rounded-none lg:px-8">
+        {showMap && !wide && (
+          // On a phone or tablet the map (and the one Google map load it costs) only appears when asked for.
           <div className="mb-5 space-y-3">
             <Card className="p-3">
               <div className="relative h-[220px] overflow-hidden rounded-2xl bg-[var(--sea)]">
@@ -301,6 +306,7 @@ export function Itinerary() {
           </div>
         )}
 
+        <div className="min-w-0">
         <div className="mb-4 flex min-h-11 items-center justify-between gap-3">
           <p className="text-sm font-bold text-fg-muted">{progress.total ? `${progress.done} of ${progress.total} done` : "Nothing planned yet"}</p>
           <EditOnly>
@@ -356,6 +362,18 @@ export function Itinerary() {
               ) : null}
             </DragOverlay>
           </DndContext>
+        )}
+        </div>
+        {wide && (
+          // On a wide screen the route sits beside the list, as in the mockup.
+          <aside aria-label="Route" className="sticky top-6 self-start">
+            <Card className="p-3">
+              <div className="relative h-[260px] overflow-hidden rounded-2xl bg-[var(--sea)]">
+                <RouteMap bottomInset={40} />
+              </div>
+              <p className="mt-2 text-sm text-fg-muted">Stops in order. Straight lines, no routing service.</p>
+            </Card>
+          </aside>
         )}
       </div>
 

@@ -1,13 +1,13 @@
 "use client";
 
-import { Plus } from "lucide-react";
-import { useState } from "react";
-import { cn } from "@/lib/utils";
+import { Car, Coffee, MapPin, Plus } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 
 /**
- * The control that belongs to one activity: hidden until the bottom edge of the card is hovered (always shown where
- * there is no hover, such as a phone), then a 44px circle. Hovering, focusing or tapping the circle opens it sideways
- * into one neutral line: Commute | Rest | Activity. Opening is a width change only, and there is none with reduced motion.
+ * The control that belongs to one activity, as its own list row under it: a 64px band, centred. Nothing shows until
+ * the band is hovered (a phone has no hover, so the circle is always there), then a 44px circle. Hovering (after a
+ * 60 ms pause, so sweeping the mouse across the page opens nothing), focusing or tapping the circle opens it sideways
+ * into one line: Commute | Rest | Activity. The look and the motion are in globals.css (`.add-fan`).
  */
 export function AddHere({
   label,
@@ -15,30 +15,36 @@ export function AddHere({
   onRest,
   onActivity,
 }: {
-  /** The activity it sits under, for the accessible name. */
+  /** The activity it sits under, for the accessible names. */
   label: string;
   onCommute: () => void;
   onRest: () => void;
   onActivity: () => void;
 }) {
   const [open, setOpen] = useState(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  useEffect(() => () => clearTimeout(timer.current), []);
+  const hoverIn = () => {
+    clearTimeout(timer.current);
+    timer.current = setTimeout(() => setOpen(true), 60);
+  };
+  const hoverOut = () => {
+    clearTimeout(timer.current);
+    setOpen(false);
+  };
   const choose = (fn: () => void) => () => {
     setOpen(false);
     fn();
   };
-  const option = "min-h-11 border-l border-line-strong px-4 text-sm font-bold whitespace-nowrap hover:bg-surface-2 focus-visible:bg-surface-2";
   return (
-    <div
-      className={cn(
-        "group/add mt-1 flex min-h-11 items-center [@media(hover:none)]:opacity-100",
-        open ? "opacity-100" : "opacity-0 focus-within:opacity-100 hover:opacity-100",
-      )}
-    >
+    <li className="add-zone relative z-[6] -mt-5 flex h-16 items-center justify-center">
       <div
         role="group"
         aria-label={`After ${label}`}
-        onMouseEnter={() => setOpen(true)}
-        onMouseLeave={() => setOpen(false)}
+        data-open={open}
+        className="add-fan"
+        onMouseEnter={hoverIn}
+        onMouseLeave={hoverOut}
         onFocus={() => setOpen(true)}
         onBlur={(e) => {
           if (!e.currentTarget.contains(e.relatedTarget)) setOpen(false);
@@ -47,36 +53,30 @@ export function AddHere({
           if (e.key === "Escape" && open) {
             e.stopPropagation();
             setOpen(false);
+            (document.activeElement as HTMLElement | null)?.blur();
           }
         }}
-        className={cn(
-          "inline-flex h-11 items-center overflow-hidden rounded-full bg-surface shadow-[inset_0_0_0_2px_var(--line-strong)] transition-[max-width] duration-200 motion-reduce:transition-none",
-          open ? "max-w-[340px]" : "max-w-11",
-        )}
       >
-        <button
-          type="button"
-          onClick={() => setOpen(true)}
-          aria-label={`Add after ${label}`}
-          aria-expanded={open}
-          className="grid size-11 shrink-0 place-items-center rounded-full text-fg-muted"
-        >
-          <Plus className="size-4" strokeWidth={3} aria-hidden />
+        <button type="button" className="add-fan-trigger" aria-label={`Add after ${label}`} aria-expanded={open} onClick={() => setOpen(true)}>
+          <span className="add-fan-dot">
+            <Plus className="size-4" strokeWidth={3} aria-hidden />
+          </span>
         </button>
-        {open && (
-          <>
-            <button type="button" onClick={choose(onCommute)} className={option}>
-              Commute
-            </button>
-            <button type="button" onClick={choose(onRest)} className={option}>
-              Rest
-            </button>
-            <button type="button" onClick={choose(onActivity)} className={cn(option, "pr-5")}>
-              Activity
-            </button>
-          </>
-        )}
+        <span className="add-fan-items">
+          <button type="button" onClick={choose(onCommute)}>
+            <Car className="size-[18px]" strokeWidth={2.4} aria-hidden />
+            Commute
+          </button>
+          <button type="button" onClick={choose(onRest)}>
+            <Coffee className="size-[18px]" strokeWidth={2.4} aria-hidden />
+            Rest
+          </button>
+          <button type="button" onClick={choose(onActivity)}>
+            <MapPin className="size-[18px]" strokeWidth={2.4} aria-hidden />
+            Activity
+          </button>
+        </span>
       </div>
-    </div>
+    </li>
   );
 }

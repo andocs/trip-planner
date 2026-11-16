@@ -365,3 +365,136 @@
     animation: none;
   }
 }
+
+/* ---- The "+" that belongs to each itinerary activity (mockup: Option A, expanding) ----
+   Nothing shows until the 64px band under an activity is hovered; then a 44px circle appears. Hovering, focusing or
+   tapping the circle opens it sideways into one neutral line (340 by 44px): Commute | Rest | Activity.
+   Opening takes 200 ms with a soft ease-out (the three buttons fade in and rise 6px, 30 ms apart); closing takes 140 ms.
+   There is no hover on a phone, so the circle is always there and a tap opens it. With reduced motion nothing animates. */
+.add-fan {
+  position: relative;
+  display: block;
+  width: 44px;
+  height: 44px;
+  max-width: 100%;
+  border-radius: 22px;
+  overflow: hidden;
+  background: transparent;
+  opacity: 0;
+  transition: width 140ms cubic-bezier(0.22, 1, 0.36, 1), background-color 120ms, box-shadow 160ms, opacity 120ms;
+}
+.add-zone:hover .add-fan,
+.add-fan[data-open="true"] {
+  opacity: 1;
+}
+@media (hover: none) {
+  .add-fan {
+    opacity: 1;
+  }
+}
+.add-fan[data-open="true"] {
+  width: 340px;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 2px var(--line-strong);
+  transition-duration: 200ms, 120ms, 160ms, 120ms;
+}
+.add-fan-trigger {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  transition: opacity 100ms;
+}
+.add-fan-dot {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--muted);
+  box-shadow: inset 0 0 0 2px var(--line-strong);
+}
+.add-fan[data-open="true"] .add-fan-trigger {
+  opacity: 0;
+  pointer-events: none;
+}
+.add-fan-items {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  height: 44px;
+  align-items: center;
+  padding: 0 8px;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 90ms, visibility 0s linear 160ms;
+}
+.add-fan[data-open="true"] .add-fan-items {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 120ms 60ms, visibility 0s;
+}
+.add-fan-items button {
+  position: relative;
+  display: flex;
+  height: 44px;
+  align-items: center;
+  gap: 8px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 22px;
+  background: transparent;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 120ms, transform 160ms cubic-bezier(0.22, 1, 0.36, 1), background-color 100ms;
+}
+.add-fan-items button svg {
+  color: var(--muted);
+}
+.add-fan-items button + button::before {
+  content: "";
+  position: absolute;
+  top: 12px;
+  bottom: 12px;
+  left: 0;
+  width: 1px;
+  background: var(--line-strong);
+}
+.add-fan[data-open="true"] .add-fan-items button {
+  opacity: 1;
+  transform: none;
+}
+.add-fan[data-open="true"] .add-fan-items button:nth-child(2) {
+  transition-delay: 30ms;
+}
+.add-fan[data-open="true"] .add-fan-items button:nth-child(3) {
+  transition-delay: 60ms;
+}
+.add-fan-items button:hover,
+.add-fan-items button:focus-visible {
+  background: var(--soft);
+}
+.add-fan-items button:focus-visible,
+.add-fan-trigger:focus-visible .add-fan-dot {
+  outline: 3px solid var(--focus);
+  outline-offset: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .add-fan,
+  .add-fan *,
+  .add-fan-items button {
+    transition: none !important;
+  }
+}

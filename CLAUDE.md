@@ -52,7 +52,7 @@ Mockups live in `design/mockups/revision.html` (variants A to J; J is the chosen
   and `lib/itinerary-rows.ts`. UI in `components/plan/itinerary*.tsx`, `connector-sheet.tsx`. @dnd-kit does the dragging (Reorder mode, owner/editor only).
   **The day number is the source of truth:** a day's date is derived from the trip start and written to `on_date` on save; there is no date input.
   Connectors are rows with `kind <> 'stop'`; `solidStops` (calc.ts) excludes them from every counter and the export.
-  Stays appear on their check-in / check-out days from the Stays page (not stored). The map only mounts when the Map pill is pressed (one Google map load).
+  Stays appear on their check-in / check-out days from the Stays page (not stored). On a wide screen (1024px up) the route map sits in a right-hand column beside the list (one Google map load per visit, as in the mockup); on a phone or tablet it only mounts when the Map pill is pressed.
   Under each activity, `components/plan/add-here.tsx` is a 44px circle (shown on hover of the card's bottom edge, always on touch) that opens into
   **Commute | Rest | Activity**; Activity inserts at that spot (`planInsert`). Not offered next to a commute or rest, in Reorder mode, or to viewers.
 - **Home reminders:** `lib/reminders.ts` + `components/home/reminders-card.tsx`; dismissals live in localStorage.

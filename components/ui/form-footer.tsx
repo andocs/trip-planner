@@ -27,10 +27,10 @@ export function FormFooter({
   return (
     <div className="space-y-2">
       {mode === "add" && keepAdding && (
-        <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm font-medium select-none">
+        <label className="flex min-h-11 cursor-pointer items-center gap-3 text-sm font-bold select-none">
           <input
             type="checkbox"
-            className="size-5 accent-[var(--teal)]"
+            className="relative h-[30px] w-[52px] shrink-0 cursor-pointer appearance-none rounded-full bg-line-strong transition-colors before:absolute before:top-[3px] before:left-[3px] before:size-6 before:rounded-full before:bg-surface before:shadow-[0_1px_3px_rgb(0_0_0/0.3)] before:transition-[left] before:content-[''] checked:bg-teal checked:before:left-[25px] focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-teal motion-reduce:transition-none motion-reduce:before:transition-none"
             checked={keepAdding.value}
             onChange={(e) => keepAdding.onChange(e.target.checked)}
           />
