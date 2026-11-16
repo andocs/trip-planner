@@ -3,6 +3,7 @@
 import { createBrowserClient } from "@supabase/ssr";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/database.types";
+import type { AppUser } from "@/lib/queries/bootstrap";
 import { supabaseEnv } from "./env";
 
 export type TripClient = SupabaseClient<Database>;
@@ -18,7 +19,7 @@ export function getSupabase(): TripClient {
   return client;
 }
 
-export type AppUser = { id: string; email: string | null; isAnonymous: boolean };
+export type { AppUser };
 
 /** The signed-in user from the local session, or null. Never signs anyone in. */
 export async function getCurrentUser(): Promise<AppUser | null> {

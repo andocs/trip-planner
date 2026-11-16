@@ -28,6 +28,10 @@ export default defineConfig({
     env: {
       NEXT_PUBLIC_SUPABASE_URL: FAKE_URL,
       NEXT_PUBLIC_SUPABASE_ANON_KEY: "e2e-anon-key",
+      // e2e never talks to Google: no keys, whatever .env.local holds. The map shows its drawn stand-in.
+      NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY: "",
+      NEXT_PUBLIC_GOOGLE_MAP_ID: "",
+      GOOGLE_MAPS_SERVER_KEY: "",
       NEXT_TELEMETRY_DISABLED: "1",
       NEXT_DIST_DIR: ".next-e2e",
     },

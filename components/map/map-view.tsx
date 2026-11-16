@@ -1,26 +1,42 @@
 "use client";
 
-import "maplibre-gl/dist/maplibre-gl.css";
-import type { Map as MlMap, Marker } from "maplibre-gl";
-import { useEffect, useRef, useState } from "react";
+import { APIProvider, AdvancedMarker, Map as GoogleMap, useMap } from "@vis.gl/react-google-maps";
+import { Check } from "lucide-react";
+import { useEffect, useState } from "react";
 import { MapFallback } from "@/components/map/map-fallback";
-import { useMapStyles } from "@/components/map/map-config";
 import { useIsDark } from "@/lib/use-dark";
 import { cn } from "@/lib/utils";
 
 export type MapStop = { id: string | number; name: string; lat: number; lng: number };
+/** A suggested or saved place drawn on the map (Discover). `n` is its number in the list beside it. */
+export type MapPlace = {
+  id: string;
+  name: string;
+  lat: number;
+  lng: number;
+  n: number;
+  state: "suggestion" | "saved" | "selected";
+};
 type Insets = { top: number; right: number; bottom: number; left: number };
 
 /**
- * The map: MapLibre GL with an OpenStreetMap vector style (light and night), numbered stop discs,
- * a dashed route and an optional "selected place" pin. Loads on demand. If WebGL or the style is
- * unavailable it shows a drawn stand-in, and everything that needs the map has a non-map path
- * (search, stop list).
+ * The map: Google Maps (JavaScript API, a cloud-styled Map ID so it matches the app in light and night), numbered
+ * stop discs, a dashed route, an optional "selected place" pin and optional place markers. Google draws its own
+ * logo, terms link and copyright; nothing here covers them.
+ *
+ * Keys: NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY (a browser key, restricted by HTTP referrer and to the Maps JavaScript
+ * API) and NEXT_PUBLIC_GOOGLE_MAP_ID. Without a key, or if Google refuses to load (bad key, referrer, billing,
+ * offline), the drawn stand-in is shown, and everything that needs the map has a non-map path (search, stop list).
  */
+const KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY;
+const MAP_ID = process.env.NEXT_PUBLIC_GOOGLE_MAP_ID || "DEMO_MAP_ID";
+
 export function MapView({
   stops,
   pin,
+  places = [],
   onTap,
+  onPlaceClick,
   insets = { top: 80, right: 24, bottom: 24, left: 24 },
   label = "Trip map",
   interactive = true,
@@ -28,7 +44,9 @@ export function MapView({
 }: {
   stops: MapStop[];
   pin?: { lat: number; lng: number } | null;
+  places?: MapPlace[];
   onTap?: (lat: number, lng: number) => void;
+  onPlaceClick?: (id: string) => void;
   /** Space covered by overlapping panels; the map frames its content in what's left. */
   insets?: Insets;
   label?: string;
@@ -36,162 +54,168 @@ export function MapView({
   interactive?: boolean;
   className?: string;
 }) {
-  const styles = useMapStyles();
   const dark = useIsDark();
-  const el = useRef<HTMLDivElement>(null);
-  const map = useRef<MlMap | null>(null);
-  const lib = useRef<typeof import("maplibre-gl") | null>(null);
-  const markers = useRef<Marker[]>([]);
-  const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
-  const tap = useRef(onTap);
-  const latest = useRef({ stops, pin, insets });
-  useEffect(() => {
-    tap.current = onTap;
-    latest.current = { stops, pin, insets };
-  });
-  const styleUrl = dark ? styles.dark : styles.light;
-  const firstStyle = useRef(styleUrl);
-  const firstInteractive = useRef(interactive);
 
-  // Create the map once.
+  // Google calls this global when the key or referrer is refused after the script has loaded.
   useEffect(() => {
-    let cancelled = false;
-    let ro: ResizeObserver | undefined;
-    (async () => {
-      try {
-        const ml = await import("maplibre-gl");
-        if (cancelled || !el.current) return;
-        ml.setWorkerUrl("/maplibre/maplibre-gl-worker.mjs");
-        lib.current = ml;
-        const m = new ml.Map({
-          container: el.current,
-          style: firstStyle.current,
-          center: [105, 20],
-          zoom: 1.6,
-          attributionControl: {
-            compact: true,
-            customAttribution:
-              '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a>',
-          },
-          interactive: firstInteractive.current,
-        });
-        map.current = m;
-        m.on("click", (e) => tap.current?.(e.lngLat.lat, e.lngLat.lng));
-        m.on("error", (e) => {
-          // A style that never loads (offline, bad URL) leaves a blank map: switch to the stand-in.
-          if (!m.isStyleLoaded() && /style|404|fetch|Failed/i.test(String(e.error?.message ?? ""))) setFailed(true);
-        });
-        m.once("load", () => setReady(true));
-        ro = new ResizeObserver(() => m.resize());
-        ro.observe(el.current);
-      } catch {
-        if (!cancelled) setFailed(true);
-      }
-    })();
+    const w = window as unknown as { gm_authFailure?: () => void };
+    w.gm_authFailure = () => setFailed(true);
     return () => {
-      cancelled = true;
-      ro?.disconnect();
-      markers.current.forEach((x) => x.remove());
-      markers.current = [];
-      map.current?.remove();
-      map.current = null;
-      setReady(false);
+      delete w.gm_authFailure;
     };
   }, []);
 
-  // Light / Night: swap the style, then redraw the route.
-  const appliedStyle = useRef(firstStyle.current);
-  useEffect(() => {
-    const m = map.current;
-    if (!m || !ready || appliedStyle.current === styleUrl) return;
-    appliedStyle.current = styleUrl;
-    m.setStyle(styleUrl);
-    m.once("style.load", () => drawRoute());
-  }, [styleUrl, ready]);
-
-  function reduced() {
-    return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  }
-
-  function drawRoute() {
-    const m = map.current;
-    if (!m || !m.isStyleLoaded()) return;
-    const coords = latest.current.stops.map((s) => [s.lng, s.lat]);
-    const data = {
-      type: "Feature" as const,
-      properties: {},
-      geometry: { type: "LineString" as const, coordinates: coords.length > 1 ? coords : [] },
-    };
-    const src = m.getSource("route") as import("maplibre-gl").GeoJSONSource | undefined;
-    if (src) src.setData(data);
-    else {
-      m.addSource("route", { type: "geojson", data });
-      const color = getComputedStyle(document.documentElement).getPropertyValue("--route").trim() || "#c93f1b";
-      m.addLayer({
-        id: "route",
-        type: "line",
-        source: "route",
-        layout: { "line-cap": "round", "line-join": "round" },
-        paint: { "line-color": color, "line-width": 3, "line-dasharray": [0.1, 2.4] },
-      });
-    }
-  }
-
-  // Stops, route, pin and framing.
-  useEffect(() => {
-    const m = map.current;
-    const ml = lib.current;
-    if (!m || !ml || !ready) return;
-    markers.current.forEach((x) => x.remove());
-    markers.current = [];
-
-    stops.forEach((s, i) => {
-      const node = document.createElement("div");
-      node.className = "map-disc";
-      node.setAttribute("aria-hidden", "true");
-      node.innerHTML = `<span class="map-disc-n">${i + 1}</span><span class="map-disc-l">${escapeHtml(s.name)}</span>`;
-      markers.current.push(new ml.Marker({ element: node, anchor: "center" }).setLngLat([s.lng, s.lat]).addTo(m));
-    });
-    if (pin) {
-      const node = document.createElement("div");
-      node.className = "map-pin";
-      node.setAttribute("aria-hidden", "true");
-      node.innerHTML =
-        '<svg width="34" height="44" viewBox="0 0 34 44"><path d="M17 43C5 27 0 19 0 13a17 17 0 0 1 34 0c0 6-5 14-17 30z" fill="var(--route)" stroke="var(--surface)" stroke-width="2"/><circle cx="17" cy="14" r="6" fill="#fff"/></svg>';
-      markers.current.push(new ml.Marker({ element: node, anchor: "bottom" }).setLngLat([pin.lng, pin.lat]).addTo(m));
-    }
-
-    const draw = () => drawRoute();
-    if (m.isStyleLoaded()) draw();
-    else m.once("idle", draw);
-
-    const duration = reduced() ? 0 : 700;
-    const padding = latest.current.insets;
-    if (pin) {
-      m.easeTo({ center: [pin.lng, pin.lat], zoom: Math.max(m.getZoom(), 6), duration, padding });
-    } else if (stops.length === 1) {
-      m.easeTo({ center: [stops[0].lng, stops[0].lat], zoom: 6, duration, padding });
-    } else if (stops.length > 1) {
-      const b = new ml.LngLatBounds();
-      stops.forEach((s) => b.extend([s.lng, s.lat]));
-      m.fitBounds(b, { padding, duration, maxZoom: 9 });
-    }
-  }, [stops, pin, ready]);
-
-  if (failed) return <MapFallback className={className} />;
+  if (!KEY || failed) return <MapFallback className={className} />;
   return (
     <div className={cn("absolute inset-0 bg-[var(--sea)]", className)}>
-      <div
-        ref={el}
-        className="size-full"
-        role="application"
-        aria-label={`${label}. A list of stops is always available.`}
-      />
+      <APIProvider apiKey={KEY} language="en" onError={() => setFailed(true)}>
+        <div className="size-full" role="application" aria-label={`${label}. A list of stops is always available.`}>
+          <GoogleMap
+            // The colour scheme can only be chosen when the map is created, so Light/Night remounts it.
+            key={dark ? "dark" : "light"}
+            mapId={MAP_ID}
+            colorScheme={dark ? "DARK" : "LIGHT"}
+            defaultCenter={{ lat: 20, lng: 105 }}
+            defaultZoom={3}
+            gestureHandling={interactive ? "greedy" : "none"}
+            disableDefaultUI
+            zoomControl={interactive}
+            keyboardShortcuts={interactive}
+            clickableIcons={false}
+            onClick={(e) => {
+              const ll = e.detail.latLng;
+              if (ll && onTap) onTap(ll.lat, ll.lng);
+            }}
+            style={{ width: "100%", height: "100%" }}
+          >
+            <Framing stops={stops} pin={pin ?? null} places={places} insets={insets} />
+            <Route stops={stops} />
+            {stops.map((s, i) => (
+              <AdvancedMarker key={s.id} position={{ lat: s.lat, lng: s.lng }} title={s.name} clickable={false}>
+                <div className="map-disc" aria-hidden="true">
+                  <span className="map-disc-n">{i + 1}</span>
+                  <span className="map-disc-l">{s.name}</span>
+                </div>
+              </AdvancedMarker>
+            ))}
+            {pin && (
+              <AdvancedMarker position={pin} clickable={false}>
+                <svg className="map-pin" width="34" height="44" viewBox="0 0 34 44" aria-hidden="true">
+                  <path
+                    d="M17 43C5 27 0 19 0 13a17 17 0 0 1 34 0c0 6-5 14-17 30z"
+                    fill="var(--route)"
+                    stroke="var(--surface)"
+                    strokeWidth="2"
+                  />
+                  <circle cx="17" cy="14" r="6" fill="#fff" />
+                </svg>
+              </AdvancedMarker>
+            )}
+            {places.map((p) => (
+              <AdvancedMarker
+                key={p.id}
+                position={{ lat: p.lat, lng: p.lng }}
+                title={p.name}
+                zIndex={p.state === "selected" ? 10 : p.state === "saved" ? 5 : 1}
+                onClick={onPlaceClick ? () => onPlaceClick(p.id) : undefined}
+              >
+                <PlaceDisc place={p} />
+              </AdvancedMarker>
+            ))}
+          </GoogleMap>
+        </div>
+      </APIProvider>
     </div>
   );
 }
 
-function escapeHtml(s: string) {
-  return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
+function PlaceDisc({ place }: { place: MapPlace }) {
+  const base = "map-place grid place-items-center rounded-full font-bold ring-2 ring-[var(--surface)] shadow-float";
+  if (place.state === "saved")
+    return (
+      <span className={cn(base, "size-8 bg-teal text-ground")} aria-label={`${place.name}, on your board`}>
+        <Check className="size-4" strokeWidth={3} aria-hidden />
+      </span>
+    );
+  if (place.state === "selected")
+    return (
+      <span className={cn(base, "size-10 bg-accent text-sm text-white")} aria-label={`${place.name}, selected`}>
+        {place.n}
+      </span>
+    );
+  return (
+    <span className={cn(base, "size-[30px] bg-ink text-sm text-ground")} aria-label={place.name}>
+      {place.n}
+    </span>
+  );
+}
+
+/** Frames what is on the map inside the space the panels leave free. Runs when the content changes. */
+function Framing({
+  stops,
+  pin,
+  places,
+  insets,
+}: {
+  stops: MapStop[];
+  pin: { lat: number; lng: number } | null;
+  places: MapPlace[];
+  insets: Insets;
+}) {
+  const map = useMap();
+  const key = [
+    pin ? `${pin.lat},${pin.lng}` : "",
+    stops.map((s) => `${s.lat},${s.lng}`).join("|"),
+    places.map((p) => `${p.id}:${p.lat},${p.lng}`).join("|"),
+  ].join("#");
+  const { top, right, bottom, left } = insets;
+  useEffect(() => {
+    if (!map) return;
+    const pts: { lat: number; lng: number }[] = pin ? [pin] : [...stops, ...places];
+    if (pts.length === 0) return;
+    const b = new google.maps.LatLngBounds();
+    pts.forEach((p) => b.extend(p));
+    if (pts.length === 1) {
+      // One point: frame a small area around it, so the padding still shifts it clear of the panels.
+      const p = pts[0];
+      b.extend({ lat: p.lat + 1.1, lng: p.lng + 1.1 });
+      b.extend({ lat: p.lat - 1.1, lng: p.lng - 1.1 });
+    }
+    map.fitBounds(b, { top, right, bottom, left });
+    const once = google.maps.event.addListenerOnce(map, "idle", () => {
+      const z = map.getZoom();
+      if (z !== undefined && z > 15) map.setZoom(15);
+    });
+    return () => once.remove();
+    // `key` stands for the content (stops, pin and places) so the effect doesn't re-run on identity changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [map, key, top, right, bottom, left]);
+  return null;
+}
+
+/** The dashed route through the stops, in the same colour as the rest of the app. */
+function Route({ stops }: { stops: MapStop[] }) {
+  const map = useMap();
+  const key = stops.map((s) => `${s.lat},${s.lng}`).join("|");
+  useEffect(() => {
+    if (!map || stops.length < 2) return;
+    const color = getComputedStyle(document.documentElement).getPropertyValue("--route").trim() || "#c93f1b";
+    const line = new google.maps.Polyline({
+      map,
+      path: stops.map((s) => ({ lat: s.lat, lng: s.lng })),
+      strokeOpacity: 0,
+      geodesic: false,
+      icons: [
+        {
+          icon: { path: "M 0,-1 0,1", strokeOpacity: 1, strokeColor: color, strokeWeight: 3, scale: 2 },
+          offset: "0",
+          repeat: "10px",
+        },
+      ],
+    });
+    return () => line.setMap(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [map, key]);
+  return null;
 }

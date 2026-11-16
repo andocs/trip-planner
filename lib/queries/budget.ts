@@ -1,14 +1,26 @@
 "use client";
 
 import { useTrip } from "@/components/trip-gate";
-import { percentUsed, remaining, settleUp, spentByCategory, totalSpent, type Settlement } from "@/lib/calc";
+import {
+  effectivePlanned,
+  percentUsed,
+  plannedTotal,
+  remaining,
+  settleUp,
+  spentByCategory,
+  totalSpent,
+  type Settlement,
+} from "@/lib/calc";
 import { bySort } from "@/lib/use-sheet";
 import { useRows, type Row } from "./table";
 
 export type CategoryLine = {
   id: string | null; // null = uncategorised
   name: string;
+  /** What is planned for this category: the allocation or what its flights/stays add up to, whichever is more. */
   planned: number | null;
+  /** The part of `planned` that comes from flights/stays in the plan (0 for other categories). */
+  itemsPlanned: number;
   spent: number;
   left: number | null;
   percent: number | null;
@@ -22,6 +34,11 @@ export type Budget = {
   travelers: Row<"travelers">[];
   lines: CategoryLine[];
   budget: number;
+  /** Total of the plan so far: every category's planned amount, plus flights/stays that have no category to land in. */
+  planned: number;
+  /** Budget minus the plan: what is still unplanned (negative when the plan is over budget). */
+  unplanned: number;
+  plannedPercent: number;
   spent: number;
   left: number;
   percent: number;
@@ -37,6 +54,8 @@ export function useBudget(): Budget {
   const expenses = useRows("expenses", byNewest);
   const categories = useRows("categories", bySort);
   const travelers = useRows("travelers", bySort);
+  const flights = useRows("flights");
+  const stays = useRows("stays");
 
   const ex = expenses.data ?? [];
   const cats = categories.data ?? [];
@@ -44,13 +63,29 @@ export function useBudget(): Budget {
   const byCat = spentByCategory(ex, trip);
   const known = new Set(cats.map((c) => c.id));
 
+  // Flights and stays in the plan feed the planned amount of the category with their name (Flights, Accommodation).
+  const byName = (name: string) => cats.find((c) => c.name.trim().toLowerCase() === name);
+  const flightPlan = plannedTotal(flights.data ?? [], (f) => f.fare);
+  const stayPlan = plannedTotal(stays.data ?? [], (x) => x.total);
+  const itemsByCat = new Map<string, number>();
+  let loose = 0; // in the plan but with no category to count under
+  for (const [cat, amount] of [
+    [byName("flights"), flightPlan],
+    [byName("accommodation"), stayPlan],
+  ] as const) {
+    if (cat) itemsByCat.set(cat.id, (itemsByCat.get(cat.id) ?? 0) + amount);
+    else loose += amount;
+  }
+
   const lines: CategoryLine[] = cats.map((c) => {
     const spent = byCat.get(c.id) ?? 0;
-    const planned = c.planned === null ? null : Number(c.planned);
+    const itemsPlanned = itemsByCat.get(c.id) ?? 0;
+    const planned = effectivePlanned(c.planned === null ? null : Number(c.planned), itemsPlanned);
     return {
       id: c.id,
       name: c.name,
       planned,
+      itemsPlanned,
       spent,
       left: planned === null ? null : planned - spent,
       percent: planned ? (spent / planned) * 100 : null,
@@ -65,6 +100,7 @@ export function useBudget(): Budget {
       id: null,
       name: "Uncategorised",
       planned: null,
+      itemsPlanned: 0,
       spent: other,
       left: null,
       percent: null,
@@ -73,13 +109,18 @@ export function useBudget(): Budget {
 
   const budget = Number(trip.budget);
   const spent = totalSpent(ex, trip);
+  const planned = lines.reduce((sum, l) => sum + (l.planned ?? 0), 0) + loose;
   return {
-    isPending: expenses.isPending || categories.isPending || travelers.isPending,
+    isPending:
+      expenses.isPending || categories.isPending || travelers.isPending || flights.isPending || stays.isPending,
     expenses: ex,
     categories: cats,
     travelers: people,
     lines,
     budget,
+    planned,
+    unplanned: budget - planned,
+    plannedPercent: percentUsed(budget, planned),
     spent,
     left: remaining(budget, spent),
     percent: percentUsed(budget, spent),

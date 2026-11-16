@@ -4,6 +4,7 @@ import { EditOnly, useCanEdit, useTrip } from "@/components/trip-gate";
 import { CategorySheet, MAX_CATEGORIES } from "@/components/settings/categories-section";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
+import { AnimatedNumber } from "@/components/ui/animated-number";
 import { Progress } from "@/components/ui/progress";
 import { formatMoney, formatPercent } from "@/lib/format";
 import type { Budget } from "@/lib/queries/budget";
@@ -16,8 +17,9 @@ export function BudgetTiles({ budget }: { budget: Budget }) {
   const cur = trip.home_currency;
   return (
     <Card className="space-y-3">
-      <div className="grid grid-cols-3 gap-2 [&>*]:min-w-0">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 [&>*]:min-w-0">
         <Stat label="Budget" amount={budget.budget} currency={cur} />
+        <Stat label="Planned" amount={budget.planned} currency={cur} className="text-teal" />
         <Stat label="Spent" amount={budget.spent} currency={cur} className="text-accent-text" />
         <Stat
           label={budget.left < 0 ? "Over" : "Left"}
@@ -26,6 +28,16 @@ export function BudgetTiles({ budget }: { budget: Budget }) {
           className={budget.left < 0 ? "text-danger" : undefined}
         />
       </div>
+      <Progress value={budget.plannedPercent} tone="teal" label="Budget planned" className="h-1.5" />
+      <p className="text-sm text-fg-muted">
+        {budget.budget > 0
+          ? `Planned ${formatMoney(budget.planned, cur)}. ${
+              budget.unplanned >= 0
+                ? `${formatMoney(budget.unplanned, cur)} still to plan.`
+                : `${formatMoney(-budget.unplanned, cur)} over budget.`
+            }`
+          : "Set a total budget in Settings."}
+      </p>
       <Progress value={budget.percent} tone="coral" label="Budget used" className="h-2" />
       <p className="text-sm text-fg-muted">
         {budget.budget > 0 ? `${formatPercent(budget.percent)} of budget used.` : "Set a total budget in Settings."}
@@ -46,13 +58,15 @@ function Stat({
   currency: string;
   className?: string;
 }) {
-  const [code, ...num] = formatMoney(amount, currency).split(" ");
+  const [code] = formatMoney(amount, currency).split(" ");
   return (
     <div className="rounded-2xl bg-surface-2 px-3.5 py-3">
       <p className="text-xs font-bold text-fg-muted">{label}</p>
       <p className={cn("mt-0.5 font-extrabold tabular-nums", className)}>
         <span className="block text-xs font-bold text-fg-muted">{code}</span>
-        <span className="block text-[17px] break-all">{num.join(" ")}</span>
+        <span className="block text-[17px] break-all">
+          <AnimatedNumber value={amount} format={(n) => formatMoney(n, currency).split(" ").slice(1).join(" ")} />
+        </span>
       </p>
     </div>
   );

@@ -44,7 +44,9 @@ export function PlaceList({
   panelLabel?: (place: Place) => string;
   onRenamed?: (from: string, to: string) => void;
 }) {
-  const { data: places = [], isPending } = useRows(table, byDayThenName);
+  const { data: all = [], isPending } = useRows(table, byDayThenName);
+  // Dropped ideas live on the Board (Dropped tab), not in the working list.
+  const places = all.filter((p) => p.decision !== "dropped");
   const update = useUpdateRow(table, noun);
   const remove = useDeleteRow(table, noun);
   const sheet = useSheet<Place>();
@@ -160,6 +162,11 @@ export function PlaceList({
                       className={cn("block font-semibold", p.status === "Cancelled" && "text-fg-muted line-through")}
                     >
                       {p.name}
+                      {p.decision === "draft" && (
+                        <span className="ml-2 inline-flex min-h-5 items-center rounded-full px-2 align-middle text-[11px] font-bold text-fg-muted ring-[1.5px] ring-line-strong">
+                          Draft
+                        </span>
+                      )}
                     </span>
                     <span className="block truncate text-sm text-fg-muted">
                       {[p.city, p.day !== null ? `Day ${p.day}` : null, p.note].filter(Boolean).join(" · ") || " "}

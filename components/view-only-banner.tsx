@@ -13,7 +13,10 @@ export function ViewOnlyBanner() {
     >
       <Eye className="size-[18px] shrink-0" aria-hidden />
       <span>
-        View only <span className="font-medium text-fg-muted">· only the trip owner can make changes</span>
+        View only{" "}
+        <span className="font-medium text-fg-muted">
+          · only the trip owner can make changes. You can vote and comment on ideas.
+        </span>
       </span>
     </div>
   );

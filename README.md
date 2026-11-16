@@ -11,7 +11,7 @@ pasalubong. It replaces a Google Sheets planner: same data, but tap-to-edit inst
 - **Installable** as an app (PWA), light and night themes, works on desktop too (sidebar ≥ 1024 px).
 
 Stack: Next.js 16 (App Router) · TypeScript · Tailwind CSS 4 · Supabase (Postgres, RLS, Realtime,
-Anonymous Auth) · TanStack Query · react-hook-form + zod · Recharts · MapLibre GL (OpenStreetMap) · SheetJS.
+Anonymous Auth) · TanStack Query · react-hook-form + zod · Recharts · Google Maps (Maps JavaScript API, Places API (New)) · SheetJS.
 
 ---
 
@@ -89,11 +89,91 @@ Done. Open the Vercel URL on your phone, add it to the home screen, and share th
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | `.env.local`, Vercel  | anon / publishable key. Safe in the browser: Row Level Security protects the data        |
 | `GEOCODER_CONTACT`              | optional, anywhere    | URL or email added to "Find coordinates" requests, as OpenStreetMap's usage policy asks  |
 | `NOMINATIM_USER_AGENT`          | optional, anywhere    | Full User-Agent for place search (overrides the default; Nominatim requires an identity) |
-| `MAP_STYLE_URL_LIGHT` / `_DARK` | optional, server      | OSM-based vector map styles. Default: OpenFreeMap (no key). Never OSM's own tile servers |
+| `NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY` | browser (public by design) | Google Maps JavaScript API key. Restrict it by HTTP referrer AND to the Maps JavaScript API only |
+| `NEXT_PUBLIC_GOOGLE_MAP_ID` | browser | Cloud-styled Map ID (light and night) |
+| `GOOGLE_MAPS_SERVER_KEY` | **server only** | Places API (New) key. Never prefix with `NEXT_PUBLIC_`. Restrict to Places API (New) only |
 | `SUPABASE_SERVICE_ROLE_KEY`     | `.env.local` **only** | For `npm run seed -- --token …`. Bypasses RLS: **never** put it on Vercel                |
 | `APP_URL`                       | `.env.local` only     | Base URL used in the invite link that `npm run seed` prints                              |
 
 ---
+
+## Google Maps and Places
+
+The map is Google Maps (Maps JavaScript API). **Discover** (Places → Discover, owner only) suggests sights, food and stays
+from the Places API (New). Nothing in this section can run up a bill unnoticed: calls are capped in the database, in
+Google Cloud, and by a budget alert. Set it up once per environment.
+
+**Two Google Cloud projects, four keys.** Use a `-dev` and a `-prod` project, each with its own pair:
+
+| Key | Used by | Restrict to |
+| --- | ------- | ----------- |
+| Server key (`GOOGLE_MAPS_SERVER_KEY`) | the `/api/places/*` routes | **API: Places API (New) only.** Application restriction: None (Vercel has no fixed IPs) |
+| Browser key (`NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY`) | the map in the browser | **API: Maps JavaScript API only. Application: HTTP referrers** (prod: your domain; dev: `http://localhost:3000/*` and your Vercel preview URLs) |
+
+Also create a **Map ID** per project (Google Maps Platform → Map Management → JavaScript, vector) and set it as
+`NEXT_PUBLIC_GOOGLE_MAP_ID`.
+
+**Where each value goes.** `.env.local`: the dev values. Vercel → Settings → Environment Variables: Production gets the
+prod values; Preview and Development get the dev values. `GOOGLE_MAPS_SERVER_KEY` is a Sensitive variable. Never put
+`SUPABASE_SERVICE_ROLE_KEY` on Vercel. The browser key is the **only** `NEXT_PUBLIC_` Google key allowed.
+
+**Spending limits (do these in each project).**
+
+1. APIs & Services → Library: enable only **Places API (New)** and **Maps JavaScript API**.
+2. APIs & Services → Places API (New) → Quotas & System Limits: set per-day caps that add up to under the monthly free
+   allowance, for example Place Details Pro about 120/day, Place Details Enterprise and Text Search Enterprise about
+   25/day, Place Photos about 25/day. Maps JavaScript API: map loads about 250/day. Google then refuses calls instead of billing them.
+3. Billing → Budgets & alerts: a small budget (for example $5) scoped to the project, alerts at 50%, 90% and 100%.
+   A budget only emails you; it does not stop spending. The quotas and the database cap are the brakes.
+4. The app also reserves every billable call in the database (`reserve_api_call`, migration 10) against a hard monthly
+   cap of 80% of each free allowance, and refuses further calls (it fails closed) with a calm "paused until next month".
+
+**What is stored, and what is not.** Google's terms allow keeping place IDs and, for up to 30 days, coordinates. So the
+database keeps only `place_refs`: the place ID, coordinates with a timestamp (purged after 30 days), and an optional
+**Wikimedia Commons** photo with its author and licence. Google names, ratings, hours, descriptions and photos are
+loaded live for the owner and never stored. Viewers never trigger a Google call: they see the saved photo, its credit, and an
+"Open in Google Maps" link.
+
+**Safety checks.** `npm run check:secrets` fails if a `NEXT_PUBLIC_*` name or value looks like a Google key (except the
+one browser key), or if an `AIza…` key is in the built bundles, the working tree or `git log -p`. Run `npm run build`
+first to include the bundle scan, and run it with `NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY` set so that one key is recognised.
+If it ever reports a key, rotate that key in Google Cloud Console straight away. `npm run check:rls` covers the new tables and the cap guard.
+
+---
+
+## Photos on ideas
+
+Every hotel, food spot and sight can carry up to 12 photos; the first is the card's cover. The owner adds them (viewers only
+look). Three kinds, all in the `item_images` table (migration 11):
+
+| Kind | How | What is kept |
+| ---- | --- | ------------ |
+| **Upload** | Choose a photo. It is shrunk on the phone to 1280 px (JPEG) first. | A file in the private `trip-photos` bucket, shown through short-lived signed links |
+| **Link** | Paste a page (hotel, restaurant, sight) or a picture address. The server finds the page's `og:image`. | The picture's address and a credit, not a copy |
+| **Wikimedia** | Added automatically when a Google suggestion is saved and a free Commons picture exists. | The address, author and licence (shown on the card) |
+
+Hotel room photos have no legal free source, so nothing is scraped. Pasting a link is the owner's own choice of one picture.
+
+**Storage.** The free Supabase plan has 1 GB of file storage. The database refuses uploads past **900 MB** (90%, `photo_storage_cap()` in
+migration 11, change it if you move to a bigger plan), and the add-photo sheet shows the meter. Uploaded photos average about
+200 KB, so 900 MB is several thousand. Links use no storage. Deleting an idea removes its photo rows; the app removes a file when you
+remove its photo. If anything is left behind, `npm run photos:orphans` lists it (add `-- --delete` to remove it; it needs the
+service-role key in `.env.local`, never on Vercel).
+
+**Safety of pasted links.** The link is opened by the server for the owner only, so it is treated as a request the server makes on
+someone's behalf: https only, port 443, no bare IP addresses or local names, every address the name resolves to must be public and the
+connection is pinned to the checked address, redirects are re-checked (at most 3), 6 seconds, 512 KB of HTML, the picture must be a
+JPEG/PNG/WebP under 10 MB, and only the picture's address ever leaves the server. Third-party pictures load in the browser with no
+referrer, and a picture that fails to load shows a "Photo unavailable" placeholder. Note that a viewer's browser contacts the picture's
+site (or Wikimedia) directly when it loads such a photo.
+
+---
+
+## Flights as boarding passes
+
+Each flight is drawn as a boarding pass: airline and number, airport codes, local times (with "+1" for a next-day landing), terminal, gate and seat. Times are the local time at each airport, so a layover between two connecting flights is exact, but the length of a flight is only shown if you type it in. Booked or Done flights and stays have a **Log as expense** button that records the fare once (the planned budget counts it as Planned; the expense counts it as Spent).
+
+The **booking reference** is kept in its own owner-only table (`flight_refs`, migration 13), so viewers cannot read it from the API; they only see that one exists. References saved before migration 13 stay in `flights.booking_ref` and remain API-readable by viewers until you review and run `supabase/proposals/move_booking_refs.sql` (not run automatically).
 
 ## How access works
 

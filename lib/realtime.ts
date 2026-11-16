@@ -6,7 +6,8 @@ import { useEffect } from "react";
 import type { Trip } from "@/lib/queries/trip";
 import { getSupabase } from "@/lib/supabase/client";
 import { qk } from "./queries/keys";
-import { pendingDeleteIds, type ChildTable } from "./queries/table";
+import { fetchPeople, peopleKey } from "./queries/ideas";
+import { fetchRows, pendingDeleteIds, type ChildTable } from "./queries/table";
 import { applyChange, type Change } from "./realtime-apply";
 
 const CHILD_TABLES: ChildTable[] = [
@@ -25,7 +26,35 @@ const CHILD_TABLES: ChildTable[] = [
   "packing_items",
   "gifts",
   "reminders",
+  "votes",
+  "comments",
+  "place_refs",
+  "item_images",
+  "flight_refs",
 ];
+
+/**
+ * Once the app is idle after opening, load every screen's tables in the background (about a dozen
+ * small reads, in parallel). Realtime keeps them current, so the first visit to any tab is instant
+ * instead of a skeleton plus a round trip. Skips tables that are already fresh (e.g. the cold-load prefetch).
+ */
+export function useWarmCache(tripId: string) {
+  const qc = useQueryClient();
+  useEffect(() => {
+    const warm = () => {
+      for (const table of CHILD_TABLES) {
+        void qc.prefetchQuery({ queryKey: qk.table(table, tripId), queryFn: () => fetchRows(table, tripId) });
+      }
+      void qc.prefetchQuery({ queryKey: peopleKey(tripId), queryFn: () => fetchPeople(tripId) });
+    };
+    if (typeof requestIdleCallback === "function") {
+      const id = requestIdleCallback(warm, { timeout: 3000 });
+      return () => cancelIdleCallback(id);
+    }
+    const id = setTimeout(warm, 1500);
+    return () => clearTimeout(id);
+  }, [tripId, qc]);
+}
 
 type AnyRow = { id: string; trip_id?: string };
 

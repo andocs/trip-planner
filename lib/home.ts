@@ -12,6 +12,10 @@ export type NextUpInput = {
   plannedCategories: number;
 };
 
+/** How many itinerary stops are real. A tentative placeholder for a draft does not tick "Plan day 1". */
+export const solidStopCount = (rows: { tentative?: boolean | null }[]): number =>
+  rows.filter((r) => !r.tentative).length;
+
 /** The setup checklist shown to the owner after the wizard. It disappears once everything is done. */
 export function nextUp(i: NextUpInput): { items: NextUpItem[]; allDone: boolean } {
   const items: NextUpItem[] = [

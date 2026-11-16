@@ -3,15 +3,14 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
 import { Toaster } from "sonner";
-import { MapStylesProvider } from "@/components/map/map-config";
-import type { MapStyles } from "@/lib/map-styles";
 
-export function Providers({ children, mapStyles }: { children: ReactNode; mapStyles: MapStyles }) {
+export function Providers({ children }: { children: ReactNode }) {
   const [queryClient] = useState(
     () =>
       new QueryClient({
         defaultOptions: {
-          queries: { staleTime: 30_000, refetchOnWindowFocus: true, retry: 1 },
+          // gcTime: keep screens' data for 30 min so returning to a tab never starts from a skeleton.
+          queries: { staleTime: 30_000, gcTime: 30 * 60_000, refetchOnWindowFocus: true, retry: 1 },
           mutations: { retry: 0 },
         },
       }),
@@ -19,7 +18,7 @@ export function Providers({ children, mapStyles }: { children: ReactNode; mapSty
 
   return (
     <QueryClientProvider client={queryClient}>
-      <MapStylesProvider styles={mapStyles}>{children}</MapStylesProvider>
+      {children}
       <Toaster
         position="top-center"
         richColors

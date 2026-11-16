@@ -1,14 +1,17 @@
 "use client";
 
+import { BoardingPass, LayoverPill } from "@/components/plan/boarding-pass";
 import { EmptyText } from "@/components/view-only-banner";
+import { Fragment } from "react";
 import { ExternalLink, Plane, Plus } from "lucide-react";
 import { EditOnly, useTrip } from "@/components/trip-gate";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { StatusChip } from "@/components/ui/status-chip";
 import { SwipeRow } from "@/components/ui/swipe-row";
-import { formatDateTime, formatMoney } from "@/lib/format";
+import { withLayovers } from "@/lib/flights";
+import { formatMoney } from "@/lib/format";
+import { useFlightRefs } from "@/lib/queries/flights";
 import { useDeleteRow, useRows, useUpdateRow, type Row } from "@/lib/queries/table";
 import { safeHref } from "@/lib/utils";
 import { useSheet } from "@/lib/use-sheet";
@@ -28,17 +31,18 @@ const byDeparture = (a: Flight, b: Flight) =>
 export function Flights() {
   const trip = useTrip();
   const { data: flights = [], isPending } = useRows("flights", byDeparture);
+  const { byFlight } = useFlightRefs();
   const update = useUpdateRow("flights", "flight");
-  const remove = useDeleteRow("flights", "flight");
   const sheet = useSheet<Flight>();
   const total = flights.filter((f) => f.status !== "Cancelled").reduce((s, f) => s + Number(f.fare ?? 0), 0);
+  const rows = withLayovers(flights);
 
   return (
     <div className="space-y-4">
-      <Card>
+      <section aria-label="Flights" className="space-y-3.5">
         <div className="flex items-center justify-between gap-2">
           <div>
-            <CardTitle>Flights</CardTitle>
+            <h2 className="font-display text-xl font-extrabold tracking-tight">Flights</h2>
             {flights.length > 0 && (
               <p className="mt-0.5 text-sm text-fg-muted">Fares {formatMoney(total, trip.home_currency)}</p>
             )}
@@ -51,59 +55,42 @@ export function Flights() {
           </EditOnly>
         </div>
         {isPending ? (
-          <Skeleton className="mt-3 h-20" />
+          <Skeleton className="h-48 rounded-[22px]" />
         ) : flights.length === 0 ? (
-          <p className="py-3 text-sm text-fg-muted">
-            <EmptyText>Add your flights to keep times and booking refs in one place.</EmptyText>
-          </p>
+          <Card className="flex flex-col items-center gap-3 px-5 py-9 text-center">
+            <Plane className="size-10 text-fg-muted" strokeWidth={1.8} aria-hidden />
+            <h3 className="font-display text-2xl font-extrabold tracking-tight">No flights yet</h3>
+            <p className="max-w-[40ch] text-fg-muted">
+              <EmptyText>
+                Add a flight and it becomes a boarding pass: route, times, terminal, gate and seat in one place. Prices
+                count toward your planned budget.
+              </EmptyText>
+            </p>
+            <EditOnly>
+              <Button onClick={sheet.openAdd}>
+                <Plus className="size-[18px]" aria-hidden />
+                Add a flight
+              </Button>
+            </EditOnly>
+          </Card>
         ) : (
-          <ul className="mt-2 space-y-1 lg:grid lg:grid-cols-2 lg:space-y-0 lg:gap-x-4">
-            {flights.map((f) => (
-              <SwipeRow
-                key={f.id}
-                className="lg:border-b lg:border-border"
-                label={`${f.from_code ?? "?"} to ${f.to_code ?? "?"} ${f.flight_no ?? ""}. Edit`}
-                onOpen={() => sheet.openEdit(f)}
-                onSwipeDelete={() => remove(f, `${f.from_code ?? ""} → ${f.to_code ?? ""}`)}
-                trailing={
-                  <StatusChip
-                    status={f.status}
-                    label={`${f.from_code} to ${f.to_code}`}
-                    onChange={(status) => update.mutate({ id: f.id, patch: { status } })}
+          <ul className="space-y-4">
+            {rows.map(({ flight: f, layover }) => (
+              <Fragment key={f.id}>
+                {layover && <LayoverPill minutes={layover.minutes} airport={layover.airport} />}
+                <li>
+                  <BoardingPass
+                    flight={f}
+                    bookingRef={byFlight.get(f.id)?.booking_ref ?? null}
+                    onOpen={() => sheet.openEdit(f)}
+                    onStatus={(status) => update.mutate({ id: f.id, patch: { status } })}
                   />
-                }
-              >
-                <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-ink text-ground">
-                  <Plane className="size-5" aria-hidden />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block font-bold tracking-wide">
-                    {f.from_code ?? "???"} → {f.to_code ?? "???"}
-                  </span>
-                  <span className="block truncate text-sm text-fg-muted">
-                    {[f.airline, f.flight_no].filter(Boolean).join(" ") || "Airline not set"}
-                  </span>
-                  {f.departs_at && (
-                    <span className="block text-xs text-fg-muted">
-                      {formatDateTime(f.departs_at)}
-                      {f.arrives_at && ` → ${formatDateTime(f.arrives_at)}`}
-                    </span>
-                  )}
-                  {(f.fare !== null || f.booking_ref) && (
-                    <span className="block text-xs tabular-nums">
-                      {f.fare !== null && (
-                        <span className="font-semibold">{formatMoney(f.fare, trip.home_currency)}</span>
-                      )}
-                      {f.fare !== null && f.booking_ref && " · "}
-                      {f.booking_ref && <span className="font-mono">Ref {f.booking_ref}</span>}
-                    </span>
-                  )}
-                </span>
-              </SwipeRow>
+                </li>
+              </Fragment>
             ))}
           </ul>
         )}
-      </Card>
+      </section>
       {sheet.mounted && <FlightSheet sheet={sheet} />}
       <Transfers />
     </div>

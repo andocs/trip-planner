@@ -57,6 +57,29 @@ export function percentUsed(budget: number | string, spent: number): number {
 }
 
 // ---------------------------------------------------------------------------
+// Planned budget (the planning phase, before anything is spent)
+// ---------------------------------------------------------------------------
+
+/** Statuses that put a flight or a stay into the plan. Ideas, maybes and cancelled ones stay out of it. */
+export const PLANNED_STATUSES = ["Planned", "Priced", "Booked", "Done"] as const;
+export const inPlan = (status: string): boolean => (PLANNED_STATUSES as readonly string[]).includes(status);
+
+/** Sum of the amounts of the rows that are in the plan (a missing amount counts as 0). */
+export function plannedTotal<T extends { status: string }>(rows: T[], amount: (row: T) => number | string | null): number {
+  return rows.reduce((sum, r) => (inPlan(r.status) ? sum + num(amount(r)) : sum), 0);
+}
+
+/**
+ * A category's planned amount: what the owner allocated to it, or what its flights and stays add up to, whichever is
+ * more. So an allocation is a floor the plan can grow past (and an item never has to be typed in twice), and a category
+ * with neither stays "not planned" (null).
+ */
+export function effectivePlanned(allocation: number | null, fromItems: number): number | null {
+  if (allocation === null && fromItems <= 0) return null;
+  return Math.max(allocation ?? 0, fromItems);
+}
+
+// ---------------------------------------------------------------------------
 // Settle up
 // ---------------------------------------------------------------------------
 
@@ -209,7 +232,15 @@ export function progress<T>(items: T[], done: (item: T) => boolean): { done: num
 }
 
 export const packedProgress = (items: { packed: boolean }[]) => progress(items, (i) => i.packed);
-export const itineraryProgress = (items: { done: boolean }[]) => progress(items, (i) => i.done);
+/** Scratch-first rule: only confirmed ideas count toward anything. (Decision comes from the database.) */
+export const counts = (row: { decision: string }): boolean => row.decision === "confirmed";
+export const onlyConfirmed = <T extends { decision: string }>(rows: T[]): T[] => rows.filter(counts);
+/** A tentative stop is a placeholder for a draft; it never counts toward totals, progress or exports. */
+export const solidStops = <T extends { tentative?: boolean | null }>(rows: T[]): T[] =>
+  rows.filter((r) => !r.tentative);
+
+export const itineraryProgress = (items: { done: boolean; tentative?: boolean | null }[]) =>
+  progress(solidStops(items), (i) => i.done);
 export const bookedProgress = (items: { status: string }[]) =>
   progress(
     items.filter((i) => i.status !== "Cancelled"),

@@ -1,14 +1,35 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { toast } from "sonner";
-import type { Tables } from "@/lib/database.types";
 import { getCurrentUser, getSupabase, signInForInvite } from "@/lib/supabase/client";
 import { errorMessage } from "@/lib/utils";
+import { fetchBootstrap, type Bootstrap, type Role, type Trip } from "./bootstrap";
 import { qk } from "./keys";
 
-export type Trip = Tables<"trips">;
+export type { Role, Trip };
+
+/**
+ * The gate's four facts (trip, admin flag, role) come from one RPC. The three hooks below all read
+ * through this, so mounting them together costs one request (fetchQuery shares an in-flight fetch),
+ * and the answers are seeded into each hook's own cache entry so nothing refetches right after.
+ */
+function loadBootstrap(qc: QueryClient): Promise<Bootstrap | null> {
+  return qc.fetchQuery({
+    queryKey: qk.bootstrap,
+    staleTime: 0,
+    queryFn: async () => {
+      const user = await getCurrentUser();
+      const b = await fetchBootstrap(getSupabase(), user);
+      if (b) {
+        if (!b.user.isAnonymous) qc.setQueryData(qk.admin, b.isAdmin);
+        if (b.trip) qc.setQueryData(qk.role(b.trip.id), b.role);
+      }
+      return b;
+    },
+  });
+}
 
 /** The signed-in user (null when signed out). Never creates a session. */
 export function useUser() {
@@ -27,38 +48,33 @@ export function useUser() {
 
 export function useActiveTrip() {
   const user = useUser();
+  const qc = useQueryClient();
   return useQuery({
     queryKey: qk.activeTrip,
     enabled: !!user.data,
-    queryFn: async (): Promise<Trip | null> => {
-      const { data, error } = await getSupabase().rpc("active_trip");
-      if (error) throw error;
-      return data?.[0] ?? null;
-    },
+    queryFn: async (): Promise<Trip | null> => (await loadBootstrap(qc))?.trip ?? null,
   });
 }
 
 /** True for the Google account listed in app_admins (the only account that can own trips). */
 export function useIsAdmin() {
   const user = useUser();
+  const qc = useQueryClient();
   return useQuery({
     queryKey: qk.admin,
     enabled: !!user.data && !user.data.isAnonymous,
-    queryFn: async () => {
-      const { data, error } = await getSupabase().rpc("is_admin");
-      if (error) throw error;
-      return data === true;
-    },
+    queryFn: async () => (await loadBootstrap(qc))?.isAdmin === true,
   });
 }
 
-export type Role = "owner" | "editor" | "viewer";
-
 export function useTripRole(tripId: string | undefined) {
+  const qc = useQueryClient();
   return useQuery({
     queryKey: qk.role(tripId ?? ""),
     enabled: !!tripId,
     queryFn: async (): Promise<Role | null> => {
+      const b = await loadBootstrap(qc);
+      if (b && b.trip?.id === tripId) return b.role;
       const { data, error } = await getSupabase().rpc("trip_role", { t: tripId! });
       if (error) throw error;
       return (data as Role | null) ?? null;

@@ -1,8 +1,10 @@
 import {
   homeAmount,
   menuHomePrice,
+  onlyConfirmed,
   pricePerNight,
   settleUp,
+  solidStops,
   spentByCategory,
   stayNights,
   totalSpent,
@@ -111,7 +113,7 @@ export function buildWorkbook(d: ExportData): Sheet[] {
       name: "Itinerary",
       rows: [
         ["Day", "Date", "City", "Time", "Activity", "Type", "Duration (min)", "Done", "Note"],
-        ...[...d.itinerary_items]
+        ...[...solidStops(d.itinerary_items)]
           .sort((a, b) => (a.day ?? 999) - (b.day ?? 999) || (a.at_time ?? "99").localeCompare(b.at_time ?? "99"))
           .map((i) => [
             i.day,
@@ -192,7 +194,7 @@ export function buildWorkbook(d: ExportData): Sheet[] {
         }),
         [],
         ["Hotel ideas: City", "Hotel", "Room", "Nights", `Total (${home})`, "Per night"],
-        ...d.hotel_ideas.map((h) => [
+        ...onlyConfirmed(d.hotel_ideas).map((h) => [
           h.city,
           h.hotel,
           h.room,
@@ -206,7 +208,7 @@ export function buildWorkbook(d: ExportData): Sheet[] {
       name: "Food",
       rows: [
         ["Name", "City", "Day", "Status", "Note"],
-        ...d.food_places.map((f) => [f.name, f.city, f.day, f.status, f.note]),
+        ...onlyConfirmed(d.food_places).map((f) => [f.name, f.city, f.day, f.status, f.note]),
         [],
         ["Menu: Restaurant", "Dish", `Price (${foreign})`, `≈ ${home}`],
         ...d.menu_items.map((m) => [
@@ -221,7 +223,7 @@ export function buildWorkbook(d: ExportData): Sheet[] {
       name: "Attractions",
       rows: [
         ["Name", "City", "Day", "Status", "Note"],
-        ...d.attractions.map((a) => [a.name, a.city, a.day, a.status, a.note]),
+        ...onlyConfirmed(d.attractions).map((a) => [a.name, a.city, a.day, a.status, a.note]),
       ],
     },
     {

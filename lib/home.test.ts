@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { joinNames, nextUp } from "./home";
+import { joinNames, nextUp, solidStopCount } from "./home";
 
 const base = { hasDates: true, stops: 3, travelers: 2, flights: 0, stays: 0, itineraryItems: 0, plannedCategories: 0 };
 
@@ -41,5 +41,12 @@ describe("joinNames", () => {
     expect(joinNames(["Aq"])).toBe("Aq");
     expect(joinNames(["Aq", "Jam"])).toBe("Aq and Jam");
     expect(joinNames(["Aq", "Jam", "Ko"])).toBe("Aq, Jam and Ko");
+  });
+});
+
+describe("solidStopCount", () => {
+  it("ignores tentative placeholders", () => {
+    expect(solidStopCount([{ tentative: true }, { tentative: false }, {}])).toBe(2);
+    expect(solidStopCount([{ tentative: true }])).toBe(0);
   });
 });

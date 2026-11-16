@@ -31,6 +31,7 @@
   --danger: #a8281a;
   --danger-tint: #fbe4e0;
   --warn: #a8690f;
+  --warn-text: #8f5a0a; /* warn as text on a surface: 4.5:1+ */
   --warn-tint: #f6e6b8;
   --focus: #0e6b5c;
   --shadow: 0 1px 2px rgb(0 0 0 / 0.05), 0 6px 20px rgb(0 0 0 / 0.05);
@@ -51,6 +52,7 @@
   --chart-2: #c93f1b;
   --chart-3: #2f5d8a;
   --chart-4: #a8690f;
+  --star: #f2b100;
   --chart-5: #8a4a7b;
   --chart-6: #5d7a2e;
   --chart-7: #7a5c3e;
@@ -100,6 +102,7 @@
   --danger: #ff9a8f;
   --danger-tint: #3a1e1a;
   --warn: #e0a93b;
+  --warn-text: #e0a93b;
   --warn-tint: #3a2e0e;
   --focus: #4fc3ae;
   --shadow: 0 0 0 1px #2a3b36; /* hairline ring: shadows do not read on deep green */
@@ -117,6 +120,7 @@
   --chart-2: #e4572e;
   --chart-3: #7fa8d6;
   --chart-4: #e0a93b;
+  --star: #f6c344;
   --chart-5: #c58bb8;
   --chart-6: #98bf5b;
   --chart-7: #c49a6c;
@@ -151,6 +155,7 @@
   --color-danger-tint: var(--danger-tint);
   --color-warn: var(--warn);
   --color-warn-tint: var(--warn-tint);
+  --color-warn-text: var(--warn-text);
 
   /* legacy names used across the existing components */
   --color-navy: var(--navy);
@@ -234,7 +239,7 @@
   }
 }
 
-/* Map markers (MapLibre HTML markers): numbered stop discs and the selected-place pin. */
+/* Map markers (Google Maps advanced markers): numbered stop discs and the selected-place pin. */
 .map-disc {
   position: relative;
   width: 30px;
@@ -266,34 +271,97 @@
 .map-pin {
   filter: drop-shadow(0 2px 3px rgb(0 0 0 / 0.25));
 }
-.maplibregl-ctrl-attrib {
-  font-size: 11px;
-}
-.dark .maplibregl-ctrl-attrib {
-  background: rgb(14 25 23 / 0.85);
-  color: var(--muted);
-}
-.dark .maplibregl-ctrl-attrib a {
-  color: var(--muted);
-}
 
-/* Keep the map credit clear of the sheet that overlaps the bottom edge of the Home map. */
-.map-lift .maplibregl-ctrl-bottom-right,
-.map-lift .maplibregl-ctrl-bottom-left {
-  margin-bottom: 30px;
+/* The Home map sits under a sheet that overlaps its bottom edge: end the map above it so Google's logo and
+   terms link are never covered. */
+.map-lift.map-lift {
+  bottom: 30px;
 }
 @media (min-width: 1024px) {
-  .map-lift .maplibregl-ctrl-bottom-right,
-  .map-lift .maplibregl-ctrl-bottom-left {
-    margin-bottom: 0;
+  .map-lift.map-lift {
+    bottom: 0;
   }
 }
 
-/* Small maps: keep the OpenStreetMap credit first and on one line. */
-.map-lift .maplibregl-ctrl-attrib-inner {
-  font-size: 10px;
-  max-width: 230px;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
+/* Short, purposeful motion. Each is one small moment, and all of it is off with prefers-reduced-motion. */
+
+/* Board digits: the digit turns about the seam like a departure-board flap (up when a number rises, down when it falls). */
+@keyframes board-flip-up {
+  from {
+    transform: perspective(160px) rotateX(-90deg);
+    opacity: 0.25;
+  }
+  to {
+    transform: perspective(160px) rotateX(0deg);
+    opacity: 1;
+  }
+}
+@keyframes board-flip-down {
+  from {
+    transform: perspective(160px) rotateX(90deg);
+    opacity: 0.25;
+  }
+  to {
+    transform: perspective(160px) rotateX(0deg);
+    opacity: 1;
+  }
+}
+.board-flip-up {
+  animation: board-flip-up 0.32s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.board-flip-down {
+  animation: board-flip-down 0.32s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+/* A small confirmation (a new "Logged" chip, a saved state): it grows in from 85% and settles. */
+@keyframes pop-in {
+  from {
+    transform: scale(0.85);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+.pop-in {
+  animation: pop-in 0.22s cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+}
+
+/* Tab switch in flight: a bar runs under the tab control while the next tab renders. */
+@keyframes tab-run {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(250%);
+  }
+}
+.tab-run {
+  animation: tab-run 1s ease-in-out infinite;
+}
+
+/* A side panel slides in from the right edge. */
+@keyframes sheet-side-in {
+  from {
+    transform: translateX(32px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+.sheet-side {
+  animation: sheet-side-in 0.22s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sheet-side,
+  .board-flip-up,
+  .board-flip-down,
+  .pop-in,
+  .tab-run {
+    animation: none;
+  }
 }

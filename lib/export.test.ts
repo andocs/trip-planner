@@ -69,7 +69,7 @@ describe("Excel export", () => {
   it("writes one row per record under each header", () => {
     expect(sheet("Expenses").rows).toHaveLength(1 + 5);
     expect(sheet("Itinerary").rows).toHaveLength(1 + 140);
-    expect(sheet("Attractions").rows).toHaveLength(1 + 36);
+    expect(sheet("Attractions").rows).toHaveLength(1 + 28); // 36 in the seed; 8 are Idea/Maybe/Cancelled, so not confirmed
   });
 
   it("includes computed values: home amounts, budget totals, settle up, menu prices", () => {
@@ -81,6 +81,26 @@ describe("Excel export", () => {
     const stay = sheet("Stays").rows.find((r) => r[2] === "To be decided" && r[1] === "Hanoi");
     expect(stay?.[6]).toBe(2);
     expect(stay?.[8]).toBe(10972.05);
+  });
+
+  it("exports only confirmed ideas and solid itinerary stops", () => {
+    const data = seededData();
+    const confirmed = (rows: { decision: string }[]) => rows.filter((r) => r.decision === "confirmed").length;
+    const rowsOf = (name: string, ds: ReturnType<typeof buildWorkbook>) => ds.find((x) => x.name === name)!.rows;
+    // Seed: Idea/Maybe places are drafts, Cancelled ones are dropped (see decisionForStatus).
+    expect(rowsOf("Attractions", buildWorkbook(data))).toHaveLength(1 + confirmed(data.attractions));
+    expect(data.attractions.some((a) => a.decision === "draft")).toBe(true);
+
+    const mutated = seededData();
+    mutated.food_places[0].decision = "draft";
+    mutated.food_places[1].decision = "dropped";
+    mutated.hotel_ideas[0].decision = "draft";
+    mutated.itinerary_items[0].tentative = true;
+    const wb = buildWorkbook(mutated);
+    const base = buildWorkbook(seededData());
+    expect(rowsOf("Itinerary", wb)).toHaveLength(rowsOf("Itinerary", base).length - 1);
+    expect(rowsOf("Food", wb)).toHaveLength(rowsOf("Food", base).length - 2); // one draft + one dropped
+    expect(rowsOf("Stays", wb)).toHaveLength(rowsOf("Stays", base).length - 1); // one draft hotel idea
   });
 
   it("makes a safe file name", () => {

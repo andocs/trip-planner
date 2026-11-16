@@ -5,6 +5,7 @@ import { EditOnly, useTrip } from "@/components/trip-gate";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { LogExpenseRow } from "@/components/plan/log-expense";
 import { StatusChip } from "@/components/ui/status-chip";
 import { SwipeRow } from "@/components/ui/swipe-row";
 import { pricePerNight, stayNights, tripNights } from "@/lib/calc";
@@ -69,6 +70,7 @@ export function Stays() {
                 label={`${s.hotel}, ${s.city ?? ""}. Edit`}
                 onOpen={() => sheet.openEdit(s)}
                 onSwipeDelete={() => remove(s, s.hotel)}
+                below={<LogExpenseRow kind="stays" item={s} className="pl-[3.75rem]" />}
                 trailing={
                   <StatusChip
                     status={s.status}

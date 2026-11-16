@@ -1,0 +1,97 @@
+"use client";
+
+import { Lightbulb } from "lucide-react";
+import { usePathname, useSearchParams } from "next/navigation";
+import dynamic from "next/dynamic";
+import { useEffect, useState } from "react";
+import { useCanEdit } from "@/components/trip-gate";
+import { cn } from "@/lib/utils";
+
+const AddIdeasSheet = dynamic(() => import("./add-ideas-sheet").then((m) => m.AddIdeasSheet), { ssr: false });
+
+const EVENT = "trip:add-idea";
+
+/** Open the quick-add sheet from anywhere (a button, the Board, a keyboard shortcut). */
+export function openAddIdea(opts: { paste?: boolean } = {}) {
+  window.dispatchEvent(new CustomEvent(EVENT, { detail: opts }));
+}
+
+const typing = (el: EventTarget | null) => {
+  const e = el as HTMLElement | null;
+  return !!e && (e.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(e.tagName));
+};
+
+/**
+ * Scratch-first capture, reachable from every screen for people who can edit:
+ * a floating button (hidden where the Board already has its own) and the `N` shortcut on desktop.
+ */
+export function CaptureHost() {
+  const canEdit = useCanEdit();
+  const pathname = usePathname();
+  const tab = useSearchParams().get("tab");
+  const [state, setState] = useState<{ open: boolean; paste: boolean; mounted: boolean; n: number }>({
+    open: false,
+    paste: false,
+    mounted: false,
+    n: 0,
+  });
+
+  useEffect(() => {
+    if (!canEdit) return;
+    const open = (paste = false) => setState((s) => ({ open: true, paste, mounted: true, n: s.n + 1 }));
+    const onEvent = (e: Event) => open(!!(e as CustomEvent<{ paste?: boolean }>).detail?.paste);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key.toLowerCase() !== "n" || e.ctrlKey || e.metaKey || e.altKey || e.shiftKey || e.repeat) return;
+      if (typing(e.target) || document.querySelector("[role=dialog]")) return;
+      e.preventDefault();
+      open();
+    };
+    window.addEventListener(EVENT, onEvent);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener(EVENT, onEvent);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [canEdit]);
+
+  if (!canEdit) return null;
+  const boardShowing = pathname === "/places" && (tab === null || tab === "board");
+
+  // The button is ALWAYS in the markup and is only hidden with CSS where the Board already has its own. Its presence
+  // never depends on the address or query string, so the server HTML and the first browser render cannot disagree about
+  // it (they used to, and React reported a hydration mismatch).
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setState((s) => ({ open: true, paste: false, mounted: true, n: s.n + 1 }))}
+        onPointerEnter={() => void import("./add-ideas-sheet")}
+        aria-label="Add idea"
+        aria-keyshortcuts="N"
+        aria-hidden={boardShowing || undefined}
+        tabIndex={boardShowing ? -1 : undefined}
+        className={cn(
+          "fixed top-[calc(env(safe-area-inset-top)+0.5rem)] right-3 z-30 inline-flex size-11 items-center justify-center gap-2 rounded-full bg-surface font-bold text-fg shadow-float lg:top-6 lg:right-10 lg:w-auto lg:px-4",
+          boardShowing && "hidden",
+        )}
+      >
+        <Lightbulb className="size-5" strokeWidth={2.4} aria-hidden />
+        <span className="hidden lg:inline">Add idea</span>
+        <kbd
+          className="hidden rounded-md bg-surface-2 px-1.5 font-mono text-xs ring-1 ring-line-strong lg:inline"
+          aria-hidden
+        >
+          N
+        </kbd>
+      </button>
+      {state.mounted && (
+        <AddIdeasSheet
+          key={state.n}
+          open={state.open}
+          startPaste={state.paste}
+          onOpenChange={(open) => setState((s) => ({ ...s, open }))}
+        />
+      )}
+    </>
+  );
+}

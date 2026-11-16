@@ -11,7 +11,7 @@ import { TripForm } from "@/components/settings/trip-form";
 import { useTheme, type ThemePref } from "@/components/theme";
 import { AccountSection } from "@/components/settings/account-section";
 import { ViewersSection } from "@/components/settings/viewers-section";
-import { TripGate, useCanEdit } from "@/components/trip-gate";
+import { useCanEdit } from "@/components/trip-gate";
 import { ViewOnlyBanner } from "@/components/view-only-banner";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
@@ -47,9 +47,7 @@ export function SettingsScreen() {
         </Button>
         <h1 className="text-2xl font-bold">Settings</h1>
       </header>
-      <TripGate>
-        <SettingsBody />
-      </TripGate>
+      <SettingsBody />
     </div>
   );
 }

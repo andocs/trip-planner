@@ -18,8 +18,10 @@ import {
   type Role,
   type Trip,
 } from "@/lib/queries/trip";
-import { useRealtimeSync } from "@/lib/realtime";
+import type { Bootstrap } from "@/lib/queries/bootstrap";
+import { useRealtimeSync, useWarmCache } from "@/lib/realtime";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
+import { useClientValue } from "@/lib/use-client-value";
 import { errorMessage } from "@/lib/utils";
 
 type TripAccess = { trip: Trip; role: Role; canEdit: boolean };
@@ -51,16 +53,46 @@ export function EditOnly({ children }: { children: ReactNode }) {
   return useCanEdit() ? children : null;
 }
 
-/** Loads the session and active trip, then shows the right access state before rendering children. */
-export function TripGate({ children }: { children: ReactNode }) {
+/**
+ * Loads the session and active trip, then shows the right access state before rendering children.
+ *
+ * `prefetched` says the server already put the trip in the HTML (cold-load prefetch). When it did not,
+ * the server HTML is a skeleton, so the first client render must be one too: the shell's own queries may
+ * have filled the cache before this part of the page hydrates, and rendering real content then would
+ * not match the HTML (and can leave the page stuck on its skeleton).
+ */
+export function TripGate({
+  children,
+  prefetched = false,
+  boot,
+}: {
+  children: ReactNode;
+  prefetched?: boolean;
+  /** The server's own answer (user, trip, admin flag, role), when it prefetched. */
+  boot?: Bootstrap;
+}) {
   if (!isSupabaseConfigured()) return <NotConfigured />;
-  return <TripGateInner>{children}</TripGateInner>;
+  return (
+    <TripGateInner prefetched={prefetched} boot={boot}>
+      {children}
+    </TripGateInner>
+  );
 }
 
-function TripGateInner({ children }: { children: ReactNode }) {
+function TripGateInner({ children, prefetched, boot }: { children: ReactNode; prefetched: boolean; boot?: Bootstrap }) {
   const user = useUser();
   const trip = useActiveTrip();
   const admin = useIsAdmin();
+  const mounted = useClientValue(() => true, false);
+
+  if (!prefetched && !mounted) return <PageSkeleton />;
+
+  // The server HTML was built from `boot`. The browser's query cache is NOT a safe source for the first render: the
+  // app shell (outside this boundary) has already created the user and trip queries there, still empty, and a
+  // dehydrated query that already exists is only filled in an effect. Rendering from the cache would sometimes show a
+  // skeleton where the server sent the page (or the reverse): a hydration mismatch. So until mounted, use `boot`.
+  const snap = !mounted && boot ? boot : null;
+  if (snap) return <Ready boot={snap}>{children}</Ready>;
 
   if (user.isError) return <ErrorState message={errorMessage(user.error)} onRetry={() => user.refetch()} />;
   if (!user.isSuccess) return <PageSkeleton />;
@@ -78,25 +110,40 @@ function TripGateInner({ children }: { children: ReactNode }) {
   );
 }
 
+/** The gate's decision from the server's snapshot alone (same branches as the live path, no queries). */
+function Ready({ boot, children }: { boot: Bootstrap; children: ReactNode }) {
+  if (!boot.trip) return boot.isAdmin ? <OwnerWithoutTrip /> : <NoAccess email={boot.user.email} />;
+  return (
+    <TripRole trip={boot.trip} isAdmin={boot.isAdmin} email={boot.user.email} bootRole={boot.role}>
+      {children}
+    </TripRole>
+  );
+}
+
 function TripRole({
   trip,
   isAdmin,
   email,
+  bootRole,
   children,
 }: {
   trip: Trip;
   isAdmin: boolean;
   email: string | null;
+  /** The server's answer for the first render (see TripGateInner); undefined once the live query takes over. */
+  bootRole?: Role | null;
   children: ReactNode;
 }) {
   const role = useTripRole(trip.id);
-  if (role.isError) return <ErrorState message={errorMessage(role.error)} onRetry={() => role.refetch()} />;
-  if (!role.isSuccess) return <PageSkeleton />;
-  if (!role.data) return <NoAccess email={email} />;
+  const fromServer = bootRole !== undefined;
+  if (!fromServer && role.isError) return <ErrorState message={errorMessage(role.error)} onRetry={() => role.refetch()} />;
+  if (!fromServer && !role.isSuccess) return <PageSkeleton />;
+  const roleData = fromServer ? bootRole : role.data;
+  if (!roleData) return <NoAccess email={email} />;
   // An owner row only counts while the account is still an admin (the database applies the same rule).
-  const canEdit = role.data === "editor" || (role.data === "owner" && isAdmin);
+  const canEdit = roleData === "editor" || (roleData === "owner" && isAdmin);
   // A draft is the owner's setup wizard; viewers wait until it is finished.
-  const value = { trip, role: role.data, canEdit };
+  const value = { trip, role: roleData, canEdit };
   if (trip.status === "draft") {
     return canEdit ? (
       <TripContext value={value}>
@@ -116,6 +163,7 @@ function TripRole({
 
 function RealtimeSync({ tripId }: { tripId: string }) {
   useRealtimeSync(tripId);
+  useWarmCache(tripId);
   return null;
 }
 

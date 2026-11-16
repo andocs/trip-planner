@@ -1,7 +1,8 @@
 "use client";
 
 import { EmptyText } from "@/components/view-only-banner";
-import { CalendarPlus, Plus } from "lucide-react";
+import { ArrowUpRight, CalendarPlus, Info, Plus } from "lucide-react";
+import Link from "next/link";
 import { useState } from "react";
 import { EditOnly } from "@/components/trip-gate";
 import { Button } from "@/components/ui/button";
@@ -165,39 +166,87 @@ export function Itinerary() {
                 </EditOnly>
               </header>
               <ul className="p-2">
-                {g.items.map((it) => (
-                  <SwipeRow
-                    key={it.id}
-                    label={`${formatTime(it.at_time)} ${it.activity}. Edit`}
-                    onOpen={() => sheet.openEdit(it)}
-                    onSwipeDelete={() => remove(it, `“${it.activity}”`)}
-                    leading={
-                      <CheckButton
-                        checked={it.done}
-                        onChange={(done) => update.mutate({ id: it.id, patch: { done } })}
-                        label={`Done: ${it.activity}`}
-                        className="ml-1"
-                      />
-                    }
-                  >
-                    <span className="w-11 shrink-0 text-sm font-semibold text-fg-muted tabular-nums">
-                      {formatTime(it.at_time) || "–"}
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className={cn("block font-semibold", it.done && "text-fg-muted line-through")}>
-                        {it.activity}
+                {g.items.map((it) =>
+                  it.tentative ? (
+                    <SwipeRow
+                      key={it.id}
+                      label={`Tentative: ${it.activity}. Edit`}
+                      onOpen={() => sheet.openEdit(it)}
+                      onSwipeDelete={() => remove(it, `“${it.activity}”`)}
+                      className="my-1 rounded-2xl border-2 border-dashed border-line-strong"
+                      leading={
+                        <span
+                          className="ml-1 size-[26px] shrink-0 rounded-full border-2 border-dashed border-line-strong"
+                          aria-hidden
+                        />
+                      }
+                      trailing={
+                        it.source_id && (
+                          <Link
+                            href={`/places?idea=${it.source_table}:${it.source_id}`}
+                            className="mr-1 inline-flex min-h-11 items-center gap-1 text-sm font-bold text-teal"
+                          >
+                            <ArrowUpRight className="size-4" strokeWidth={2.6} aria-hidden />
+                            On the board
+                          </Link>
+                        )
+                      }
+                    >
+                      <span className="w-11 shrink-0 text-sm font-semibold text-fg-muted tabular-nums">
+                        {formatTime(it.at_time) || "Any"}
                       </span>
-                      <span className="flex flex-wrap items-center gap-x-2">
-                        <TypeTag type={it.type} />
-                        {it.duration_min ? (
-                          <span className="text-xs text-fg-muted">{formatDuration(it.duration_min)}</span>
-                        ) : null}
-                        {it.note && <span className="truncate text-xs text-fg-muted">{it.note}</span>}
+                      <span className="min-w-0 flex-1">
+                        <span className="block font-semibold">{it.activity}</span>
+                        <span className="flex flex-wrap items-center gap-x-2">
+                          <span className="inline-flex min-h-6 items-center rounded-full px-2 text-xs font-bold ring-[1.5px] ring-line-strong">
+                            Tentative
+                          </span>
+                          <TypeTag type={it.type} />
+                        </span>
                       </span>
-                    </span>
-                  </SwipeRow>
-                ))}
+                    </SwipeRow>
+                  ) : (
+                    <SwipeRow
+                      key={it.id}
+                      label={`${formatTime(it.at_time)} ${it.activity}. Edit`}
+                      onOpen={() => sheet.openEdit(it)}
+                      onSwipeDelete={() => remove(it, `“${it.activity}”`)}
+                      leading={
+                        <CheckButton
+                          checked={it.done}
+                          onChange={(done) => update.mutate({ id: it.id, patch: { done } })}
+                          label={`Done: ${it.activity}`}
+                          className="ml-1"
+                        />
+                      }
+                    >
+                      <span className="w-11 shrink-0 text-sm font-semibold text-fg-muted tabular-nums">
+                        {formatTime(it.at_time) || "–"}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className={cn("block font-semibold", it.done && "text-fg-muted line-through")}>
+                          {it.activity}
+                        </span>
+                        <span className="flex flex-wrap items-center gap-x-2">
+                          <TypeTag type={it.type} />
+                          {it.duration_min ? (
+                            <span className="text-xs text-fg-muted">{formatDuration(it.duration_min)}</span>
+                          ) : null}
+                          {it.note && <span className="truncate text-xs text-fg-muted">{it.note}</span>}
+                        </span>
+                      </span>
+                    </SwipeRow>
+                  ),
+                )}
               </ul>
+              {g.items.some((i) => i.tentative) && (
+                <p className="flex items-start gap-2 border-t border-border px-4 py-2.5 text-[13px] text-fg-muted">
+                  <Info className="mt-px size-4 shrink-0" strokeWidth={2.4} aria-hidden />
+                  {g.items.filter((i) => i.tentative).length} tentative{" "}
+                  {g.items.filter((i) => i.tentative).length === 1 ? "stop isn’t" : "stops aren’t"} in this day’s count
+                  or the export until confirmed on the board.
+                </p>
+              )}
             </section>
           );
         })
