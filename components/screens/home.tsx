@@ -5,6 +5,7 @@ import Link from "next/link";
 import { BudgetBlock, NextUp, RouteMap, StopsCard, TripTitle } from "@/components/home/dashboard";
 import { PlannedVsSpentCard, ReadinessCard, SpendDonutCard } from "@/components/home/home-cards";
 import { QuickAdd } from "@/components/home/quick-add";
+import { RemindersCard } from "@/components/home/reminders-card";
 import { TransfersList } from "@/components/spend/settle-up";
 import { PageSkeleton } from "@/components/trip-gate";
 import { Card, CardTitle } from "@/components/ui/card";
@@ -77,6 +78,7 @@ function Home() {
             <BudgetBlock budget={budget} />
           </div>
           <NextUp budget={budget} />
+          <RemindersCard />
           <StopsCard />
         </div>
         <div className="order-5 min-w-0">
