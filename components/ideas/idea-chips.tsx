@@ -10,6 +10,8 @@ import {
   Coins,
   Flag,
   Footprints,
+  Info,
+  MapPin,
   Landmark,
   ListChecks,
   Moon,
@@ -24,7 +26,9 @@ import type { Idea } from "@/lib/drafts";
 import { cardChips, detailRows } from "@/lib/idea-details";
 import { cn } from "@/lib/utils";
 
-const ICONS: Record<string, LucideIcon> = {
+export const CHIP_ICONS: Record<string, LucideIcon> = {
+  Info,
+  MapPin,
   Banknote,
   BedDouble,
   CalendarClock,
@@ -50,7 +54,7 @@ export function IdeaChips({ idea, currency, className }: { idea: Idea; currency:
   return (
     <ul className={cn("flex flex-wrap gap-1.5", className)} aria-label="Key facts">
       {chips.map((c) => {
-        const Icon = ICONS[c.icon] ?? Check;
+        const Icon = CHIP_ICONS[c.icon] ?? Check;
         return (
           <li
             key={c.key}

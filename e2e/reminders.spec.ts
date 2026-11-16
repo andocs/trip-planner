@@ -8,6 +8,7 @@ test.beforeEach(async ({ page }) => {
 
 function seedPlan(fake: ReturnType<typeof createFakeSupabase>) {
   const stays = fake.tables.get("stays")!;
+  fake.tables.set("itinerary_items", []); // the seeded workbook has long days; these tests are about stays and tickets
   // One stay that needs attention three ways; the rest are booked and far away, so they say nothing.
   stays.forEach((s) => Object.assign(s, { status: "Booked", check_in: "2026-07-20", check_out: "2026-07-22", details: {} }));
   Object.assign(stays[0], {
@@ -72,8 +73,25 @@ test("with nothing to remind about and no notes, the card is not there", async (
   const fake = createFakeSupabase({ withSeed: true });
   fake.tables.get("stays")!.forEach((s) => Object.assign(s, { status: "Booked", check_in: "2026-07-20", check_out: "2026-07-22" }));
   fake.tables.set("reminders", []);
+  fake.tables.set("itinerary_items", []);
   await fake.install(page);
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "Getting ready" })).toBeVisible();
   await expect(page.getByRole("region", { name: "Reminders" })).toHaveCount(0);
+});
+
+test("Home warns about an upcoming day that is packed, and it opens the itinerary", async ({ page }) => {
+  const fake = createFakeSupabase({ withSeed: true });
+  const items = fake.tables.get("itinerary_items")!;
+  // Trip start is 16 Jun, so Day 2 is 17 Jun (after "today", 10 Jun). Make it 11 hours long.
+  const base = items[0];
+  fake.tables.set("itinerary_items", [{ ...base, id: "long-1", day: 2, on_date: "2026-06-17", duration_min: 660, kind: "stop", position: 1000, tentative: false }]);
+  fake.tables.get("stays")!.forEach((s) => Object.assign(s, { status: "Booked", check_in: "2026-07-20", check_out: "2026-07-22", details: {} }));
+  await fake.install(page);
+  await page.goto("/");
+  const card = page.getByRole("region", { name: "Reminders" });
+  await expect(card.getByText("Day 2 is packed")).toBeVisible();
+  await expect(card.getByText("11h planned, over 10h")).toBeVisible();
+  await card.getByRole("link", { name: /Day 2 is packed/ }).click();
+  await expect(page).toHaveURL(/\/itinerary$/);
 });

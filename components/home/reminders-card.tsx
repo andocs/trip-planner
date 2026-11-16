@@ -1,6 +1,6 @@
 "use client";
 
-import { BedDouble, BellRing, CalendarClock, ChevronRight, ShieldCheck, Ticket, Utensils, X, type LucideIcon } from "lucide-react";
+import { BedDouble, BellRing, CalendarClock, ChevronRight, ShieldCheck, Ticket, TriangleAlert, Utensils, X, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { useSyncExternalStore } from "react";
 import { useTrip } from "@/components/trip-gate";
@@ -17,6 +17,7 @@ const ICON: Record<ReminderIcon, LucideIcon> = {
   ShieldCheck,
   CalendarClock,
   Ticket,
+  TriangleAlert,
   Utensils,
 };
 const MAX_SHOWN = 5;
@@ -64,13 +65,14 @@ export function RemindersCard() {
   const trip = useTrip();
   const stays = useRows("stays");
   const notes = useRows("reminders");
+  const itinerary = useRows("itinerary_items");
   const { ideas, isPending } = useIdeas();
   const today = useClientValue(() => localISODate(), null);
   const { dismissed, dismiss } = useDismissed(trip.id);
 
-  if (!stays.isSuccess || !notes.isSuccess || isPending || !today) return null;
+  if (!stays.isSuccess || !notes.isSuccess || !itinerary.isSuccess || isPending || !today) return null;
 
-  const auto = autoReminders({ stays: stays.data, ideas }, today).filter((r) => !dismissed.has(r.id));
+  const auto = autoReminders({ stays: stays.data, ideas, items: itinerary.data, start: trip.start_date }, today).filter((r) => !dismissed.has(r.id));
   const mine = notes.data;
   if (auto.length === 0 && mine.length === 0) return null;
 

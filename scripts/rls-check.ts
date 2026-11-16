@@ -185,6 +185,27 @@ async function main() {
       ((await viewer.from("attractions").update({ decision: "confirmed" }).eq("id", ideaId).select()).data ?? [])
         .length === 0,
     );
+    // Itinerary order and connectors (migration 16): the owner writes them, a viewer reads but never writes.
+    const conn = await owner
+      .from("itinerary_items")
+      .insert({ trip_id: tripId, activity: "Walk", kind: "commute", day: 1, position: 1500, duration_min: 12, details: { mode: "walk" } })
+      .select("id")
+      .single();
+    check("owner can add a commute", !!conn.data);
+    const connId = conn.data!.id;
+    const seenConn = await viewer.from("itinerary_items").select("kind, position").eq("id", connId).single();
+    check("a viewer can read a connector", seenConn.data?.kind === "commute" && seenConn.data?.position === 1500);
+    check(
+      "viewer cannot move an item or change its kind",
+      ((await viewer.from("itinerary_items").update({ position: 1, kind: "stop" }).eq("id", connId).select()).data ?? []).length === 0,
+    );
+    check("kind must be stop, commute or buffer", !!(await owner.from("itinerary_items").update({ kind: "nonsense" }).eq("id", connId)).error);
+    check(
+      "connector details must be a JSON object",
+      !!(await owner.from("itinerary_items").update({ details: [1] as never }).eq("id", connId)).error,
+    );
+    await owner.from("itinerary_items").delete().eq("id", connId);
+
     // Category details and the deal-breaker flag (migration 15): the owner writes them, a viewer reads but never writes.
     check(
       "owner can save details and the deal-breaker flag",

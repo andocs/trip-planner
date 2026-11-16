@@ -294,6 +294,9 @@ export type Database = {
           at_time: string | null
           city: string | null
           created_at: string
+          details: Json
+          kind: string
+          position: number | null
           day: number | null
           done: boolean
           duration_min: number | null
@@ -311,6 +314,9 @@ export type Database = {
           at_time?: string | null
           city?: string | null
           created_at?: string
+          details?: Json
+          kind?: string
+          position?: number | null
           day?: number | null
           done?: boolean
           duration_min?: number | null
@@ -328,6 +334,9 @@ export type Database = {
           at_time?: string | null
           city?: string | null
           created_at?: string
+          details?: Json
+          kind?: string
+          position?: number | null
           day?: number | null
           done?: boolean
           duration_min?: number | null

@@ -2,20 +2,23 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useState } from "react";
-import { Controller, useForm, useWatch } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 import { useTrip } from "@/components/trip-gate";
 import { Field, Input, Select, Textarea } from "@/components/ui/field";
 import { RowSheet } from "@/components/ui/row-sheet";
-import { dayNumberFor } from "@/lib/calc";
+import { tripLength } from "@/lib/calc";
 import { ITINERARY_TYPES } from "@/lib/constants";
-import { newId, useDeleteRow, useInsertRow, useUpdateRow, type Row } from "@/lib/queries/table";
-import { optionalDate, optionalNumber, optionalText, requiredText, str } from "@/lib/schemas";
+import { formatDay } from "@/lib/format";
+import { dateForDay } from "@/lib/itinerary";
+import { placeAtEndOfDay } from "@/lib/queries/itinerary";
+import { newId, useDeleteRow, useInsertRow, useRows, useUpdateRow, type Row } from "@/lib/queries/table";
+import { optionalNumber, optionalText, requiredText, str } from "@/lib/schemas";
 import type { useSheet } from "@/lib/use-sheet";
 
 const Schema = z.object({
-  on_date: optionalDate,
-  day: optionalNumber({ min: -30, max: 365, int: true }),
+  /** The day of the trip. The date is worked out from the trip start, so it is never asked for. */
+  day: z.string(),
   at_time: z
     .string()
     .refine((v) => v === "" || /^\d{2}:\d{2}/.test(v), "Pick a time")
@@ -39,9 +42,10 @@ export function ItinerarySheet({
   sheet: ReturnType<typeof useSheet<ItineraryItem>>;
   cities: string[];
   /** Prefill for "add" (e.g. the day you tapped + on). */
-  defaults?: Partial<In>;
+  defaults?: Partial<Pick<In, "day">>;
 }) {
   const trip = useTrip();
+  const all = useRows("itinerary_items").data ?? [];
   const insert = useInsertRow("itinerary_items", "activity");
   const update = useUpdateRow("itinerary_items", "activity");
   const remove = useDeleteRow("itinerary_items", "activity");
@@ -51,12 +55,18 @@ export function ItinerarySheet({
   });
   const errors = formState.errors;
 
+  // Every day of the trip, and any day an item already uses (the trip may have been shortened).
+  const len = tripLength(trip.start_date, trip.end_date) ?? 0;
+  const days = new Set<number>();
+  for (let d = 1; d <= len; d++) days.add(d);
+  for (const i of all) if (i.day !== null) days.add(i.day);
+  const dayList = [...days].sort((a, b) => a - b);
+
   useEffect(() => {
     if (!sheet.open) return;
     const r = sheet.row;
     reset({
-      on_date: str(r?.on_date),
-      day: str(r?.day),
+      day: r ? str(r.day) : (defaults?.day ?? ""),
       at_time: r?.at_time?.slice(0, 5) ?? "",
       city: str(r?.city),
       activity: r?.activity ?? "",
@@ -64,25 +74,23 @@ export function ItinerarySheet({
       duration_min: str(r?.duration_min),
       note: str(r?.note),
       done: r?.done ?? false,
-      ...(r ? {} : defaults),
     });
   }, [sheet.open, sheet.row, reset, defaults]);
 
-  const [onDate, day] = useWatch({ control, name: ["on_date", "day"] });
-  const autoDay = !day && onDate && trip.start_date ? dayNumberFor(onDate, trip.start_date) : null;
-
   const onSubmit = handleSubmit((v) => {
-    // Blank day + a date → fill the day from the trip start (start date = Day 1).
-    const values = {
-      ...v,
-      day: v.day ?? (v.on_date && trip.start_date ? dayNumberFor(v.on_date, trip.start_date) : null),
-    };
+    const { day: dayStr, ...fields } = v;
+    const day = dayStr === "" ? null : Number(dayStr);
     if (sheet.row) {
-      update.mutate({ id: sheet.row.id, patch: values });
+      const moved = day !== sheet.row.day;
+      // Changing the day sends it to the end of the new day; otherwise its place in the day is kept.
+      const patch = moved
+        ? { ...fields, ...placeAtEndOfDay(all.filter((i) => i.id !== sheet.row!.id), day, trip.start_date) }
+        : { ...fields, on_date: dateForDay(trip.start_date, day) ?? sheet.row.on_date };
+      update.mutate({ id: sheet.row.id, patch });
       sheet.close();
       return;
     }
-    insert.mutate([{ id: newId(), ...values }]);
+    insert.mutate([{ id: newId(), ...fields, ...placeAtEndOfDay(all, day, trip.start_date) }]);
     if (keepAdding) {
       const keep = getValues();
       reset({ ...keep, activity: "", at_time: "", duration_min: "", note: "", done: false });
@@ -111,28 +119,28 @@ export function ItinerarySheet({
         {(p) => <Input {...p} {...register("activity")} autoComplete="off" placeholder="e.g. Train Street coffee" />}
       </Field>
       <div className="grid grid-cols-2 gap-3">
-        <Field label="Date" error={errors.on_date?.message}>
-          {(p) => <Input {...p} type="date" {...register("on_date")} />}
+        <Field label="Day" hint={trip.start_date ? "The date follows from the trip start." : undefined}>
+          {(p) => (
+            <Select {...p} {...register("day")}>
+              <option value="">Unscheduled</option>
+              {dayList.map((d) => {
+                const date = dateForDay(trip.start_date, d);
+                return (
+                  <option key={d} value={d}>
+                    {`Day ${d}${date ? ` · ${formatDay(date)}` : ""}`}
+                  </option>
+                );
+              })}
+            </Select>
+          )}
         </Field>
-        <Field label="Time" error={errors.at_time?.message}>
+        <Field label="Time (optional)" error={errors.at_time?.message}>
           {(p) => <Input {...p} type="time" {...register("at_time")} />}
         </Field>
       </div>
       <div className="grid grid-cols-2 gap-3">
-        <Field
-          label="Day"
-          error={errors.day?.message}
-          hint={autoDay !== null ? `Leave blank for Day ${autoDay}` : "Filled from the date if blank"}
-        >
-          {(p) => <Input {...p} {...register("day")} type="number" inputMode="numeric" step={1} />}
-        </Field>
         <Field label="Duration (min)" error={errors.duration_min?.message}>
           {(p) => <Input {...p} {...register("duration_min")} type="number" inputMode="numeric" min={0} step={5} />}
-        </Field>
-      </div>
-      <div className="grid grid-cols-2 gap-3">
-        <Field label="City" error={errors.city?.message}>
-          {(p) => <Input {...p} {...register("city")} list="itin-cities" autoComplete="off" />}
         </Field>
         <Field label="Type">
           {(p) => (
@@ -147,6 +155,9 @@ export function ItinerarySheet({
           )}
         </Field>
       </div>
+      <Field label="City" error={errors.city?.message}>
+        {(p) => <Input {...p} {...register("city")} list="itin-cities" autoComplete="off" />}
+      </Field>
       <datalist id="itin-cities">
         {cities.map((c) => (
           <option key={c} value={c} />

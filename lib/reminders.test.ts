@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Idea } from "./drafts";
+import type { Item } from "./itinerary";
 import { autoReminders } from "./reminders";
 
 const today = "2026-06-10";
@@ -89,5 +90,40 @@ describe("ordering and ids", () => {
       today,
     );
     expect(r.map((x) => x.id)).toEqual(["checkin:now", "checkin:late", "tickets:attractions:a1"]);
+  });
+});
+
+describe("a packed day", () => {
+  const START = "2026-06-10"; // Day 1 is today
+  const item = (day: number, duration_min: number, over: Partial<Item> = {}): Item => ({
+    id: `x${day}-${duration_min}-${Math.random()}`,
+    day,
+    at_time: null,
+    activity: "x",
+    duration_min,
+    created_at: "2026-06-01T00:00:00Z",
+    kind: "stop",
+    ...over,
+  });
+  it("reminds about an upcoming day over the limit, counting commutes and breaks, not tentative stops", () => {
+    const r = autoReminders(
+      {
+        stays: [],
+        ideas: [],
+        start: START,
+        items: [item(2, 400), item(2, 150, { kind: "commute" }), item(2, 100, { kind: "buffer" }), item(2, 900, { tentative: true })],
+      },
+      today,
+    );
+    expect(titles(r)).toEqual(["longday: Day 2 is packed | 10h 50m planned, over 10h"]);
+    expect(r[0]).toMatchObject({ id: "longday:2", days: 1, href: "/itinerary" });
+  });
+  it("says nothing for a day at the limit, a day that has passed, or a trip with no start date", () => {
+    expect(autoReminders({ stays: [], ideas: [], start: START, items: [item(2, 600)] }, today)).toEqual([]);
+    expect(autoReminders({ stays: [], ideas: [], start: "2026-06-01", items: [item(2, 700)] }, today)).toEqual([]); // Day 2 was 2 Jun
+    expect(autoReminders({ stays: [], ideas: [], start: null, items: [item(2, 700)] }, today)).toEqual([]);
+    // Day 9 is 18 Jun, eight days away: too far ahead to nag about yet.
+    expect(autoReminders({ stays: [], ideas: [], start: START, items: [item(9, 700)] }, today)).toEqual([]);
+    expect(titles(autoReminders({ stays: [], ideas: [], start: START, items: [item(8, 700)] }, today))).toEqual(["longday: Day 8 is packed | 11h 40m planned, over 10h"]);
   });
 });
