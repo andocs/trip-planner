@@ -19,6 +19,7 @@ test.describe("screens", () => {
         "/plan?tab=stays",
         "/plan?tab=ideas",
         "/places",
+        "/places?tab=food",
         "/places?tab=attractions",
         "/pack",
         "/pack?tab=gifts",
@@ -33,7 +34,7 @@ test.describe("screens", () => {
           fullPage: !["/plan", "/pack", "/places"].includes(path),
         });
       }
-      await page.goto("/places");
+      await page.goto("/places?tab=food");
       await page.getByRole("button", { name: /^Menu for Bun Cha Ta/ }).click();
       await page.waitForTimeout(400);
       await page.screenshot({ path: `e2e/screens/food-menu-${theme}.png` });

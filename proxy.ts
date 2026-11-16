@@ -17,10 +17,13 @@ const OPEN = ["/join/", "/login", "/auth/", "/invite-only"];
 export async function proxy(request: NextRequest) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const { pathname } = request.nextUrl;
+  // Tell server code which screen a cold load is for (so it prefetches only that screen's tables).
+  // Set here, so a value sent by the client is overwritten.
+  request.headers.set("x-pathname", pathname);
   let response = NextResponse.next({ request });
   if (!url || !anonKey) return response;
 
-  const { pathname } = request.nextUrl;
   const open = OPEN.some((p) => pathname === p.replace(/\/$/, "") || pathname.startsWith(p));
   const hasCookie = request.cookies.getAll().some((c) => c.name.startsWith("sb-"));
   const gate = () => NextResponse.rewrite(new URL("/invite-only", request.url));

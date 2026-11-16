@@ -2,12 +2,15 @@ import { describe, expect, it } from "vitest";
 import {
   addDays,
   bookedProgress,
+  counts,
   dayNumberFor,
   daysBetween,
   daysToGo,
   homeAmount,
+  itineraryProgress,
   localISODate,
   menuHomePrice,
+  onlyConfirmed,
   packedProgress,
   percentUsed,
   pricePerNight,
@@ -231,5 +234,22 @@ describe("progress", () => {
   it("counts Booked (and Done) and ignores Cancelled", () => {
     const p = bookedProgress([{ status: "Booked" }, { status: "Priced" }, { status: "Cancelled" }, { status: "Done" }]);
     expect(p).toEqual({ done: 2, total: 3, percent: (2 / 3) * 100 });
+  });
+});
+
+describe("scratch-first rules", () => {
+  it("only confirmed ideas count", () => {
+    expect(onlyConfirmed([{ decision: "draft" }, { decision: "confirmed" }, { decision: "dropped" }])).toEqual([{ decision: "confirmed" }]);
+    expect(counts({ decision: "" })).toBe(false);
+  });
+  it("tentative stops never count toward itinerary progress", () => {
+    expect(
+      itineraryProgress([
+        { done: true },
+        { done: false },
+        { done: false, tentative: true },
+        { done: true, tentative: true },
+      ]),
+    ).toEqual({ done: 1, total: 2, percent: 50 });
   });
 });

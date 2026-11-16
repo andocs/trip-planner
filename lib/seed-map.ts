@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { ITINERARY_TYPES, STATUSES } from "@/lib/constants";
 import type { Database, TablesInsert } from "@/lib/database.types";
+import { decisionForStatus } from "@/lib/drafts";
 
 const TYPES: readonly string[] = ITINERARY_TYPES;
 
@@ -251,6 +252,7 @@ export function buildSeedPlan(
       })),
       hotel_ideas: seed.short.map((x) => ({
         id: uuid(),
+        decision: "confirmed" as const,
         city: t(x.city),
         hotel: x.hotel,
         room: t(x.room),
@@ -259,6 +261,7 @@ export function buildSeedPlan(
       })),
       food_places: seed.food.map((x) => ({
         id: uuid(),
+        decision: decisionForStatus(status(x.status)),
         name: x.name,
         city: t(x.city),
         day: x.day ?? null,
@@ -273,6 +276,7 @@ export function buildSeedPlan(
       })),
       attractions: seed.att.map((x) => ({
         id: uuid(),
+        decision: decisionForStatus(status(x.status)),
         name: x.name,
         city: t(x.city),
         day: x.day ?? null,

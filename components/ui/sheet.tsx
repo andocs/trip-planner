@@ -15,6 +15,8 @@ type SheetProps = {
   children: ReactNode;
   footer?: ReactNode;
   className?: string;
+  /** From 768px up, slide in from the right edge as a full-height panel instead of a centred dialog. Phones are unchanged. */
+  side?: boolean;
 };
 
 /**
@@ -75,14 +77,17 @@ function BottomSheet({ open, onOpenChange, title, description, children, footer,
   );
 }
 
-function CenteredDialog({ open, onOpenChange, title, description, children, footer, className }: SheetProps) {
+function CenteredDialog({ open, onOpenChange, title, description, children, footer, className, side }: SheetProps) {
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-[var(--scrim)]" />
         <Dialog.Content
           className={cn(
-            "fixed top-1/2 left-1/2 z-50 flex max-h-[90dvh] w-[min(32.5rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col rounded-3xl bg-surface shadow-[0_24px_60px_rgb(0_0_0/0.3)] outline-none dark:shadow-[0_0_0_1px_var(--line),0_24px_60px_rgb(0_0_0/0.5)]",
+            "fixed z-50 flex flex-col bg-surface outline-none",
+            side
+              ? "sheet-side inset-y-0 right-0 h-dvh w-[min(27.5rem,100vw)] rounded-l-3xl shadow-[-16px_0_48px_rgb(0_0_0/0.25)] dark:shadow-[0_0_0_1px_var(--line),-16px_0_48px_rgb(0_0_0/0.5)]"
+              : "top-1/2 left-1/2 max-h-[90dvh] w-[min(32.5rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-3xl shadow-[0_24px_60px_rgb(0_0_0/0.3)] dark:shadow-[0_0_0_1px_var(--line),0_24px_60px_rgb(0_0_0/0.5)]",
             className,
           )}
         >

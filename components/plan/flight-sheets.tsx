@@ -1,13 +1,21 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
+import { toast } from "sonner";
 import { z } from "zod";
+import { LogExpenseRow } from "@/components/plan/log-expense";
 import { useTrip } from "@/components/trip-gate";
 import { Field, Input, Select } from "@/components/ui/field";
 import { RowSheet } from "@/components/ui/row-sheet";
 import { STATUSES } from "@/lib/constants";
+import { formatDuration, parseDuration } from "@/lib/flights";
+import { useFlightRefs } from "@/lib/queries/flights";
+import { qk } from "@/lib/queries/keys";
+import { getSupabase } from "@/lib/supabase/client";
+import { errorMessage } from "@/lib/utils";
 import { newId, useDeleteRow, useInsertRow, useUpdateRow, type Row } from "@/lib/queries/table";
 import {
   optionalDateTime,
@@ -32,6 +40,16 @@ const FlightSchema = z.object({
   arrives_at: optionalDateTime,
   fare: optionalNumber({ min: 0 }),
   status: statusField,
+  terminal: optionalText(10),
+  gate: optionalText(10),
+  seat: optionalText(10),
+  // "3h 40m": the length of the flight can't be worked out from two local clock times, so it is typed in (optional)
+  duration: z
+    .string()
+    .transform((v) => v.trim())
+    .refine((v) => v === "" || parseDuration(v) !== null, "Use a format like 3h 40m")
+    .transform((v) => (v === "" ? null : parseDuration(v))),
+  // Kept in its own owner-only table, not in the flight row (see migration 13).
   booking_ref: optionalText(40),
 });
 type FlightIn = z.input<typeof FlightSchema>;
@@ -42,6 +60,10 @@ export function FlightSheet({ sheet }: { sheet: ReturnType<typeof useSheet<Fligh
   const insert = useInsertRow("flights", "flight");
   const update = useUpdateRow("flights", "flight");
   const remove = useDeleteRow("flights", "flight");
+  const insertRef = useInsertRow("flight_refs", "booking reference");
+  const updateRef = useUpdateRow("flight_refs", "booking reference");
+  const { byFlight } = useFlightRefs();
+  const qc = useQueryClient();
   const { register, handleSubmit, reset, formState } = useForm<FlightIn, unknown, FlightOut>({
     resolver: zodResolver(FlightSchema),
   });
@@ -59,15 +81,53 @@ export function FlightSheet({ sheet }: { sheet: ReturnType<typeof useSheet<Fligh
       arrives_at: r?.arrives_at?.slice(0, 16) ?? "",
       fare: str(r?.fare),
       status: (r?.status as FlightIn["status"]) ?? "Planned",
-      booking_ref: str(r?.booking_ref),
+      terminal: str(r?.terminal),
+      gate: str(r?.gate),
+      seat: str(r?.seat),
+      duration: formatDuration(r?.duration_min),
+      // the reference from the owner-only table, or an old one that is still in the flight row
+      booking_ref: (r && byFlight.get(r.id)?.booking_ref) || str(r?.booking_ref),
     });
+    // byFlight is a fresh Map each render; the form only needs its value when the sheet opens
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sheet.open, sheet.row, reset]);
 
+  /** Save the reference in flight_refs: add, change or remove it. Errors show as a message, the flight is already saved. */
+  const saveRef = (flightId: string, value: string | null) => {
+    const existing = byFlight.get(flightId);
+    if (value && existing) {
+      if (existing.booking_ref !== value) updateRef.mutate({ id: existing.id, patch: { booking_ref: value } });
+    } else if (value) {
+      insertRef.mutate([{ id: newId(), flight_id: flightId, booking_ref: value }]);
+    } else if (existing) {
+      void getSupabase()
+        .from("flight_refs")
+        .delete()
+        .eq("id", existing.id)
+        .then(({ error }) => {
+          if (error) toast.error(`Couldn't remove the booking reference: ${errorMessage(error)}`);
+          void qc.invalidateQueries({ queryKey: qk.table("flight_refs", trip.id) });
+          void qc.invalidateQueries({ queryKey: qk.table("flights", trip.id) });
+        });
+    }
+  };
+
   const onSubmit = handleSubmit((v) => {
-    if (sheet.row) update.mutate({ id: sheet.row.id, patch: v });
-    else insert.mutate([{ id: newId(), ...v }]);
+    const { booking_ref, duration, ...rest } = v;
+    const patch = { ...rest, duration_min: duration };
+    if (sheet.row) {
+      const id = sheet.row.id;
+      // an old reference left in the flight row moves to the owner-only table when it is saved
+      update.mutate({ id, patch: sheet.row.booking_ref ? { ...patch, booking_ref: null } : patch });
+      saveRef(id, booking_ref);
+    } else {
+      const id = newId();
+      insert.mutate([{ id, ...patch }], { onSuccess: () => saveRef(id, booking_ref) });
+    }
     sheet.close();
   });
+
+  const money = sheet.row && (sheet.row.status === "Booked" || sheet.row.status === "Done") && sheet.row.fare;
 
   return (
     <RowSheet
@@ -86,21 +146,35 @@ export function FlightSheet({ sheet }: { sheet: ReturnType<typeof useSheet<Fligh
       }
     >
       <div className="grid grid-cols-2 gap-3">
-        <Field label="From" error={errors.from_code?.message}>
-          {(p) => (
-            <Input {...p} {...register("from_code")} placeholder="MNL" className="uppercase" autoComplete="off" />
-          )}
-        </Field>
-        <Field label="To" error={errors.to_code?.message}>
-          {(p) => <Input {...p} {...register("to_code")} placeholder="HAN" className="uppercase" autoComplete="off" />}
-        </Field>
-      </div>
-      <div className="grid grid-cols-2 gap-3">
         <Field label="Airline" error={errors.airline?.message}>
           {(p) => <Input {...p} {...register("airline")} autoComplete="off" />}
         </Field>
         <Field label="Flight no." error={errors.flight_no?.message}>
           {(p) => <Input {...p} {...register("flight_no")} placeholder="PR 595" autoComplete="off" />}
+        </Field>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="From (airport code)" error={errors.from_code?.message}>
+          {(p) => (
+            <Input
+              {...p}
+              {...register("from_code")}
+              placeholder="MNL"
+              className="font-mono uppercase"
+              autoComplete="off"
+            />
+          )}
+        </Field>
+        <Field label="To (airport code)" error={errors.to_code?.message}>
+          {(p) => (
+            <Input
+              {...p}
+              {...register("to_code")}
+              placeholder="HAN"
+              className="font-mono uppercase"
+              autoComplete="off"
+            />
+          )}
         </Field>
       </div>
       <Field label="Departs (local time)" error={errors.departs_at?.message}>
@@ -123,7 +197,39 @@ export function FlightSheet({ sheet }: { sheet: ReturnType<typeof useSheet<Fligh
           )}
         </Field>
       </div>
-      <Field label="Booking reference" error={errors.booking_ref?.message}>
+      {money && sheet.row && (
+        <div className="space-y-2.5 rounded-2xl bg-surface-2 p-3.5">
+          <h3 className="font-display text-[17px] font-extrabold tracking-tight">Money</h3>
+          <p className="text-sm text-fg-muted">
+            The fare counts toward <b className="text-fg">Planned</b>. Log it as an expense once you have paid, and it
+            counts toward <b className="text-fg">Spent</b> too, once.
+          </p>
+          <LogExpenseRow kind="flights" item={sheet.row} className="pb-0" />
+        </div>
+      )}
+      <div className="grid grid-cols-3 gap-3">
+        <Field label="Terminal" error={errors.terminal?.message}>
+          {(p) => <Input {...p} {...register("terminal")} placeholder="3" autoComplete="off" className="font-mono" />}
+        </Field>
+        <Field label="Gate" error={errors.gate?.message}>
+          {(p) => <Input {...p} {...register("gate")} placeholder="B7" autoComplete="off" className="font-mono" />}
+        </Field>
+        <Field label="Seat" error={errors.seat?.message}>
+          {(p) => <Input {...p} {...register("seat")} placeholder="14A" autoComplete="off" className="font-mono" />}
+        </Field>
+      </div>
+      <Field
+        label="Flight time (optional)"
+        hint="How long the flight is, like 3h 40m."
+        error={errors.duration?.message}
+      >
+        {(p) => <Input {...p} {...register("duration")} placeholder="3h 40m" autoComplete="off" />}
+      </Field>
+      <Field
+        label="Booking reference"
+        hint="Only you can see this. Viewers see it hidden."
+        error={errors.booking_ref?.message}
+      >
         {(p) => <Input {...p} {...register("booking_ref")} autoComplete="off" className="font-mono" />}
       </Field>
     </RowSheet>

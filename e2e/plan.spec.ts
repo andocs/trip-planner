@@ -41,8 +41,10 @@ test("flights, stays and hotel ideas", async ({ page }) => {
   await fake.install(page);
 
   await page.goto("/plan?tab=flights");
-  await expect(page.getByText("MNL → HAN")).toBeVisible();
-  await expect(page.getByText("Tue 16 Jun, 22:20 → Wed 17 Jun, 00:45")).toBeVisible();
+  const pass = page.getByRole("article", { name: /^MNL to HAN/ });
+  await expect(pass).toBeVisible();
+  await expect(pass).toContainText("22:20");
+  await expect(pass).toContainText("00:45");
   await page.getByRole("button", { name: /MNL to HAN: Priced/ }).click();
   await page.getByRole("menuitem", { name: "Booked" }).click();
   await expect(page.getByRole("button", { name: /MNL to HAN: Booked/ })).toBeVisible();

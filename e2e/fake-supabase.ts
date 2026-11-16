@@ -16,7 +16,7 @@ import { buildSeedPlan, INSERT_ORDER } from "../lib/seed-map";
 export const FAKE_URL = "http://fake.supabase.test";
 
 type Row = Record<string, unknown> & { id: string };
-export type FakeRequest = { method: string; url: string; body?: unknown };
+export type FakeRequest = { method: string; url: string; body?: unknown; size?: number };
 export type FakeResponse = { status: number; body?: unknown };
 
 export type FakeRole = "owner" | "viewer" | "noaccess" | "signedout";
@@ -143,6 +143,18 @@ export function createFakeSupabase(
     user: authUser(),
   });
   const canWrite = () => isOwner();
+  /** Display names: the browser's own (null until set) and anyone else who has voted or commented. */
+  let myLabel: string | null = isOwner() ? "Jam" : null;
+  const others = new Map<string, string | null>();
+  const IDEA_TABLES = ["hotel_ideas", "food_places", "attractions"];
+  /** Photo Storage (private bucket trip-photos): what was uploaded and removed, and a switch to refuse uploads. */
+  const storage = {
+    uploads: [] as { path: string; size: number }[],
+    removed: [] as string[],
+    used: 38 * 1024 * 1024,
+    cap: 900 * 1024 * 1024,
+    reject: false,
+  };
 
   /** Transport-independent request handler (used by Playwright routes and the local HTTP server). */
   function respond(req: FakeRequest): FakeResponse {
@@ -153,6 +165,34 @@ export function createFakeSupabase(
     if (path.startsWith("/auth/v1/signup") || path.startsWith("/auth/v1/token")) return json(session());
     if (path.startsWith("/auth/v1/user")) return json(authUser());
     if (path.startsWith("/auth/v1/logout")) return { status: 204 };
+    if (path === "/rest/v1/rpc/trip_bootstrap") {
+      // One call for what active_trip + is_admin + trip_role return separately (see the migration).
+      const sub = (name: string, body?: unknown) =>
+        respond({ method: "POST", url: `${url.origin}/rest/v1/rpc/${name}`, body }).body;
+      const t = (sub("active_trip") as Row[])[0] ?? null;
+      return json({
+        user: { id: userId, email: isOwner() ? "owner@test.local" : null, is_anonymous: !isOwner() },
+        trip: t,
+        is_admin: isOwner(),
+        role: t ? sub("trip_role", { t: t.id }) : null,
+      });
+    }
+    if (path === "/rest/v1/rpc/trip_people") {
+      if (role === "noaccess" || role === "signedout") return json([]);
+      return json([
+        { user_id: userId, label: myLabel, role: role === "owner" ? "owner" : "viewer" },
+        ...[...others].map(([id, label]) => ({ user_id: id, label, role: "viewer" })),
+      ]);
+    }
+    if (path === "/rest/v1/rpc/set_my_label") {
+      const { p_label } = req.body as { p_label: string };
+      if (!p_label?.trim())
+        return json({ code: "22023", message: "Name must be 1 to 40 characters", details: null, hint: null }, 400);
+      myLabel = p_label.trim();
+      return { status: 204 };
+    }
+    // Deletes place coordinates older than 30 days (a no-op here: the fake never ages rows).
+    if (path === "/rest/v1/rpc/purge_stale_place_coords") return json(0);
     if (path === "/rest/v1/rpc/is_admin") return json(isOwner());
     if (path === "/rest/v1/rpc/trip_role")
       return json(role === "owner" ? "owner" : role === "viewer" ? "viewer" : null);
@@ -277,6 +317,34 @@ export function createFakeSupabase(
       return json(newId);
     }
 
+    if (path === "/rest/v1/rpc/photo_storage_status") {
+      if (!isOwner()) return json({ code: "42501", message: "Not allowed", details: null, hint: null }, 403);
+      return json([{ used: storage.used, cap: storage.cap }]);
+    }
+    if (path.startsWith("/storage/v1/")) {
+      const bucket = "/storage/v1/object/";
+      if (req.method === "POST" && path === `${bucket}sign/trip-photos`) {
+        const paths = ((req.body as { paths?: string[] })?.paths ?? []) as string[];
+        return json(paths.map((p) => ({ error: null, path: p, signedURL: `/object/sign/trip-photos/${p}?token=e2e` })));
+      }
+      if (req.method === "POST" && path.startsWith(`${bucket}trip-photos/`)) {
+        if (!canWrite() || storage.reject)
+          return json(
+            { statusCode: "403", error: "Unauthorized", message: "new row violates row-level security policy" },
+            403,
+          );
+        const name = decodeURIComponent(path.slice(`${bucket}trip-photos/`.length));
+        storage.uploads.push({ path: name, size: req.size ?? 0 });
+        storage.used += req.size ?? 0;
+        return json({ Key: `trip-photos/${name}`, Id: "e2e" });
+      }
+      if (req.method === "DELETE" && path === `${bucket}trip-photos`) {
+        const names = ((req.body as { prefixes?: string[] })?.prefixes ?? []) as string[];
+        if (canWrite()) storage.removed.push(...names);
+        return json(canWrite() ? names.map((name) => ({ name })) : []);
+      }
+      return json({ statusCode: "404", error: "not_found", message: "Object not found" }, 404);
+    }
     const table = path.replace("/rest/v1/", "");
     const eq = (k: string) => url.searchParams.get(k)?.replace(/^eq\./, "");
     const method = req.method;
@@ -287,7 +355,42 @@ export function createFakeSupabase(
     }
     if (table === "trip_members") return json([]);
     const rows = tables.get(table) ?? [];
+    // Booking references are owner-only: a viewer gets no rows (row-level security), never an error.
+    if (table === "flight_refs" && !isOwner())
+      return json(
+        method === "GET" ? [] : { code: "42501", message: "permission denied", details: null, hint: null },
+        method === "GET" ? 200 : 403,
+      );
     if (method === "GET") return json(rows.filter((r) => !eq("trip_id") || r.trip_id === eq("trip_id")));
+    if ((table === "votes" || table === "comments") && role !== "noaccess" && role !== "signedout") {
+      if (method === "POST") {
+        const body = (Array.isArray(req.body) ? req.body : [req.body]) as Row[];
+        if (body.some((r) => r.user_id !== userId))
+          return json(
+            {
+              code: "42501",
+              message: 'new row violates row-level security policy for table "' + table + '"',
+              details: null,
+              hint: null,
+            },
+            403,
+          );
+        tables.set(table, [...rows, ...body.map((r) => ({ created_at: new Date().toISOString(), ...r }))]);
+        return { status: 201 };
+      }
+      if (method === "PATCH" || method === "DELETE") {
+        const id = eq("id");
+        const mine = (r: Row) =>
+          r.id === id && (r.user_id === userId || (method === "DELETE" && table === "comments" && isOwner()));
+        tables.set(
+          table,
+          method === "DELETE"
+            ? rows.filter((r) => !mine(r))
+            : rows.map((r) => (mine(r) ? { ...r, ...(req.body as object) } : r)),
+        );
+        return { status: 204 };
+      }
+    }
     if (method === "POST" && !canWrite())
       return json(
         {
@@ -301,23 +404,87 @@ export function createFakeSupabase(
     if ((method === "PATCH" || method === "DELETE") && !canWrite()) return { status: 204 };
     if (method === "POST") {
       const body = req.body as Row | Row[];
-      const added = (Array.isArray(body) ? body : [body]).map((r) => ({ created_at: new Date().toISOString(), ...r }));
+      const added: Row[] = (Array.isArray(body) ? body : [body]).map((r) => ({
+        created_at: new Date().toISOString(),
+        ...(IDEA_TABLES.includes(table) ? { decision: "draft" } : {}),
+        ...r,
+      }));
+      if (table === "itinerary_items")
+        for (const r of added) {
+          // _itinerary_source_guard: the database decides tentative from the source's decision
+          const src = r.source_id
+            ? (tables.get(String(r.source_table)) ?? []).find((x) => x.id === r.source_id)
+            : undefined;
+          r.tentative = !!src && src.decision === "draft";
+        }
       tables.set(table, [...rows, ...added]);
+      if (table === "flight_refs")
+        tables.set(
+          "flights",
+          (tables.get("flights") ?? []).map((f) =>
+            added.some((r) => r.flight_id === f.id) ? { ...f, has_ref: true } : f,
+          ),
+        );
       return { status: 201 };
     }
     if (method === "PATCH") {
       const id = eq("id");
+      const patch = req.body as Row;
       tables.set(
         table,
-        rows.map((r) => (r.id === id ? { ...r, ...(req.body as object) } : r)),
+        rows.map((r) => (r.id === id ? { ...r, ...patch } : r)),
       );
+      if (IDEA_TABLES.includes(table) && typeof patch.decision === "string") {
+        // _item_decision_changed: dropped removes the stop, otherwise it is solid only when confirmed
+        const stops = tables.get("itinerary_items") ?? [];
+        tables.set(
+          "itinerary_items",
+          patch.decision === "dropped"
+            ? stops.filter((x) => !(x.source_table === table && x.source_id === id))
+            : stops.map((x) =>
+                x.source_table === table && x.source_id === id ? { ...x, tentative: patch.decision === "draft" } : x,
+              ),
+        );
+      }
       return { status: 204 };
     }
     if (method === "DELETE") {
+      const id = eq("id");
       tables.set(
         table,
-        rows.filter((r) => r.id !== eq("id")),
+        rows.filter((r) => r.id !== id),
       );
+      if (IDEA_TABLES.includes(table))
+        for (const t of ["itinerary_items", "votes", "comments", "place_refs", "item_images"])
+          tables.set(
+            t,
+            (tables.get(t) ?? []).filter(
+              (x) => !((x.source_table ?? x.item_table) === table && (x.source_id ?? x.item_id) === id),
+            ),
+          );
+      // a flight's booking reference goes with it; an expense logged from a flight or stay keeps the money, loses the link
+      if (table === "flights")
+        tables.set(
+          "flight_refs",
+          (tables.get("flight_refs") ?? []).filter((x) => x.flight_id !== id),
+        );
+      if (table === "flights" || table === "stays")
+        tables.set(
+          "expenses",
+          (tables.get("expenses") ?? []).map((x) =>
+            x.source_table === table && x.source_id === id ? { ...x, source_table: null, source_id: null } : x,
+          ),
+        );
+      if (table === "flight_refs") {
+        const gone = rows.find((r) => r.id === id);
+        if (gone)
+          tables.set(
+            "flights",
+            (tables.get("flights") ?? []).map((f) =>
+              f.id === gone.flight_id ? { ...f, has_ref: !!f.booking_ref } : f,
+            ),
+          );
+      }
       return { status: 204 };
     }
     return { status: 404 };
@@ -390,6 +557,13 @@ export function createFakeSupabase(
 
   return {
     tables,
+    storage,
+    /** Another person with a display name (so their votes and comments show a name). */
+    addPerson: (id: string, label: string | null) => others.set(id, label),
+    get myLabel() {
+      return myLabel;
+    },
+    userId,
     remoteChange,
     get realtimeJoined() {
       return !!channel;
@@ -420,7 +594,7 @@ export function createFakeSupabase(
         } catch {
           body = undefined;
         }
-        const res = respond({ method: req.method(), url: req.url(), body });
+        const res = respond({ method: req.method(), url: req.url(), body, size: req.postDataBuffer()?.length });
         return route.fulfill({
           status: res.status,
           contentType: "application/json",

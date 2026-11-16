@@ -10,7 +10,7 @@ import { errorMessage } from "@/lib/utils";
 import { qk, type TableName } from "./keys";
 
 /** Every table except trips/trip_members has id + trip_id and is edited the same way. */
-export type ChildTable = Exclude<TableName, "trips" | "trip_members">;
+export type ChildTable = Exclude<TableName, "trips" | "trip_members" | "api_caps" | "api_usage">;
 export type Row<T extends ChildTable> = Tables<T>;
 export type NewRow<T extends ChildTable> = Omit<TablesInsert<T>, "trip_id">;
 export type Patch<T extends ChildTable> = TablesUpdate<T>;
@@ -23,15 +23,17 @@ const db = () => getSupabase() as unknown as SupabaseClient;
 
 const UNDO_MS = 6000;
 
+export async function fetchRows<T extends ChildTable>(table: T, tripId: string): Promise<Row<T>[]> {
+  const { data, error } = await db().from(table).select("*").eq("trip_id", tripId).order("created_at");
+  if (error) throw error;
+  return data as Row<T>[];
+}
+
 export function useRows<T extends ChildTable>(table: T, sort?: (a: Row<T>, b: Row<T>) => number) {
   const trip = useTrip();
   return useQuery({
     queryKey: qk.table(table, trip.id),
-    queryFn: async (): Promise<Row<T>[]> => {
-      const { data, error } = await db().from(table).select("*").eq("trip_id", trip.id).order("created_at");
-      if (error) throw error;
-      return data as Row<T>[];
-    },
+    queryFn: () => fetchRows(table, trip.id),
     select: sort ? (rows) => [...rows].sort(sort) : undefined,
   });
 }

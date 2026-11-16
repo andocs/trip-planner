@@ -6,11 +6,12 @@ import Link from "next/link";
 import { EditOnly, useTrip } from "@/components/trip-gate";
 import { Board } from "@/components/ui/board";
 import { Card, CardTitle } from "@/components/ui/card";
+import { AnimatedNumber } from "@/components/ui/animated-number";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { daysToGo, localISODate, tripLength } from "@/lib/calc";
 import { formatDateRange, formatPercent } from "@/lib/format";
-import { joinNames, nextUp } from "@/lib/home";
+import { joinNames, nextUp, solidStopCount } from "@/lib/home";
 import type { Budget } from "@/lib/queries/budget";
 import { useRows } from "@/lib/queries/table";
 import { useClientValue } from "@/lib/use-client-value";
@@ -95,22 +96,46 @@ export function RouteMap({ bottomInset }: { bottomInset: number }) {
   );
 }
 
-/** Budget, spent and left, with one progress bar. Amounts are whole numbers in the home currency. */
+/**
+ * Budget, planned, spent and left. "Planned" is the planning-phase counter (allocations plus flights and stays that are
+ * in the plan); "Spent" and "Left" are real money. Amounts are whole numbers in the home currency.
+ */
 export function BudgetBlock({ budget }: { budget: Budget }) {
   const trip = useTrip();
   const over = budget.left < 0;
-  const tile = (label: string, value: string, accent = false) => (
+  const tile = (label: string, value: number, tone?: "accent" | "teal") => (
     <div className="rounded-2xl bg-surface-2 px-3.5 py-3 lg:bg-surface-2">
       <div className="text-xs font-bold text-fg-muted">{label}</div>
-      <div className={cn("mt-0.5 text-[17px] font-extrabold tabular-nums", accent && "text-accent-text")}>{value}</div>
+      <div
+        className={cn(
+          "mt-0.5 text-[17px] font-extrabold tabular-nums",
+          tone === "accent" && "text-accent-text",
+          tone === "teal" && "text-teal",
+        )}
+      >
+        <AnimatedNumber value={value} />
+      </div>
     </div>
   );
   return (
     <div className="space-y-2.5">
-      <div className="grid grid-cols-3 gap-2 [&>*]:min-w-0">
-        {tile("Budget", whole(budget.budget))}
-        {tile("Spent", whole(budget.spent), true)}
-        {tile(over ? "Over" : "Left", whole(Math.abs(budget.left)))}
+      <div className="grid grid-cols-2 gap-2 [&>*]:min-w-0">
+        {tile("Budget", budget.budget)}
+        {tile("Planned", budget.planned, "teal")}
+        {tile("Spent", budget.spent, "accent")}
+        {tile(over ? "Over" : "Left", Math.abs(budget.left))}
+      </div>
+      <div className="space-y-1.5">
+        <Progress value={budget.plannedPercent} tone="teal" label="Budget planned" className="h-1.5" />
+        <p className="text-xs text-fg-muted">
+          {budget.budget > 0
+            ? `Planned ${whole(budget.planned)} of ${whole(budget.budget)}. ${
+                budget.unplanned >= 0
+                  ? `${whole(budget.unplanned)} still to plan.`
+                  : `${whole(-budget.unplanned)} over budget.`
+              }`
+            : "Set a budget to see how much is planned."}
+        </p>
       </div>
       <div>
         <Progress value={budget.percent} tone="coral" label="Budget used" className="h-2" />
@@ -138,7 +163,7 @@ export function NextUp({ budget }: { budget: Budget }) {
     travelers: budget.travelers.length,
     flights: flights.data?.length ?? 0,
     stays: stays.data?.length ?? 0,
-    itineraryItems: itinerary.data?.length ?? 0,
+    itineraryItems: solidStopCount(itinerary.data ?? []),
     plannedCategories: budget.categories.filter((c) => c.planned !== null && Number(c.planned) > 0).length,
   });
   if (allDone) return null;

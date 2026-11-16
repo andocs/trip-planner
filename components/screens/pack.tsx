@@ -1,12 +1,12 @@
 "use client";
 
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { Gifts } from "@/components/pack/gifts";
 import { Packing } from "@/components/pack/packing";
 import { Reminders } from "@/components/pack/reminders";
-import { TripGate } from "@/components/trip-gate";
 import { ViewOnlyBanner } from "@/components/view-only-banner";
 import { Segmented } from "@/components/ui/segmented";
+import { setTabParam } from "@/lib/tab-param";
 
 const TABS = [
   { value: "packing", label: "Packing" },
@@ -17,8 +17,6 @@ type Tab = (typeof TABS)[number]["value"];
 
 function Pack() {
   const params = useSearchParams();
-  const router = useRouter();
-  const pathname = usePathname();
   const raw = params.get("tab");
   const tab: Tab = TABS.some((t) => t.value === raw) ? (raw as Tab) : "packing";
 
@@ -28,7 +26,7 @@ function Pack() {
       <Segmented<Tab>
         label="Pack section"
         value={tab}
-        onChange={(t) => router.replace(t === "packing" ? pathname : `${pathname}?tab=${t}`, { scroll: false })}
+        onChange={(t) => setTabParam(t === "packing" ? null : t)}
         options={[...TABS]}
         className="flex w-full"
       />
@@ -41,9 +39,9 @@ function Pack() {
 
 export function PackScreen() {
   return (
-    <TripGate>
+    <>
       <ViewOnlyBanner />
       <Pack />
-    </TripGate>
+    </>
   );
 }

@@ -231,6 +231,8 @@ export type Database = {
           id: string
           note: string | null
           paid_by: string | null
+          source_id: string | null
+          source_table: string | null
           spent_on: string
           trip_id: string
         }
@@ -243,6 +245,8 @@ export type Database = {
           id?: string
           note?: string | null
           paid_by?: string | null
+          source_id?: string | null
+          source_table?: string | null
           spent_on: string
           trip_id: string
         }
@@ -255,6 +259,8 @@ export type Database = {
           id?: string
           note?: string | null
           paid_by?: string | null
+          source_id?: string | null
+          source_table?: string | null
           spent_on?: string
           trip_id?: string
         }
@@ -294,6 +300,9 @@ export type Database = {
           id: string
           note: string | null
           on_date: string | null
+          source_id: string | null
+          source_table: string | null
+          tentative: boolean
           trip_id: string
           type: string | null
         }
@@ -308,6 +317,9 @@ export type Database = {
           id?: string
           note?: string | null
           on_date?: string | null
+          source_id?: string | null
+          source_table?: string | null
+          tentative?: boolean
           trip_id: string
           type?: string | null
         }
@@ -322,6 +334,9 @@ export type Database = {
           id?: string
           note?: string | null
           on_date?: string | null
+          source_id?: string | null
+          source_table?: string | null
+          tentative?: boolean
           trip_id?: string
           type?: string | null
         }
@@ -342,11 +357,16 @@ export type Database = {
           booking_ref: string | null
           created_at: string
           departs_at: string | null
+          duration_min: number | null
           fare: number | null
           flight_no: string | null
           from_code: string | null
+          gate: string | null
+          has_ref: boolean
           id: string
+          seat: string | null
           status: string
+          terminal: string | null
           to_code: string | null
           trip_id: string
         }
@@ -356,11 +376,16 @@ export type Database = {
           booking_ref?: string | null
           created_at?: string
           departs_at?: string | null
+          duration_min?: number | null
           fare?: number | null
           flight_no?: string | null
           from_code?: string | null
+          gate?: string | null
+          has_ref?: boolean
           id?: string
+          seat?: string | null
           status?: string
+          terminal?: string | null
           to_code?: string | null
           trip_id: string
         }
@@ -370,11 +395,16 @@ export type Database = {
           booking_ref?: string | null
           created_at?: string
           departs_at?: string | null
+          duration_min?: number | null
           fare?: number | null
           flight_no?: string | null
           from_code?: string | null
+          gate?: string | null
+          has_ref?: boolean
           id?: string
+          seat?: string | null
           status?: string
+          terminal?: string | null
           to_code?: string | null
           trip_id?: string
         }
@@ -483,6 +513,7 @@ export type Database = {
         Row: {
           city: string | null
           created_at: string
+          decision: string
           hotel: string
           id: string
           nights: number | null
@@ -493,6 +524,7 @@ export type Database = {
         Insert: {
           city?: string | null
           created_at?: string
+          decision?: string
           hotel: string
           id?: string
           nights?: number | null
@@ -503,6 +535,7 @@ export type Database = {
         Update: {
           city?: string | null
           created_at?: string
+          decision?: string
           hotel?: string
           id?: string
           nights?: number | null
@@ -525,9 +558,11 @@ export type Database = {
           city: string | null
           created_at: string
           day: number | null
+          decision: string
           id: string
           name: string
           note: string | null
+          price: number | null
           status: string
           trip_id: string
         }
@@ -535,9 +570,11 @@ export type Database = {
           city?: string | null
           created_at?: string
           day?: number | null
+          decision?: string
           id?: string
           name: string
           note?: string | null
+          price?: number | null
           status?: string
           trip_id: string
         }
@@ -545,9 +582,11 @@ export type Database = {
           city?: string | null
           created_at?: string
           day?: number | null
+          decision?: string
           id?: string
           name?: string
           note?: string | null
+          price?: number | null
           status?: string
           trip_id?: string
         }
@@ -601,9 +640,11 @@ export type Database = {
           city: string | null
           created_at: string
           day: number | null
+          decision: string
           id: string
           name: string
           note: string | null
+          price: number | null
           status: string
           trip_id: string
         }
@@ -611,9 +652,11 @@ export type Database = {
           city?: string | null
           created_at?: string
           day?: number | null
+          decision?: string
           id?: string
           name: string
           note?: string | null
+          price?: number | null
           status?: string
           trip_id: string
         }
@@ -621,9 +664,11 @@ export type Database = {
           city?: string | null
           created_at?: string
           day?: number | null
+          decision?: string
           id?: string
           name?: string
           note?: string | null
+          price?: number | null
           status?: string
           trip_id?: string
         }
@@ -713,6 +758,203 @@ export type Database = {
           },
         ]
       }
+      place_refs: {
+        Row: {
+          coords_at: string | null
+          created_at: string
+          id: string
+          item_id: string
+          item_table: string
+          lat: number | null
+          lng: number | null
+          place_id: string
+          trip_id: string
+        }
+        Insert: {
+          coords_at?: string | null
+          created_at?: string
+          id?: string
+          item_id: string
+          item_table: string
+          lat?: number | null
+          lng?: number | null
+          place_id: string
+          trip_id: string
+        }
+        Update: {
+          coords_at?: string | null
+          created_at?: string
+          id?: string
+          item_id?: string
+          item_table?: string
+          lat?: number | null
+          lng?: number | null
+          place_id?: string
+          trip_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "place_refs_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      flight_refs: {
+        Row: { booking_ref: string; created_at: string; flight_id: string; id: string; trip_id: string }
+        Insert: { booking_ref: string; created_at?: string; flight_id: string; id?: string; trip_id: string }
+        Update: { booking_ref?: string; created_at?: string; flight_id?: string; id?: string; trip_id?: string }
+        Relationships: []
+      }
+      item_images: {
+        Row: {
+          created_at: string
+          credit: string | null
+          id: string
+          item_id: string
+          item_table: string
+          license: string | null
+          license_url: string | null
+          page_url: string | null
+          position: number
+          source: string
+          storage_path: string | null
+          trip_id: string
+          url: string | null
+        }
+        Insert: {
+          created_at?: string
+          credit?: string | null
+          id?: string
+          item_id: string
+          item_table: string
+          license?: string | null
+          license_url?: string | null
+          page_url?: string | null
+          position?: number
+          source: string
+          storage_path?: string | null
+          trip_id: string
+          url?: string | null
+        }
+        Update: {
+          created_at?: string
+          credit?: string | null
+          id?: string
+          item_id?: string
+          item_table?: string
+          license?: string | null
+          license_url?: string | null
+          page_url?: string | null
+          position?: number
+          source?: string
+          storage_path?: string | null
+          trip_id?: string
+          url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "item_images_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      api_caps: {
+        Row: { sku: string; monthly_cap: number; free_allowance: number }
+        Insert: { sku: string; monthly_cap: number; free_allowance: number }
+        Update: { sku?: string; monthly_cap?: number; free_allowance?: number }
+        Relationships: []
+      }
+      api_usage: {
+        Row: { period: string; sku: string; calls: number }
+        Insert: { period: string; sku: string; calls?: number }
+        Update: { period?: string; sku?: string; calls?: number }
+        Relationships: []
+      }
+      votes: {
+        Row: {
+          created_at: string
+          id: string
+          item_id: string
+          item_table: string
+          trip_id: string
+          updated_at: string
+          user_id: string
+          value: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          item_id: string
+          item_table: string
+          trip_id: string
+          updated_at?: string
+          user_id?: string
+          value: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          item_id?: string
+          item_table?: string
+          trip_id?: string
+          updated_at?: string
+          user_id?: string
+          value?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "votes_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      comments: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          item_id: string
+          item_table: string
+          trip_id: string
+          user_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          item_id: string
+          item_table: string
+          trip_id: string
+          user_id?: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          item_id?: string
+          item_table?: string
+          trip_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comments_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       reminders: {
         Row: {
           created_at: string
@@ -757,6 +999,13 @@ export type Database = {
       regenerate_invite: { Args: { p_trip: string }; Returns: string }
       revoke_viewer: { Args: { p_trip: string; p_user: string }; Returns: undefined }
       trip_role: { Args: { t: string }; Returns: string }
+      trip_bootstrap: { Args: never; Returns: Json }
+      trip_people: { Args: { p_trip: string }; Returns: { user_id: string; label: string | null; role: string }[] }
+      set_my_label: { Args: { p_trip: string; p_label: string }; Returns: undefined }
+      reserve_api_call: { Args: { p_sku: string }; Returns: string }
+      purge_stale_place_coords: { Args: never; Returns: number }
+      photo_storage_status: { Args: never; Returns: { used: number; cap: number }[] }
+      photo_storage_cap: { Args: never; Returns: number }
       active_trip: {
         Args: never
         Returns: Database["public"]["Tables"]["trips"]["Row"][]

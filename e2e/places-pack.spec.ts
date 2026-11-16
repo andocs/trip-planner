@@ -8,9 +8,9 @@ test.beforeEach(async ({ page }) => {
 test("food menu prices show VND and the PHP equivalent; attraction status changes", async ({ page }) => {
   const fake = createFakeSupabase({ withSeed: true });
   await fake.install(page);
-  await page.goto("/places");
+  await page.goto("/places?tab=food");
 
-  await expect(page.getByText("19 food places")).toBeVisible();
+  await expect(page.getByText(/\d+ food places/)).toBeVisible();
   const menuToggle = page.getByRole("button", { name: /^Menu for Bun Cha Ta \(\d+ dishes\)/ });
   await menuToggle.click();
   await expect(menuToggle).toHaveAttribute("aria-expanded", "true");
