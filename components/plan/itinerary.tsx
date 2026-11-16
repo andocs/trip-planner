@@ -58,7 +58,7 @@ type Entry =
   | { kind: "item"; id: string; item: ItineraryItem };
 
 /** One row of the list that can be dragged (an item), or can only be dropped next to (a day divider, a stay). */
-function SortableRow({ id, locked, label, children }: { id: string; locked: boolean; label: string; children: (handle: ReactNode) => ReactNode }) {
+function SortableRow({ id, locked, label, cover, children }: { id: string; locked: boolean; label: string; /** Hides the dotted line behind this row: the day header at the very top has no line beside it. */ cover?: boolean; children: (handle: ReactNode) => ReactNode }) {
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
     id,
     // Dividers and stays can't be picked up, but an item can be dropped past them (that is how it changes day).
@@ -77,7 +77,7 @@ function SortableRow({ id, locked, label, children }: { id: string; locked: bool
     </button>
   );
   return (
-    <li ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }} className={cn(isDragging && "z-10 opacity-50")}>
+    <li ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }} className={cn(isDragging && "z-10 opacity-50", cover && "relative z-[2] bg-ground")}>
       {children(handle)}
     </li>
   );
@@ -227,7 +227,7 @@ export function Itinerary() {
       const stops = e.group.items.filter((i) => isStop(i) && !i.tentative).length;
       const tentative = e.group.items.filter((i) => isStop(i) && i.tentative).length;
       return (
-        <SortableRow key={e.id} id={e.id} locked label="day">
+        <SortableRow key={e.id} id={e.id} locked label="day" cover={k === 0}>
           {() => (
             <>
               <DaySplit group={e.group} totals={totals} stops={stops + tentative} onAdd={canEdit && !editing ? () => addToDay(e.group.day) : undefined} />
