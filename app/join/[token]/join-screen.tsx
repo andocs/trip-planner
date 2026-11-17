@@ -8,6 +8,7 @@ import { GateLayout, gateTitle } from "@/components/gate/gate-layout";
 import { Board } from "@/components/ui/board";
 import { Button } from "@/components/ui/button";
 import { joinTrip } from "@/lib/queries/trip";
+import { GuestSignInOff } from "@/lib/supabase/client";
 import { errorMessage } from "@/lib/utils";
 
 export function Joining() {
@@ -29,6 +30,7 @@ export function JoinScreen() {
   const router = useRouter();
   const qc = useQueryClient();
   const [error, setError] = useState<string | null>(null);
+  const [guestOff, setGuestOff] = useState(false);
   const started = useRef(false);
 
   useEffect(() => {
@@ -39,7 +41,10 @@ export function JoinScreen() {
         await qc.invalidateQueries();
         router.replace("/"); // drops the token from the address bar and history
       })
-      .catch((e: unknown) => setError(errorMessage(e)));
+      .catch((e: unknown) => {
+        if (e instanceof GuestSignInOff) setGuestOff(true);
+        setError(errorMessage(e));
+      });
   }, [token, router, qc]);
 
   if (!error) return <Joining />;
@@ -47,10 +52,16 @@ export function JoinScreen() {
   return (
     <GateLayout>
       <div role="alert" className="flex flex-col gap-3.5">
-        <h1 className={gateTitle}>This invite link doesn&rsquo;t work</h1>
-        <p className="text-fg-muted">
-          {error}. The owner may have replaced the link or removed your access. Ask for a new one.
-        </p>
+        <h1 className={gateTitle}>{guestOff ? "Guest links aren’t switched on yet" : "This invite link doesn’t work"}</h1>
+        {guestOff ? (
+          <p className="text-fg-muted">
+            The link is fine, but the app isn&rsquo;t accepting guests yet. Tell the trip owner: guest (anonymous) sign-in needs to be turned on in the app&rsquo;s Supabase settings.
+          </p>
+        ) : (
+          <p className="text-fg-muted">
+            {error}. The owner may have replaced the link or removed your access. Ask for a new one.
+          </p>
+        )}
         <Button asChild variant="secondary" size="lg" className="mt-1.5 w-full">
           <Link href="/">Back to start</Link>
         </Button>

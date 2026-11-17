@@ -32,10 +32,19 @@ export async function getCurrentUser(): Promise<AppUser | null> {
  * Anonymous sign-in. Only the invite-link page calls this: opening the app without a link or an
  * account must never create a session. Reuses an existing session if there is one.
  */
+/** Supabase refused guest (anonymous) sign-in: a project setting the owner has to switch on, not a problem with the link. */
+export class GuestSignInOff extends Error {
+  constructor() {
+    super("Guest sign-in is switched off for this app");
+    this.name = "GuestSignInOff";
+  }
+}
+
 export async function signInForInvite(): Promise<AppUser> {
   const existing = await getCurrentUser();
   if (existing) return existing;
   const { data, error } = await getSupabase().auth.signInAnonymously();
+  if (error && /anonymous sign-ins are disabled/i.test(error.message)) throw new GuestSignInOff();
   if (error || !data.user) {
     throw new Error(error?.message ?? "Could not start a session. Is anonymous sign-in enabled in Supabase?");
   }
