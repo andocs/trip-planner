@@ -30,7 +30,7 @@ export function AccountSection() {
       <p className="mt-1 text-sm text-fg-muted">
         {user.email ? (
           <>
-            Signed in as <b className="text-fg">{user.email}</b> · {role === "owner" ? "Owner" : "Viewer"}
+            Signed in as <b className="text-fg">{user.email}</b> · {role === "owner" ? "Owner" : role === "editor" ? "Editor" : "Viewer"}
           </>
         ) : (
           "Joined with an invite link on this device."

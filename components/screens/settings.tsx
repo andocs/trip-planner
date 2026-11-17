@@ -10,7 +10,7 @@ import { TravelersSection } from "@/components/settings/travelers-section";
 import { TripForm } from "@/components/settings/trip-form";
 import { useTheme, type ThemePref } from "@/components/theme";
 import { AccountSection } from "@/components/settings/account-section";
-import { useCanEdit } from "@/components/trip-gate";
+import { useCanEdit, useRole } from "@/components/trip-gate";
 import { ViewOnlyBanner } from "@/components/view-only-banner";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
@@ -53,6 +53,7 @@ export function SettingsScreen() {
 
 function SettingsBody() {
   const canEdit = useCanEdit();
+  const owner = useRole() === "owner";
   if (!canEdit) {
     return (
       <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
@@ -68,8 +69,8 @@ function SettingsBody() {
     <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
       <div className="space-y-4">
         <TripForm />
-        <InviteSection />
-        <TripTools />
+        {owner && <InviteSection />}
+        <TripTools owner={owner} />
       </div>
       <div className="space-y-4">
         <TravelersSection />

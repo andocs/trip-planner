@@ -1,7 +1,7 @@
 -- RLS proof for the owner / viewer model. Works in the Supabase SQL editor and in local `psql`.
 -- It creates throwaway users, runs every check as each user, and ALWAYS rolls back by raising an
 -- exception at the end. Read the final message: "RLS CHECK PASSED (n checks)" or "RLS CHECK FAILED: ...".
--- Needs migrations 1..13 applied. Does not need any real admin: it inserts a throwaway admin email.
+-- Needs migrations 1..22 applied. Does not need any real admin: it inserts a throwaway admin email.
 
 do $$
 declare
@@ -1232,6 +1232,58 @@ begin
   checks := checks + 1;
   select count(*) into n from public.item_images where item_id = item_a;
   if n <> 0 then failures := failures || 'deleting an idea left its photos behind'::text; end if;
+
+  -- ============================== editor role (migration 22) ==============================
+  -- The owner promotes a joined person; an editor plans like the owner but has none of the admin side.
+  update public.trip_members set role = 'editor', revoked_at = null where trip_id = trip_a and user_id = viewer_u;
+  perform set_config('request.jwt.claims', c_viewer, true);
+  set local role authenticated;
+  checks := checks + 1;
+  begin
+    insert into public.travelers (trip_id, name, sort) values (trip_a, 'Editor added', 99);
+  exception when insufficient_privilege then failures := failures || 'an editor could not add a traveler'::text; end;
+  checks := checks + 1;
+  select count(*) into n from public.trip_members where trip_id = trip_a;
+  if n <> 1 then failures := failures || 'an editor could read the member list'::text; end if;
+  checks := checks + 1;
+  begin perform public.regenerate_invite(trip_a); failures := failures || 'an editor replaced the invite link'::text;
+  exception when insufficient_privilege then null; end;
+  checks := checks + 1;
+  begin perform public.revoke_viewer(trip_a, viewer_u); failures := failures || 'an editor removed someone'::text;
+  exception when insufficient_privilege then null; end;
+  checks := checks + 1;
+  begin perform public.set_member_role(trip_a, viewer_u, 'editor'); failures := failures || 'an editor changed a role'::text;
+  exception when insufficient_privilege then null; end;
+  checks := checks + 1;
+  begin perform public.start_new_trip(true); failures := failures || 'an editor started a new trip'::text;
+  exception when insufficient_privilege then null; end;
+  reset role;
+
+  perform set_config('request.jwt.claims', c_owner, true);
+  set local role authenticated;
+  checks := checks + 1;
+  begin perform public.set_member_role(trip_a, viewer_u, 'owner'); failures := failures || 'owner role could be handed out'::text;
+  exception when others then null; end;
+  checks := checks + 1;
+  begin perform public.set_member_role(trip_a, owner_u, 'viewer'); failures := failures || 'the owner was demoted'::text;
+  exception when others then null; end;
+  perform public.set_member_role(trip_a, viewer_u, 'viewer');
+  reset role;
+  checks := checks + 1;
+  select count(*) into n from public.trip_members where trip_a = trip_id and user_id = viewer_u and role = 'viewer';
+  if n <> 1 then failures := failures || 'owner could not make an editor a viewer again'::text; end if;
+
+  perform set_config('request.jwt.claims', c_viewer, true);
+  set local role authenticated;
+  checks := checks + 1;
+  begin
+    insert into public.travelers (trip_id, name, sort) values (trip_a, 'Demoted added', 100);
+    failures := failures || 'a demoted editor could still add a traveler'::text;
+  exception when insufficient_privilege then null; end;
+  checks := checks + 1;
+  begin perform public.set_member_role(trip_a, viewer_u, 'editor'); failures := failures || 'a viewer promoted themselves'::text;
+  exception when insufficient_privilege then null; end;
+  reset role;
 
   -- ============================== anonymous role (no session) ==============================
   checks := checks + 1;

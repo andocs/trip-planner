@@ -4,10 +4,10 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { UserX } from "lucide-react";
+import { UserCog, UserX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/field";
-import { useGuests, useRemoveGuestAccess } from "@/lib/queries/guests";
+import { useGuests, useRemoveGuestAccess, useSetMemberRole } from "@/lib/queries/guests";
 import { RowSheet } from "@/components/ui/row-sheet";
 import { newId, useDeleteRow, useInsertRow, useUpdateRow, type Row } from "@/lib/queries/table";
 import { requiredText } from "@/lib/schemas";
@@ -22,6 +22,7 @@ export function TravelerSheet({ sheet, sort }: { sheet: ReturnType<typeof useShe
   // For a traveler who joined with the invite link, the owner can also take their access away.
   const { byUser } = useGuests();
   const removeAccess = useRemoveGuestAccess();
+  const setRole = useSetMemberRole();
   const guest = sheet.row?.user_id ? byUser.get(sheet.row.user_id) : undefined;
   const { register, handleSubmit, reset, formState, setFocus } = useForm<Values>({ resolver: zodResolver(Schema) });
 
@@ -68,6 +69,21 @@ export function TravelerSheet({ sheet, sort }: { sheet: ReturnType<typeof useShe
           <p className="text-sm">
             <b>{guest.email ? `Connected with Google (${guest.email})` : "Joined with the invite link, not connected to Google"}</b>
           </p>
+          <p className="text-[13px] text-fg-muted">
+            {guest.role === "editor"
+              ? "Editor: plans with you (places, itinerary, flights, stays, spend, packing). They can't change who has access, the invite link, or start a new trip."
+              : "Viewer: can look, vote and comment, but not change the plan."}
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            size="xs"
+            disabled={setRole.isPending}
+            onClick={() => setRole.mutate({ userId: guest.user_id, role: guest.role === "editor" ? "viewer" : "editor" })}
+          >
+            <UserCog className="size-4" aria-hidden />
+            {guest.role === "editor" ? "Make viewer" : "Make editor"}
+          </Button>
           <p className="text-[13px] text-fg-muted">Removing access signs them out of the trip. They stay a traveler, so their expenses are kept. They can only return with a new invite link.</p>
           <Button
             type="button"
