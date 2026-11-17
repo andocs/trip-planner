@@ -235,3 +235,64 @@ test("the map card has a photo area, day and facts, and View details opens the v
   await page.getByRole("button", { name: "Reduce map" }).click();
   await expect(card).toHaveCount(0);
 });
+
+test("a place already on the itinerary says so, and adding it again asks first", async ({ page }) => {
+  const fake = createFakeSupabase({ withSeed: true });
+  const idea = fake.tables.get("attractions")!.find((a) => a.decision === "draft")!;
+  const tripId = fake.tables.get("itinerary_items")![0].trip_id;
+  fake.tables.set("itinerary_items", [
+    {
+      id: "t-added", trip_id: tripId, day: 2, on_date: "2026-06-17", city: null, at_time: null, activity: String(idea.name), type: "Sightseeing",
+      duration_min: 60, note: null, done: false, created_at: "2026-06-01T00:00:00Z", source_table: "attractions", source_id: idea.id,
+      tentative: true, position: 1000, kind: "stop", details: {},
+    },
+  ]);
+  await fake.install(page);
+  await page.goto("/places?cat=sight");
+  const card = page.getByRole("article", { name: String(idea.name) });
+  await expect(card.getByRole("button", { name: /Already in the itinerary \(Day 2\)/ })).toBeVisible();
+  await expect(card.getByRole("button", { name: "Add to itinerary" })).toHaveCount(0);
+  await card.getByRole("button", { name: /Already in the itinerary/ }).click();
+  const ask = page.getByRole("dialog", { name: "Already in the itinerary" });
+  await expect(ask).toContainText("Day 2");
+  await ask.getByRole("button", { name: "Cancel" }).click();
+  await expect(page.getByRole("dialog", { name: "Add to itinerary" })).toHaveCount(0);
+  await card.getByRole("button", { name: /Already in the itinerary/ }).click();
+  await page.getByRole("dialog", { name: "Already in the itinerary" }).getByRole("button", { name: "Add again" }).click();
+  await expect(page.getByRole("dialog", { name: "Add to itinerary" })).toBeVisible();
+});
+
+test("a place that is not on the itinerary adds straight away, with no question", async ({ page }) => {
+  const fake = createFakeSupabase({ withSeed: true });
+  fake.tables.set("itinerary_items", []);
+  const idea = fake.tables.get("attractions")!.find((a) => a.decision === "draft")!;
+  await fake.install(page);
+  await page.goto("/places?cat=sight");
+  await page.getByRole("article", { name: String(idea.name) }).getByRole("button", { name: "Add to itinerary" }).click();
+  await expect(page.getByRole("dialog", { name: "Add to itinerary" })).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "Already in the itinerary" })).toHaveCount(0);
+});
+
+test("Add activity: a place already on the itinerary is marked, and picking it asks first", async ({ page }) => {
+  const fake = createFakeSupabase({ withSeed: true });
+  const idea = fake.tables.get("attractions")!.find((a) => a.decision === "draft")!;
+  const tripId = fake.tables.get("itinerary_items")![0].trip_id;
+  fake.tables.set("itinerary_items", [
+    {
+      id: "t-added", trip_id: tripId, day: 3, on_date: "2026-06-18", city: null, at_time: null, activity: String(idea.name), type: "Sightseeing",
+      duration_min: 60, note: null, done: false, created_at: "2026-06-01T00:00:00Z", source_table: "attractions", source_id: idea.id,
+      tentative: true, position: 1000, kind: "stop", details: {},
+    },
+  ]);
+  await fake.install(page);
+  await page.goto("/itinerary");
+  await page.getByRole("button", { name: "Add", exact: true }).click();
+  const sheet = page.getByRole("dialog", { name: "Add activity" });
+  await sheet.getByRole("button", { name: /Pick from your Places/ }).click();
+  await sheet.getByLabel("Search your places").fill(String(idea.name));
+  await expect(sheet.getByText("Already in itinerary · Day 3")).toBeVisible();
+  await sheet.getByRole("button", { name: String(idea.name) }).first().click();
+  await expect(sheet.getByText(/is already on the itinerary \(Day 3\)\. Add it again\?/)).toBeVisible();
+  await sheet.getByRole("button", { name: "Add again" }).click();
+  await expect(sheet.getByLabel("Activity")).toHaveValue(String(idea.name));
+});

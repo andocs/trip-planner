@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ChevronRight, Clock, Lightbulb, Link2, MapPin, NotebookText } from "lucide-react";
+import { Check, ChevronRight, Clock, Lightbulb, Link2, MapPin, NotebookText } from "lucide-react";
 import { useEffect, useState } from "react";
 import { IdeaPhotos } from "@/components/photos/idea-photos";
 import { useImages, usePhotoUrls, useRemovePhoto } from "@/lib/queries/images";
@@ -15,7 +15,8 @@ import { RowSheet } from "@/components/ui/row-sheet";
 import { tripLength } from "@/lib/calc";
 import { KIND_LABEL, type Idea } from "@/lib/drafts";
 import { formatDay } from "@/lib/format";
-import { dateForDay, stopLinks, withStopLinks, type InsertPlan } from "@/lib/itinerary";
+import { dateForDay, itineraryUsage, stopLinks, usageLabel, withStopLinks, type InsertPlan } from "@/lib/itinerary";
+import { Button } from "@/components/ui/button";
 import { useIdeas } from "@/lib/queries/ideas";
 import { placeAtEndOfDay, useMoveItems } from "@/lib/queries/itinerary";
 import { newId, useDeleteRow, useInsertRow, useRows, useUpdateRow, type Row } from "@/lib/queries/table";
@@ -85,6 +86,7 @@ export function ItinerarySheet({
   const update = useUpdateRow("itinerary_items", "activity");
   const remove = useDeleteRow("itinerary_items", "activity");
   const [keepAdding, setKeepAdding] = useState(false);
+  const [readdFor, setReaddFor] = useState<string | null>(null);
   // An activity that is still being added has no row yet, but its photos need an id: made up front, used when it is saved.
   const [draftId, setDraftId] = useState(() => newId());
   const { byIdea: imagesBy } = useImages();
@@ -100,6 +102,7 @@ export function ItinerarySheet({
 
   // Every day of the trip, and any day an item already uses (the trip may have been shortened).
   const len = tripLength(trip.start_date, trip.end_date) ?? 0;
+  const usage = itineraryUsage(all, trip.start_date);
   const days = new Set<number>();
   for (let d = 1; d <= len; d++) days.add(d);
   for (const i of all) if (i.day !== null) days.add(i.day);
@@ -166,6 +169,7 @@ export function ItinerarySheet({
   });
 
   const pickIdea = (i: Idea) => {
+    setReaddFor(null);
     setValue("activity", i.name, { shouldValidate: true });
     setValue("city", i.city ?? "");
     setValue("type", TYPE_OF_KIND[i.kind]);
@@ -251,13 +255,42 @@ export function ItinerarySheet({
                   <ul>
                     {matches.map((i) => (
                       <li key={i.key}>
-                        <button type="button" onClick={() => pickIdea(i)} className="flex min-h-12 w-full items-center gap-2 rounded-xl px-2 text-left hover:bg-surface">
-                          <span className="min-w-0 flex-1 truncate font-bold">{i.name}</span>
-                          <span className="shrink-0 text-xs font-bold text-fg-muted">
-                            {KIND_LABEL[i.kind]}
-                            {i.decision === "draft" ? " · Draft" : ""}
-                          </span>
-                        </button>
+                        {readdFor === i.key ? (
+                          // Already on the itinerary: ask before adding it a second time.
+                          <div className="space-y-2 rounded-xl bg-surface px-3 py-2.5">
+                            <p className="text-sm">
+                              <b>{i.name}</b> is already on the itinerary ({usageLabel(usage.get(i.key))}). Add it again?
+                            </p>
+                            <div className="flex gap-2">
+                              <Button type="button" size="sm" onClick={() => pickIdea(i)}>
+                                Add again
+                              </Button>
+                              <Button type="button" size="sm" variant="ghost" onClick={() => setReaddFor(null)}>
+                                Cancel
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => (usage.get(i.key)?.length ? setReaddFor(i.key) : pickIdea(i))}
+                            className="flex min-h-12 w-full items-center gap-2 rounded-xl px-2 text-left hover:bg-surface"
+                          >
+                            <span className="min-w-0 flex-1">
+                              <span className="block truncate font-bold">{i.name}</span>
+                              {usage.get(i.key)?.length ? (
+                                <span className="flex items-center gap-1 text-xs font-bold text-teal">
+                                  <Check className="size-3.5" strokeWidth={3} aria-hidden />
+                                  Already in itinerary · {usageLabel(usage.get(i.key))}
+                                </span>
+                              ) : null}
+                            </span>
+                            <span className="shrink-0 text-xs font-bold text-fg-muted">
+                              {KIND_LABEL[i.kind]}
+                              {i.decision === "draft" ? " · Draft" : ""}
+                            </span>
+                          </button>
+                        )}
                       </li>
                     ))}
                   </ul>

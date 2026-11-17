@@ -117,15 +117,15 @@ export function StopView({
         )}
 
         {canEdit && (
-          <section aria-label="Actions" className="space-y-2">
-            <Button variant="outline" className="w-full" onClick={onEdit}>
-              <Pencil className="size-[18px]" aria-hidden />
-              Edit details
-            </Button>
-            <div className="grid grid-cols-2 gap-2">
+          <section aria-label="Actions" className="-mt-1">
+            <div className="flex flex-wrap gap-2">
+              <Button size="icon" variant="secondary" aria-label="Edit details" title="Edit details" onClick={onEdit}>
+                <Pencil className="size-[18px]" aria-hidden />
+              </Button>
               {!item.tentative && (
                 <Button
-                  variant="secondary"
+                  size="sm"
+                  variant="outline"
                   onClick={() => {
                     onDone(!item.done);
                     onClose();
@@ -136,15 +136,16 @@ export function StopView({
                 </Button>
               )}
               <Button
+                size="icon"
                 variant="danger"
-                className={item.tentative ? "col-span-2" : undefined}
+                aria-label="Remove"
+                title="Remove from itinerary"
                 onClick={() => {
                   onRemove();
                   onClose();
                 }}
               >
                 <Trash2 className="size-[18px]" aria-hidden />
-                Remove
               </Button>
             </div>
           </section>

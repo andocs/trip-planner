@@ -297,3 +297,28 @@ export function withStopLinks(raw: unknown, links: { website: string | null; map
   if (links.mapsUrl) base.mapsUrl = links.mapsUrl;
   return base;
 }
+
+/* ---------- places already on the itinerary ---------- */
+
+export type UsageItem = Item & { source_table?: string | null; source_id?: string | null };
+export type Usage = { id: string; day: number | null };
+
+/** Which board ideas (keyed "table:id") already have a stop on the itinerary, and on which day. Connectors never count. */
+export function itineraryUsage(items: UsageItem[], start: string | null | undefined): Map<string, Usage[]> {
+  const by = new Map<string, Usage[]>();
+  for (const i of items) {
+    if (!isStop(i) || !i.source_table || !i.source_id) continue;
+    const key = `${i.source_table}:${i.source_id}`;
+    by.set(key, [...(by.get(key) ?? []), { id: i.id, day: dayOf(i, start) }]);
+  }
+  return by;
+}
+
+/** "Day 2", "Days 2 and 4", "Days 1, 3 and 5", or "no day yet" for stops that haven't been given one. */
+export function usageLabel(uses: Usage[] | undefined): string {
+  if (!uses || uses.length === 0) return "";
+  const days = [...new Set(uses.map((u) => u.day).filter((d): d is number => d !== null))].sort((a, b) => a - b);
+  if (days.length === 0) return "no day yet";
+  if (days.length === 1) return `Day ${days[0]}`;
+  return `Days ${days.slice(0, -1).join(", ")} and ${days[days.length - 1]}`;
+}

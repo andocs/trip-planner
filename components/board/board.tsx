@@ -6,6 +6,9 @@ import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { EditOnly, useCanEdit, useTrip } from "@/components/trip-gate";
 import { Button } from "@/components/ui/button";
+import { useRows } from "@/lib/queries/table";
+import { ConfirmSheet } from "@/components/ui/confirm-sheet";
+import { itineraryUsage, usageLabel } from "@/lib/itinerary";
 import { Card } from "@/components/ui/card";
 import { Select } from "@/components/ui/field";
 import { Segmented } from "@/components/ui/segmented";
@@ -70,6 +73,11 @@ export function Board() {
   const [sort, setSort] = useState<"votes" | "new">("votes");
   const [naming, setNaming] = useState<{ idea: Idea; value: VoteValue } | null>(null);
   const [stopFor, setStopFor] = useState<Idea | null>(null);
+  // A place that already has a stop on the itinerary asks before it is added again.
+  const [readd, setReadd] = useState<Idea | null>(null);
+  const itineraryRows = useRows("itinerary_items");
+  const usage = itineraryUsage(itineraryRows.data ?? [], trip.start_date);
+  const askAddStop = (idea: Idea) => (usage.get(idea.key)?.length ? setReadd(idea) : setStopFor(idea));
   const [editing, setEditing] = useState<Idea | null>(null);
   const [adding, setAdding] = useState<IdeaKind | null>(null);
   const cities = [...new Set(ideas.map((i) => i.city).filter(Boolean) as string[])].sort();
@@ -206,7 +214,8 @@ export function Board() {
               onVote={(v) => vote(idea, v)}
               onConfirm={() => setDecision(idea, "confirmed")}
               onRestore={() => setDecision(idea, "draft")}
-              onAddStop={() => setStopFor(idea)}
+              onAddStop={() => askAddStop(idea)}
+              inItinerary={usageLabel(usage.get(idea.key))}
             />
           ))}
         </div>
@@ -242,7 +251,8 @@ export function Board() {
             setDecision(opened, d);
             setSearchParam("idea", null); // the idea moves to another tab, so close its sheet
           }}
-          onAddStop={() => setStopFor(opened)}
+          onAddStop={() => askAddStop(opened)}
+          inItinerary={usageLabel(usage.get(opened.key))}
           onEdit={() => setEditing(opened)}
           onClose={() => setSearchParam("idea", null)}
         />
@@ -256,6 +266,18 @@ export function Board() {
             setNaming(null);
           }}
           onCancel={() => setNaming(null)}
+        />
+      )}
+      {readd && (
+        <ConfirmSheet
+          title="Already in the itinerary"
+          description={`“${readd.name}” is already on the itinerary (${usageLabel(usage.get(readd.key))}). Add it again?`}
+          confirmLabel="Add again"
+          onClose={() => setReadd(null)}
+          onConfirm={() => {
+            setStopFor(readd);
+            setReadd(null);
+          }}
         />
       )}
       {stopFor && <TentativeSheet idea={stopFor} onClose={() => setStopFor(null)} />}

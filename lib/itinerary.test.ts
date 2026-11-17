@@ -209,3 +209,30 @@ describe("planInsert", () => {
     expect(r.position).toBe(1500);
   });
 });
+
+describe("itineraryUsage", () => {
+  const base = { at_time: null, activity: "x", duration_min: null, created_at: "2026-06-01T00:00:00Z" };
+  const row = (id: string, day: number | null, source: string | null, kind = "stop") => ({
+    ...base,
+    id,
+    day,
+    kind,
+    source_table: source ? "attractions" : null,
+    source_id: source,
+  });
+  it("lists the stops that came from a board idea, by idea, with their days", async () => {
+    const { itineraryUsage, usageLabel } = await import("./itinerary");
+    const m = itineraryUsage([row("a", 2, "i1"), row("b", 4, "i1"), row("c", 1, "i2"), row("d", 1, null), row("e", 1, "i1", "commute")], "2026-06-16");
+    expect(m.get("attractions:i1")?.map((u) => u.day)).toEqual([2, 4]);
+    expect(m.get("attractions:i2")?.length).toBe(1);
+    expect(m.size).toBe(2);
+    expect(usageLabel(m.get("attractions:i1"))).toBe("Days 2 and 4");
+    expect(usageLabel(m.get("attractions:i2"))).toBe("Day 1");
+    expect(usageLabel(undefined)).toBe("");
+  });
+  it("words an unscheduled stop and three days", async () => {
+    const { usageLabel } = await import("./itinerary");
+    expect(usageLabel([{ id: "a", day: null }])).toBe("no day yet");
+    expect(usageLabel([{ id: "a", day: 5 }, { id: "b", day: 1 }, { id: "c", day: 3 }])).toBe("Days 1, 3 and 5");
+  });
+});

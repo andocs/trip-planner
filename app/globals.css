@@ -530,18 +530,18 @@
   gap: 1rem;
 }
 .form-group + .form-group {
-  margin-top: 0.5rem;
+  margin-top: 0.75rem;
   padding-top: 1.75rem;
 }
+/* A thin light rule, centred, about 90% of the width. */
 .form-group + .form-group::before {
   content: "";
   position: absolute;
   top: 0;
-  left: 0;
-  width: 72px;
-  height: 3px;
-  border-radius: 3px;
-  background: var(--line-strong);
+  left: 5%;
+  width: 90%;
+  height: 1px;
+  background: var(--line);
 }
 .form-group-title {
   display: flex;
@@ -559,4 +559,24 @@
   width: 22px;
   height: 22px;
   color: var(--teal);
+}
+
+/* Buttons give a little feedback everywhere: they ease between states and dip slightly when pressed. In the base layer, so any
+   component that sets its own transition or transform (utilities, the + control, drag handles) wins over it. */
+@layer base {
+  button:not(:disabled) {
+    transition-property: transform, background-color, box-shadow, opacity, color;
+    transition-duration: 150ms;
+    transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  button:not(:disabled):active {
+    transform: scale(0.96);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    button:not(:disabled),
+    button:not(:disabled):active {
+      transition: none;
+      transform: none;
+    }
+  }
 }

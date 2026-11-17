@@ -58,6 +58,7 @@ export function IdeaSheet({
   onVote,
   onDecision,
   onAddStop,
+  inItinerary,
   onEdit,
   onClose,
 }: {
@@ -72,6 +73,8 @@ export function IdeaSheet({
   onVote: (v: VoteValue | null) => void;
   onDecision: (d: Decision) => void;
   onAddStop: () => void;
+  /** "Day 2" when this place already has a stop on the itinerary (then Add asks first), else empty. */
+  inItinerary?: string;
   /** Owner or editor: open this idea's own details (name, city, price, notes, status) for editing. */
   onEdit: () => void;
   onClose: () => void;
@@ -167,46 +170,44 @@ export function IdeaSheet({
         <PlaceLinks website={links.website} mapsUrl={links.mapsUrl} className="-mt-2 flex flex-wrap gap-x-5" />
 
         {canEdit && (
-          <Button variant="outline" className="-mt-1 w-full" onClick={onEdit}>
-            <Pencil className="size-[18px]" aria-hidden />
-            Edit details
-          </Button>
-        )}
-
-        {canEdit && (
-          <section aria-label="Decide" className="space-y-2">
-            {idea.decision === "draft" && (
-              <div className="grid grid-cols-2 gap-2">
-                <Button size="md" className="col-span-2" onClick={() => onDecision("confirmed")}>
-                  <Check className="size-5" strokeWidth={2.8} aria-hidden />
-                  Confirm this {KIND_LABEL[idea.kind].toLowerCase()}
+          <section aria-label="Actions" className="-mt-1 space-y-2">
+            <div className="flex flex-wrap gap-2">
+              {idea.decision === "draft" && (
+                <Button size="sm" aria-label={`Confirm this ${KIND_LABEL[idea.kind].toLowerCase()}`} onClick={() => onDecision("confirmed")}>
+                  <Check className="size-[18px]" strokeWidth={2.8} aria-hidden />
+                  Confirm
                 </Button>
-                <Button variant="outline" onClick={onAddStop}>
+              )}
+              {idea.decision === "dropped" ? (
+                <Button size="sm" variant="outline" onClick={() => onDecision("draft")}>
+                  Restore to drafts
+                </Button>
+              ) : inItinerary ? (
+                <Button size="sm" variant="secondary" aria-label={`Already in the itinerary (${inItinerary}). Add again`} title={`Already in the itinerary: ${inItinerary}`} className="text-teal" onClick={onAddStop}>
+                  <Check className="size-[18px]" strokeWidth={2.8} aria-hidden />
+                  In itinerary
+                </Button>
+              ) : (
+                <Button size="sm" variant="outline" onClick={onAddStop}>
                   <CalendarPlus className="size-[18px]" aria-hidden />
                   Add to itinerary
                 </Button>
-                <Button variant="danger" onClick={() => onDecision("dropped")}>
-                  <CircleOff className="size-[18px]" aria-hidden />
-                  Drop
-                </Button>
-              </div>
-            )}
-            {idea.decision === "confirmed" && (
-              <div className="grid grid-cols-2 gap-2">
-                <Button variant="outline" onClick={onAddStop}>
-                  <CalendarPlus className="size-[18px]" aria-hidden />
-                  Add to itinerary
-                </Button>
-                <Button variant="secondary" onClick={() => onDecision("draft")}>
+              )}
+              <Button size="icon" variant="secondary" aria-label="Edit details" title="Edit details" onClick={onEdit}>
+                <Pencil className="size-[18px]" aria-hidden />
+              </Button>
+              {idea.decision === "confirmed" && (
+                <Button size="sm" variant="ghost" onClick={() => onDecision("draft")}>
                   Back to drafts
                 </Button>
-              </div>
-            )}
-            {idea.decision === "dropped" && (
-              <Button variant="outline" className="w-full" onClick={() => onDecision("draft")}>
-                Restore to drafts
-              </Button>
-            )}
+              )}
+              {idea.decision === "draft" && (
+                <Button size="icon" variant="danger" aria-label="Drop" title="Drop" onClick={() => onDecision("dropped")}>
+                  <CircleOff className="size-[18px]" aria-hidden />
+                </Button>
+              )}
+            </div>
+            {inItinerary && <p className="text-[13px] text-fg-muted">Already in the itinerary: {inItinerary}.</p>}
             {idea.decision === "draft" && (
               <p className="text-[13px] text-fg-muted">
                 Confirming keeps it in the plan and lets it count toward the budget and exports.

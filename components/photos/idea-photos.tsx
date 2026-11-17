@@ -177,7 +177,7 @@ export function IdeaPhotos({
             <button
               type="button"
               onClick={() => setAdding(true)}
-              className="flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl font-bold ring-2 ring-line-strong"
+              className="inline-flex min-h-11 items-center gap-2 rounded-full px-4 text-sm font-bold ring-2 ring-line-strong transition-colors hover:bg-surface-2"
             >
               <ImagePlus className="size-5" strokeWidth={2.4} aria-hidden />
               Add a photo

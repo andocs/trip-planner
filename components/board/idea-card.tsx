@@ -155,6 +155,7 @@ export function IdeaCard({
   onConfirm,
   onRestore,
   onAddStop,
+  inItinerary,
 }: {
   idea: Idea;
   currency: string;
@@ -171,6 +172,8 @@ export function IdeaCard({
   onConfirm: () => void;
   onRestore: () => void;
   onAddStop: () => void;
+  /** "Day 2" when this place already has a stop on the itinerary. */
+  inItinerary?: string;
 }) {
   const dropped = idea.decision === "dropped";
   return (
@@ -236,10 +239,24 @@ export function IdeaCard({
             )
           ) : canEdit && idea.decision === "draft" ? (
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" className="min-w-0 flex-1" onClick={onAddStop}>
-                <CalendarPlus className="size-[18px]" aria-hidden />
-                Add to itinerary
-              </Button>
+              {inItinerary ? (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="min-w-0 flex-1 text-teal"
+                  aria-label={`Already in the itinerary (${inItinerary}). Add again`}
+                  title={`Already in the itinerary: ${inItinerary}`}
+                  onClick={onAddStop}
+                >
+                  <Check className="size-[18px]" strokeWidth={2.8} aria-hidden />
+                  In itinerary
+                </Button>
+              ) : (
+                <Button variant="outline" size="sm" className="min-w-0 flex-1" onClick={onAddStop}>
+                  <CalendarPlus className="size-[18px]" aria-hidden />
+                  Add to itinerary
+                </Button>
+              )}
               <Button variant="secondary" size="sm" className="min-w-0 flex-1" onClick={onConfirm}>
                 <Check className="size-[18px]" strokeWidth={2.8} aria-hidden />
                 Confirm
