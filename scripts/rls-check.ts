@@ -96,6 +96,7 @@ async function main() {
     const j = await viewer.rpc("join_trip", { p_token: token });
     check("viewer can join with the link", !j.error);
     await viewer.rpc("join_trip", { p_token: token }); // opening the link again
+    check("a member can refresh their own membership copy", !(await viewer.rpc("sync_my_membership")).error);
     check(
       "joining added exactly one linked traveler",
       (((await (admin as unknown as SupabaseClient).from("travelers").select("id").eq("trip_id", tripId).not("user_id", "is", null)).data as unknown[]) ?? []).length === 1,

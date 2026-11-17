@@ -1240,6 +1240,11 @@ begin
     perform 1 from public.trips;
     failures := failures || 'anon role can read trips'::text;
   exception when insufficient_privilege then null; end;
+  checks := checks + 1;
+  begin
+    perform public.sync_my_membership();
+    failures := failures || 'anon role can run sync_my_membership'::text;
+  exception when insufficient_privilege then null; end;
   reset role;
 
   if array_length(failures, 1) is null then

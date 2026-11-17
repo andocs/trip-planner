@@ -70,6 +70,31 @@ export async function linkGoogle(next = "/") {
   if (error) throw error;
 }
 
+/**
+ * After Google is connected: fill the profile (name and photo) from the Google identity when linking left it empty, then
+ * refresh the owner-visible copy of the email and name. Returns false when there is no Google identity yet, so nothing
+ * was done. Safe to run again.
+ */
+export async function syncGoogleProfile(): Promise<boolean> {
+  const supabase = getSupabase();
+  const { data } = await supabase.auth.getUser();
+  const u = data.user;
+  const google = u?.identities?.find((i) => i.provider === "google");
+  if (!u || !google) return false;
+  const idd = (google.identity_data ?? {}) as Record<string, unknown>;
+  const meta = (u.user_metadata ?? {}) as Record<string, unknown>;
+  const text = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : null);
+  const fullName = !text(meta.full_name) ? (text(idd.full_name) ?? text(idd.name)) : null;
+  const avatar = !text(meta.avatar_url) ? (text(idd.avatar_url) ?? text(idd.picture)) : null;
+  if (fullName || avatar) {
+    const { error } = await supabase.auth.updateUser({ data: { ...(fullName ? { full_name: fullName } : {}), ...(avatar ? { avatar_url: avatar } : {}) } });
+    if (error) throw error;
+  }
+  const { error } = await supabase.rpc("sync_my_membership");
+  if (error) throw error;
+  return true;
+}
+
 export async function signOut() {
   await getSupabase().auth.signOut();
 }
