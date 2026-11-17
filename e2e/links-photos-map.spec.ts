@@ -63,6 +63,7 @@ test("owner: an activity takes a website and a Google Maps link, saved with it, 
   await fake.install(page);
   await page.goto("/itinerary");
   await page.getByRole("button", { name: "Add", exact: true }).click();
+  await page.getByRole("menuitem", { name: /^Sightseeing/ }).click();
   const sheet = page.getByRole("dialog", { name: "Add activity" });
   await sheet.getByLabel("Activity").fill("Umeda Sky Building");
   await sheet.getByLabel("Website").fill("https://example.com/umeda");
@@ -292,6 +293,7 @@ test("Add activity: a place already on the itinerary is marked, and picking it a
   await fake.install(page);
   await page.goto("/itinerary");
   await page.getByRole("button", { name: "Add", exact: true }).click();
+  await page.getByRole("menuitem", { name: /^Sightseeing/ }).click();
   const sheet = page.getByRole("dialog", { name: "Add activity" });
   await sheet.getByRole("button", { name: /Pick from your Places/ }).click();
   await sheet.getByLabel("Search your places").fill(String(idea.name));
@@ -460,7 +462,8 @@ test("Edit activity follows the category: food shows food details, and they are 
   const edit = page.getByRole("dialog", { name: "Edit activity" });
   // Sight is the layout for sightseeing (and the generic one).
   await expect(edit.getByRole("heading", { name: "Sight details" })).toBeVisible();
-  await edit.getByRole("button", { name: "Food & Drink", exact: true }).click();
+  await edit.getByRole("button", { name: "Category" }).click();
+  await page.getByRole("menuitem", { name: /^Food & Drink/ }).click();
   await expect(edit.getByRole("heading", { name: "Food details" })).toBeVisible();
   await edit.getByRole("button", { name: "Food details" }).click();
   await edit.getByLabel("Opening hours / best time to go").fill("11:00 to 14:00");
@@ -509,4 +512,29 @@ test("a card dips as one piece when pressed", async ({ page }) => {
   expect(now!.width).toBeLessThan(box!.width);
   await page.mouse.move(0, 0);
   await page.mouse.up();
+});
+
+test("Add activity: the category is chosen from a menu (top Add and the small +), and the status chip sits beside the kind", async ({ page }) => {
+  const fake = createFakeSupabase({ withSeed: true });
+  plan(fake);
+  await fake.install(page);
+  await page.goto("/itinerary");
+
+  // The top Add button asks which kind first; the sheet then shows it, with that category's details.
+  await page.getByRole("button", { name: "Add", exact: true }).click();
+  await page.getByRole("menuitem", { name: /^Food & Drink/ }).click();
+  const sheet = page.getByRole("dialog", { name: "Add activity" });
+  await expect(sheet.getByRole("button", { name: "Category" })).toContainText("Food & Drink");
+  await expect(sheet.getByRole("heading", { name: "Food details" })).toBeVisible();
+  await sheet.getByRole("button", { name: "Category" }).click();
+  await page.getByRole("menuitem", { name: /^Rest & Stay/ }).click();
+  await expect(sheet.getByRole("heading", { name: "Stay details" })).toBeVisible();
+  await sheet.getByRole("button", { name: "Cancel" }).click();
+  await expect(sheet).toBeHidden();
+
+  // The small + after a place: its Activity option asks for the category too.
+  await page.getByRole("button", { name: "Add after Osaka Castle" }).click();
+  await page.getByRole("group", { name: "After Osaka Castle" }).getByRole("button", { name: "Activity" }).click();
+  await page.getByRole("menuitem", { name: /^Shopping/ }).click();
+  await expect(page.getByRole("dialog", { name: "Add activity" }).getByRole("button", { name: "Category" })).toContainText("Shopping");
 });

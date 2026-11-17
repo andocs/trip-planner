@@ -19,7 +19,21 @@ type SheetProps = {
   side?: boolean;
   /** Something small in the header beside Close, e.g. a "more" menu. */
   headerExtra?: ReactNode;
+  /** A small chip on the same line as the description (e.g. the status of a place). */
+  badge?: ReactNode;
 };
+
+/** The line under the title: the description, then the badge on the same line. */
+function SubLine({ badge, children }: { badge?: ReactNode; children: ReactNode }) {
+  return badge ? (
+    <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+      {children}
+      {badge}
+    </div>
+  ) : (
+    <>{children}</>
+  );
+}
 
 /**
  * Form container for every add/edit flow. A bottom sheet on phones (body scrolls, footer stays
@@ -46,7 +60,7 @@ function Body({ children, footer }: Pick<SheetProps, "children" | "footer">) {
 const closeClass =
   "-mr-2 grid size-11 shrink-0 place-items-center rounded-full text-fg-muted hover:bg-surface-2 hover:text-fg";
 
-function BottomSheet({ open, onOpenChange, title, description, children, footer, className, headerExtra }: SheetProps) {
+function BottomSheet({ open, onOpenChange, title, description, children, footer, className, headerExtra, badge }: SheetProps) {
   return (
     <Drawer.Root open={open} onOpenChange={onOpenChange} repositionInputs={false}>
       <Drawer.Portal>
@@ -61,11 +75,13 @@ function BottomSheet({ open, onOpenChange, title, description, children, footer,
           <div className="flex items-start justify-between gap-4 px-5 pt-3 pb-2">
             <div>
               <Drawer.Title className="font-display text-2xl font-extrabold tracking-tight">{title}</Drawer.Title>
-              {description ? (
-                <Drawer.Description className="text-sm text-fg-muted">{description}</Drawer.Description>
-              ) : (
-                <Drawer.Description className="sr-only">{title}</Drawer.Description>
-              )}
+              <SubLine badge={badge}>
+                {description ? (
+                  <Drawer.Description className="text-sm text-fg-muted">{description}</Drawer.Description>
+                ) : (
+                  <Drawer.Description className="sr-only">{title}</Drawer.Description>
+                )}
+              </SubLine>
             </div>
             <div className="flex items-center">
               {headerExtra}
@@ -82,7 +98,7 @@ function BottomSheet({ open, onOpenChange, title, description, children, footer,
   );
 }
 
-function CenteredDialog({ open, onOpenChange, title, description, children, footer, className, side, headerExtra }: SheetProps) {
+function CenteredDialog({ open, onOpenChange, title, description, children, footer, className, side, headerExtra, badge }: SheetProps) {
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
@@ -99,11 +115,13 @@ function CenteredDialog({ open, onOpenChange, title, description, children, foot
           <div className="flex items-start justify-between gap-4 px-6 pt-6 pb-2">
             <div>
               <Dialog.Title className="font-display text-2xl font-extrabold tracking-tight">{title}</Dialog.Title>
-              {description ? (
-                <Dialog.Description className="text-sm text-fg-muted">{description}</Dialog.Description>
-              ) : (
-                <Dialog.Description className="sr-only">{title}</Dialog.Description>
-              )}
+              <SubLine badge={badge}>
+                {description ? (
+                  <Dialog.Description className="text-sm text-fg-muted">{description}</Dialog.Description>
+                ) : (
+                  <Dialog.Description className="sr-only">{title}</Dialog.Description>
+                )}
+              </SubLine>
             </div>
             <div className="flex items-center">
               {headerExtra}

@@ -16,6 +16,7 @@ import { tripLength } from "@/lib/calc";
 import { KIND_LABEL, TABLE_OF_KIND, type Idea, type IdeaKind } from "@/lib/drafts";
 import { toast } from "sonner";
 import { formatDay } from "@/lib/format";
+import { CategoryGlyph, CategoryMenu } from "./category-menu";
 import { kindOfType, placeOf, withPlace } from "@/lib/activity-details";
 import { FoodSection, SightSection, StaySection } from "@/components/ideas/idea-modal";
 import { blankForm, FORM_SCHEMA, formFromIdea, toPayload, type IdeaFormValues } from "@/lib/idea-form";
@@ -56,7 +57,6 @@ const LENGTHS: [label: string, minutes: string][] = [
   ["2h", "120"],
   ["3h", "180"],
 ];
-const TYPES = ["Sightseeing", "Food & Drink", "Rest & Stay", "Activity", "Shopping", "Transport", "Other"];
 const CATEGORY_ICON = { stay: BedDouble, food: Utensils, sight: Landmark } as const;
 const CATEGORY_HINT = {
   stay: "Type, check-in time, cancellation, amenities",
@@ -70,7 +70,7 @@ const standIn = (kind: IdeaKind, details: unknown): Idea => ({
 const TYPE_OF_KIND = { food: "Food & Drink", stay: "Rest & Stay", sight: "Sightseeing" } as const;
 
 /** Where in a day a new activity goes, and which two places it sits between (when added from a place's "+"). */
-export type ActivityDefaults = Partial<Pick<In, "day">> & {
+export type ActivityDefaults = Partial<Pick<In, "day" | "type">> & {
   plan?: InsertPlan;
   between?: { before: string; after?: string };
 };
@@ -140,7 +140,7 @@ export function ItinerarySheet({
       at_time: r?.at_time?.slice(0, 5) ?? "",
       city: str(r?.city),
       activity: r?.activity ?? "",
-      type: r?.type ?? "",
+      type: r ? (r.type ?? "") : (defaults?.type ?? ""),
       duration_min: str(r?.duration_min),
       lenCustom: !!r?.duration_min && !LENGTHS.some(([, m]) => m === String(r.duration_min)),
       note: str(r?.note),
@@ -149,7 +149,7 @@ export function ItinerarySheet({
       done: r?.done ?? false,
     });
     const rowIdea = r?.source_table && r.source_id ? ideas.find((i) => i.key === `${r.source_table}:${r.source_id}`) : undefined;
-    const kind = rowIdea?.kind ?? kindOfType(r?.type);
+    const kind = rowIdea?.kind ?? kindOfType(r ? r.type : defaults?.type);
     const place = placeOf(r?.details);
     dform.reset(place ? formFromIdea(standIn(kind, place), trip.home_currency) : rowIdea ? formFromIdea(rowIdea, trip.home_currency) : blankForm(kind, trip.home_currency));
     // The place list and the details form only matter when the sheet opens.
@@ -203,6 +203,15 @@ export function ItinerarySheet({
     } else sheet.close();
   });
 
+  /** A category chosen from the menu. A linked place keeps its own category, so choosing another one lets go of the place. */
+  const chooseCategory = (label: string) => {
+    setValue("type", label, { shouldDirty: true });
+    if (linked && kindOfType(label) !== linked.kind) {
+      setSource(null);
+      dform.reset(blankForm(kindOfType(label), trip.home_currency));
+    } else if (!linked) dform.reset({ ...blankForm(kindOfType(label), trip.home_currency), ...dform.getValues(), kind: kindOfType(label) } as IdeaFormValues);
+  };
+
   const pickIdea = (i: Idea) => {
     setReaddFor(null);
     setValue("activity", i.name, { shouldValidate: true });
@@ -214,7 +223,7 @@ export function ItinerarySheet({
     setSearch("");
   };
   const matches = ideas
-    .filter((i) => i.decision !== "dropped" && i.name.toLowerCase().includes(search.trim().toLowerCase()))
+    .filter((i) => i.decision !== "dropped" && (!typeChip || i.kind === category) && i.name.toLowerCase().includes(search.trim().toLowerCase()))
     .slice(0, 8);
 
   const lengthChip = lenCustom || (!!duration && !LENGTHS.some(([, m]) => m === duration)) ? "Custom" : (LENGTHS.find(([, m]) => m === duration)?.[0] ?? "");
@@ -231,7 +240,14 @@ export function ItinerarySheet({
       }}
       side
       title={sheet.row ? "Edit activity" : "Add activity"}
-      description={sheet.row ? undefined : dayNumber === null ? "No day yet" : `Day ${dayNumber}${picked ? ` · ${formatDay(picked)}` : ""}`}
+      description={[typeChip || null, sheet.row ? null : dayNumber === null ? "No day yet" : `Day ${dayNumber}${picked ? ` · ${formatDay(picked)}` : ""}`].filter(Boolean).join(" · ") || undefined}
+      badge={
+        sheet.row ? (
+          <span className={cn("inline-flex min-h-6 items-center rounded-full px-2 text-xs font-extrabold", sheet.row.tentative ? "bg-warn-tint text-warn-text" : "bg-teal-tint text-teal")}>
+            {sheet.row.done ? "Done" : sheet.row.tentative ? "Tentative" : "Planned"}
+          </span>
+        ) : undefined
+      }
       mode={sheet.mode}
       onSubmit={onSubmit}
       keepAdding={{ value: keepAdding, onChange: setKeepAdding }}
@@ -262,6 +278,16 @@ export function ItinerarySheet({
         </p>
       )}
       <FormGroup icon={MapPin} title="The activity">
+        <div>
+          <span className="mb-1.5 block text-[13px] font-bold text-fg-muted">Category</span>
+          <CategoryMenu current={typeChip} onPick={chooseCategory}>
+            <button type="button" aria-label="Category" className="flex min-h-12 w-full items-center gap-3 rounded-2xl bg-surface-2 px-3.5 text-left transition-colors hover:bg-line">
+              <CategoryGlyph label={typeChip} className="size-5 shrink-0 text-teal" />
+              <span className={cn("min-w-0 flex-1 font-bold", !typeChip && "text-fg-muted")}>{typeChip || "Choose a category"}</span>
+              <ChevronDown className="size-5 shrink-0 text-fg-muted" aria-hidden />
+            </button>
+          </CategoryMenu>
+        </div>
         <Field label="Activity" error={errors.activity?.message}>
           {(p) => <Input {...p} {...register("activity")} autoComplete="off" placeholder="e.g. Train Street coffee" />}
         </Field>
@@ -335,11 +361,6 @@ export function ItinerarySheet({
             )}
           </div>
         )}
-        <Controller
-          control={control}
-          name="type"
-          render={({ field }) => <ChipGroup label="Type" options={TYPES} value={field.value ?? ""} display={(o) => o} onChange={(v) => field.onChange(Array.isArray(v) ? (v[0] ?? "") : v)} />}
-        />
         <Field label="City or area" error={errors.city?.message}>
           {(p) => <Input {...p} {...register("city")} list="itin-cities" autoComplete="off" />}
         </Field>

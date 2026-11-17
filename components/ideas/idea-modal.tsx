@@ -163,6 +163,19 @@ export function IdeaModal({ kind: startKind, idea, prefill, cities, onClose, onC
       side
       onOpenChange={(o) => !o && cancel()}
       title={stay ? (editing ? "Edit stay" : "Add stay") : editing ? `Edit ${KIND_LABEL[kind].toLowerCase()}` : "Add place"}
+      description={idea?.name}
+      badge={
+        idea && !stay ? (
+          <span
+            className={cn(
+              "inline-flex min-h-6 items-center rounded-full px-2 text-xs font-extrabold",
+              idea.decision === "confirmed" ? "bg-teal-tint text-teal" : idea.decision === "dropped" ? "bg-danger-tint text-danger" : "bg-warn-tint text-warn-text",
+            )}
+          >
+            {idea.decision === "draft" ? "Draft" : idea.decision === "confirmed" ? "Confirmed" : "Dropped"}
+          </span>
+        ) : undefined
+      }
       footer={
         <FormFooter
           mode={editing ? "edit" : "add"}

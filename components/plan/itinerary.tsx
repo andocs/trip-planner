@@ -14,7 +14,7 @@ import {
 } from "@dnd-kit/core";
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { ArrowUpDown, ArrowUpRight, Check, CalendarPlus, Ellipsis, GripVertical, Maximize2, Minimize2 } from "lucide-react";
+import { ArrowUpDown, ArrowUpRight, CalendarPlus, Check, ChevronDown, Ellipsis, GripVertical, Maximize2, Minimize2 } from "lucide-react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useState, type ReactNode } from "react";
@@ -51,6 +51,7 @@ import { useSheet } from "@/lib/use-sheet";
 import { cn } from "@/lib/utils";
 import { ideaForItem } from "@/lib/activity-details";
 import { AddHere } from "./add-here";
+import { CategoryMenu } from "./category-menu";
 import { MapStopCard } from "./map-stop-card";
 import type { ConnectorTarget } from "./connector-sheet";
 import { ConnectorRow, DaySplit, StayRow, StopCard } from "./itinerary-entries";
@@ -170,8 +171,8 @@ export function Itinerary() {
   }
   const directions = directionsUrl(routeStops);
 
-  const addToDay = (day: number | null) => {
-    setDefaults({ day: day === null ? "" : String(day) });
+  const addToDay = (day: number | null, type?: string) => {
+    setDefaults({ day: day === null ? "" : String(day), type });
     sheet.openAdd();
   };
 
@@ -212,12 +213,13 @@ export function Itinerary() {
   };
 
   /** Add an activity right after `item`, on the same day. */
-  const openActivity = (item: ItineraryItem) => {
+  const openActivity = (item: ItineraryItem, type?: string) => {
     const day = groups.find((g) => g.items.some((i) => i.id === item.id));
     if (!day) return;
     const index = day.items.findIndex((i) => i.id === item.id) + 1;
     setDefaults({
       day: day.day === null ? "" : String(day.day),
+      type,
       plan: planInsert(day.items, index, day.day, start),
       between: { before: item.activity, after: day.items[index]?.activity },
     });
@@ -291,7 +293,7 @@ export function Itinerary() {
           label={e.item.activity}
           onCommute={() => openChooser(e.item, "commute")}
           onRest={() => openChooser(e.item, "buffer")}
-          onActivity={() => openActivity(e.item)}
+          onActivity={(type) => openActivity(e.item, type)}
         />
       ),
     ];
@@ -482,10 +484,13 @@ export function Itinerary() {
                 </Button>
               )}
               {!reorder && (
-                <Button size="sm" variant="secondary" onClick={() => addToDay(null)}>
-                  <CalendarPlus className="size-4" aria-hidden />
-                  Add
-                </Button>
+                <CategoryMenu heading="Add which kind of activity?" align="end" onPick={(type) => addToDay(null, type)}>
+                  <Button size="sm" variant="secondary">
+                    <CalendarPlus className="size-4" aria-hidden />
+                    Add
+                    <ChevronDown className="size-4" aria-hidden />
+                  </Button>
+                </CategoryMenu>
               )}
             </div>
           </EditOnly>
@@ -505,9 +510,12 @@ export function Itinerary() {
               <EmptyText>Add places and pick a day for each; they&rsquo;re grouped by day.</EmptyText>
             </p>
             <EditOnly>
-              <Button className="mt-4" onClick={() => addToDay(null)}>
-                Add the first activity
-              </Button>
+              <CategoryMenu heading="Add which kind of activity?" align="center" onPick={(type) => addToDay(null, type)}>
+                <Button className="mt-4">
+                  Add the first activity
+                  <ChevronDown className="size-4" aria-hidden />
+                </Button>
+              </CategoryMenu>
             </EditOnly>
           </div>
         ) : (

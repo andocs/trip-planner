@@ -24,6 +24,7 @@ test("itinerary groups by day, toggles done, and asks only for the day", async (
 
   // Adding asks for a day, never a date; the date is saved from the day and the trip start.
   await page.getByRole("button", { name: "Add", exact: true }).click();
+  await page.getByRole("menuitem", { name: /^Sightseeing/ }).click();
   const sheet = page.getByRole("dialog", { name: "Add activity" });
   await expect(sheet.getByLabel("Date")).toHaveCount(0);
   await sheet.getByLabel("Activity").fill("Egg coffee");

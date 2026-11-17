@@ -113,6 +113,16 @@ export function IdeaSheet({
       onOpenChange={(o) => !o && onClose()}
       title={idea.name}
       description={[KIND_LABEL[idea.kind], idea.city, idea.dealBreaker ? "Must-do" : null].filter(Boolean).join(" · ")}
+      badge={
+        <span
+          className={cn(
+            "inline-flex min-h-6 items-center rounded-full px-2 text-xs font-extrabold",
+            idea.decision === "confirmed" ? "bg-teal-tint text-teal" : idea.decision === "dropped" ? "bg-danger-tint text-danger" : "bg-warn-tint text-warn-text",
+          )}
+        >
+          {statusLabel}
+        </span>
+      }
       className="md:top-0 md:right-0 md:left-auto md:h-dvh md:max-h-none md:w-[27.5rem] md:translate-x-0 md:translate-y-0 md:rounded-l-3xl md:rounded-r-none"
       headerExtra={
         canEdit ? (
@@ -176,35 +186,27 @@ export function IdeaSheet({
       }
     >
       <div className="space-y-5 pt-1">
-        <div className="flex flex-wrap items-center gap-2">
-          <span
-            className={cn(
-              "inline-flex min-h-7 items-center rounded-full px-2.5 text-xs font-extrabold",
-              idea.decision === "confirmed" ? "bg-teal-tint text-teal" : idea.decision === "dropped" ? "bg-danger-tint text-danger" : "bg-warn-tint text-warn-text",
-            )}
-          >
-            {statusLabel}
-          </span>
+        <div className="flex flex-wrap items-center justify-start gap-2 empty:hidden">
           {canEdit && (
             <>
               {idea.decision === "draft" && (
-                <Button size="sm" aria-label={`Confirm this ${KIND_LABEL[idea.kind].toLowerCase()}`} onClick={() => onDecision("confirmed")}>
-                  <Check className="size-[18px]" strokeWidth={2.8} aria-hidden />
+                <Button size="xs" aria-label={`Confirm this ${KIND_LABEL[idea.kind].toLowerCase()}`} onClick={() => onDecision("confirmed")}>
+                  <Check className="size-4" strokeWidth={2.8} aria-hidden />
                   Confirm
                 </Button>
               )}
               {idea.decision === "dropped" ? (
-                <Button size="sm" variant="outline" onClick={() => onDecision("draft")}>
+                <Button size="xs" variant="outline" onClick={() => onDecision("draft")}>
                   Restore to drafts
                 </Button>
               ) : inItinerary ? (
-                <Button size="sm" variant="secondary" aria-label={`Already in the itinerary (${inItinerary}). Add again`} title={`Already in the itinerary: ${inItinerary}`} className="text-teal" onClick={onAddStop}>
-                  <Check className="size-[18px]" strokeWidth={2.8} aria-hidden />
+                <Button size="xs" variant="secondary" aria-label={`Already in the itinerary (${inItinerary}). Add again`} title={`Already in the itinerary: ${inItinerary}`} className="text-teal" onClick={onAddStop}>
+                  <Check className="size-4" strokeWidth={2.8} aria-hidden />
                   In itinerary · {inItinerary}
                 </Button>
               ) : (
-                <Button size="sm" variant="outline" onClick={onAddStop}>
-                  <CalendarPlus className="size-[18px]" aria-hidden />
+                <Button size="xs" variant="outline" onClick={onAddStop}>
+                  <CalendarPlus className="size-4" aria-hidden />
                   Add to itinerary
                 </Button>
               )}
@@ -247,7 +249,7 @@ export function IdeaSheet({
             <PlaceLinks website={links.website} mapsUrl={links.mapsUrl} className="contents" />
             {place && (
               <a href={mapsLinkFor(place.place_id)} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center gap-2 font-bold text-teal">
-                <ExternalLink className="size-[18px]" strokeWidth={2.4} aria-hidden />
+                <ExternalLink className="size-4" strokeWidth={2.4} aria-hidden />
                 Open in Google Maps
               </a>
             )}
@@ -320,7 +322,7 @@ export function IdeaSheet({
                           onClick={() => removeComment(c, "the comment")}
                           className="-my-2 -mr-2.5 ml-auto grid size-11 place-items-center text-fg-muted hover:text-danger"
                         >
-                          <Trash2 className="size-[18px]" aria-hidden />
+                          <Trash2 className="size-4" aria-hidden />
                         </button>
                       )}
                     </div>

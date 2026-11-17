@@ -2,6 +2,7 @@
 
 import { Car, Coffee, MapPin, Plus } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { CategoryMenu } from "./category-menu";
 
 /**
  * The control that belongs to one activity, as its own list row under it: a 64px band, centred. Nothing shows until
@@ -19,9 +20,12 @@ export function AddHere({
   label: string;
   onCommute: () => void;
   onRest: () => void;
-  onActivity: () => void;
+  /** Called with the category chosen from the menu (its label, e.g. "Food & Drink"). */
+  onActivity: (category: string) => void;
 }) {
   const [open, setOpen] = useState(false);
+  // While the category menu is up the fan stays open behind it.
+  const [menuOpen, setMenuOpen] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   useEffect(() => () => clearTimeout(timer.current), []);
   const hoverIn = () => {
@@ -42,7 +46,7 @@ export function AddHere({
       <div
         role="group"
         aria-label={`After ${label}`}
-        data-open={open}
+        data-open={open || menuOpen}
         className="add-fan"
         onMouseEnter={hoverIn}
         onMouseLeave={hoverOut}
@@ -72,10 +76,19 @@ export function AddHere({
             <Coffee className="size-[18px]" strokeWidth={2.4} aria-hidden />
             Rest
           </button>
-          <button type="button" onClick={choose(onActivity)}>
-            <MapPin className="size-[18px]" strokeWidth={2.4} aria-hidden />
-            Activity
-          </button>
+          <CategoryMenu
+            heading="Add which kind of activity?"
+            align="end"
+            onPick={(c) => {
+              setMenuOpen(false);
+              choose(() => onActivity(c))();
+            }}
+          >
+            <button type="button" aria-haspopup="menu" onClick={() => setMenuOpen(true)}>
+              <MapPin className="size-[18px]" strokeWidth={2.4} aria-hidden />
+              Activity
+            </button>
+          </CategoryMenu>
         </span>
       </div>
     </li>

@@ -77,6 +77,7 @@ test("owner: the + under a place opens into Commute, Rest and Activity, and an a
   await expect(options.getByRole("button", { name: "Commute" })).toBeVisible();
   await expect(options.getByRole("button", { name: "Rest" })).toBeVisible();
   await options.getByRole("button", { name: "Activity" }).click();
+  await page.getByRole("menuitem", { name: /^Sightseeing/ }).click();
 
   const sheet = page.getByRole("dialog", { name: "Add activity" });
   await expect(sheet.getByRole("button", { name: /^Day 1(?!\d)/ })).toHaveAttribute("aria-pressed", "true");

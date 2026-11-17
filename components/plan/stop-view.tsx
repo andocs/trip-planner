@@ -69,6 +69,9 @@ export function StopView({
       onOpenChange={(o) => !o && onClose()}
       title={item.activity}
       description={[item.type, item.city].filter(Boolean).join(" · ") || undefined}
+      badge={
+        <span className={cn("inline-flex min-h-6 items-center rounded-full px-2 text-xs font-extrabold", item.tentative ? "bg-warn-tint text-warn-text" : "bg-teal-tint text-teal")}>{status}</span>
+      }
       className="md:top-0 md:right-0 md:left-auto md:h-dvh md:max-h-none md:w-[27.5rem] md:translate-x-0 md:translate-y-0 md:rounded-l-3xl md:rounded-r-none"
       headerExtra={
         canEdit || board ? (
@@ -105,32 +108,24 @@ export function StopView({
       }
     >
       <div className="space-y-5 pt-1">
-        <div className="flex flex-wrap items-center gap-2">
-          <span
-            className={cn(
-              "inline-flex min-h-7 items-center rounded-full px-2.5 text-xs font-extrabold",
-              item.tentative ? "bg-warn-tint text-warn-text" : "bg-teal-tint text-teal",
-            )}
-          >
-            {status}
-          </span>
+        <div className="flex flex-wrap items-center gap-2 empty:hidden">
           {idea?.dealBreaker && <MustFlag />}
           {canEdit && (
             <>
               {!item.tentative && (
                 <Button
-                  size="sm"
+                  size="xs"
                   onClick={() => {
                     onDone(!item.done);
                     onClose();
                   }}
                 >
-                  <CircleCheck className="size-[18px]" aria-hidden />
+                  <CircleCheck className="size-4" aria-hidden />
                   {item.done ? "Mark incomplete" : "Mark complete"}
                 </Button>
               )}
-              <Button size="sm" variant="outline" aria-label="Edit details" onClick={onEdit}>
-                <Pencil className="size-[18px]" aria-hidden />
+              <Button size="xs" variant="outline" aria-label="Edit details" onClick={onEdit}>
+                <Pencil className="size-4" aria-hidden />
                 Edit
               </Button>
             </>
@@ -167,7 +162,7 @@ export function StopView({
                 const Icon = CHIP_ICONS[r.icon] ?? Timer;
                 return (
                   <li key={r.label} className={cn("grid min-h-14 grid-cols-[22px_1fr] items-center gap-3 px-3.5 py-1.5", n > 0 && "border-t border-border")}>
-                    <Icon className={cn("size-[18px]", r.tone === "warn" ? "text-warn-text" : "text-teal")} strokeWidth={2.4} aria-hidden />
+                    <Icon className={cn("size-4", r.tone === "warn" ? "text-warn-text" : "text-teal")} strokeWidth={2.4} aria-hidden />
                     <span className="min-w-0">
                       <small className="block text-xs text-fg-muted">{r.label}</small>
                       <b className={cn("block text-[15px] leading-tight", r.tone === "warn" && "text-warn-text")}>{r.value}</b>
