@@ -1,13 +1,15 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { UserX } from "lucide-react";
+import { UserPlus, UserX } from "lucide-react";
 import { toast } from "sonner";
 import { useTrip } from "@/components/trip-gate";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { EmptyHint } from "@/components/ui/list";
 import { qk } from "@/lib/queries/keys";
+import { newId, useInsertRow, useRows } from "@/lib/queries/table";
+import { nextSort } from "@/lib/use-sheet";
 import { getSupabase } from "@/lib/supabase/client";
 import { errorMessage } from "@/lib/utils";
 
@@ -45,6 +47,11 @@ export function ViewersSection() {
     onError: (e) => toast.error(`Couldn't remove the viewer: ${errorMessage(e)}`),
   });
   const list = members.data ?? [];
+  // A viewer who is also a traveler (someone who can share costs) is marked; the others get a button.
+  const travelers = useRows("travelers").data ?? [];
+  const addTraveler = useInsertRow("travelers", "traveler");
+  const isTraveler = (userId: string) => travelers.some((t) => t.user_id === userId);
+  const nameOf = (m: Member) => m.label?.trim() || m.email?.split("@")[0] || "Guest";
 
   return (
     <Card>
@@ -64,6 +71,19 @@ export function ViewersSection() {
                 </span>
                 <span className="block truncate text-sm text-fg-muted">{m.email ?? "Joined with the invite link"}</span>
               </span>
+              {isTraveler(m.user_id) ? (
+                <span className="inline-flex min-h-7 items-center rounded-full bg-teal-tint px-2.5 text-xs font-bold text-teal">Traveler</span>
+              ) : (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  aria-label={`Add ${nameOf(m)} as a traveler`}
+                  onClick={() => addTraveler.mutate([{ id: newId(), name: nameOf(m), sort: nextSort(travelers), user_id: m.user_id }])}
+                >
+                  <UserPlus className="size-4" aria-hidden />
+                  Add as traveler
+                </Button>
+              )}
               <Button
                 variant="danger"
                 size="sm"

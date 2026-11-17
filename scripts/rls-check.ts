@@ -95,6 +95,11 @@ async function main() {
 
     const j = await viewer.rpc("join_trip", { p_token: token });
     check("viewer can join with the link", !j.error);
+    await viewer.rpc("join_trip", { p_token: token }); // opening the link again
+    check(
+      "joining added exactly one linked traveler",
+      (((await (admin as unknown as SupabaseClient).from("travelers").select("id").eq("trip_id", tripId).not("user_id", "is", null)).data as unknown[]) ?? []).length === 1,
+    );
     check(
       "viewer reads the trip",
       ((await viewer.from("trips").select("id").eq("id", tripId)).data ?? []).length === 1,
