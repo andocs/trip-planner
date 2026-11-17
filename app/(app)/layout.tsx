@@ -1,6 +1,7 @@
 import { Suspense, type ReactNode } from "react";
 import { AppShell } from "@/components/app-shell";
 import { CaptureHost } from "@/components/board/capture-host";
+import { MapHostLazy } from "@/components/map/map-host-lazy";
 import { PageSkeleton } from "@/components/trip-gate";
 import { PrefetchedTripGate } from "@/lib/queries/prefetch";
 
@@ -12,6 +13,7 @@ import { PrefetchedTripGate } from "@/lib/queries/prefetch";
 export default function AppLayout({ children }: { children: ReactNode }) {
   return (
     <AppShell>
+      <MapHostLazy />
       <Suspense fallback={<PageSkeleton />}>
         <PrefetchedTripGate>
           <CaptureHost />
