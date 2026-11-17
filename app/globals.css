@@ -508,3 +508,95 @@
     transition: none !important;
   }
 }
+
+/* A stop picked on the itinerary map: a larger disc in the accent colour, with its card beside the map. */
+.map-disc.is-selected .map-disc-n {
+  width: 38px;
+  height: 38px;
+  margin: -4px 0 0 -4px;
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 0 0 3px var(--surface);
+}
+.map-disc.is-clickable {
+  cursor: pointer;
+}
+
+/* Groups of fields in the add/edit sheets: a larger heading with an icon, and a short rule above every group after the first. */
+.form-group {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.form-group + .form-group {
+  margin-top: 0.75rem;
+  padding-top: 1.75rem;
+}
+/* A thin light rule, centred, about 90% of the width. */
+.form-group + .form-group::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 5%;
+  width: 90%;
+  height: 1px;
+  background: var(--line);
+}
+.form-group-title {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  margin: 0;
+  font-family: var(--font-display, inherit);
+  font-size: 19px;
+  line-height: 1.1;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+.form-group-title svg {
+  width: 22px;
+  height: 22px;
+  color: var(--teal);
+}
+
+/* Buttons give a little feedback everywhere: they ease between states and dip slightly when pressed. In the base layer, so any
+   component that sets its own transition or transform (utilities, the + control, drag handles) wins over it. */
+@layer base {
+  button:not(:disabled) {
+    transition-property: transform, background-color, box-shadow, opacity, color;
+    transition-duration: 150ms;
+    transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  button:not(:disabled):active {
+    transform: scale(0.96);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    button:not(:disabled),
+    button:not(:disabled):active {
+      transition: none;
+      transform: none;
+    }
+  }
+}
+
+/* A card that opens when pressed moves as ONE piece: the whole card dips, not just the photo or the details inside it.
+   The open buttons are marked data-card-open; the card (.press-card) reacts when any of them is pressed. */
+.press-card {
+  transition: transform 150ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.press-card:has([data-card-open]:active) {
+  transform: scale(0.985);
+}
+button[data-card-open]:not(:disabled):active {
+  transform: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .press-card {
+    transition: none;
+  }
+  .press-card:has([data-card-open]:active) {
+    transform: none;
+  }
+}

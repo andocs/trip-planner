@@ -81,9 +81,10 @@ describe("connector rules", () => {
     expect(connectorProblem([S, C, B, S])).toBeNull(); // different kinds may touch
     expect(connectorProblem([])).toBeNull();
   });
-  it("refuses a connector first or last in a day", () => {
+  it("refuses a connector first in a day, but lets a day end on one (an overnight ride, a sleep)", () => {
     expect(connectorProblem([C, S])).toMatch(/first/);
-    expect(connectorProblem([S, B])).toMatch(/last/);
+    expect(connectorProblem([S, B])).toBeNull();
+    expect(connectorProblem([S, C])).toBeNull();
   });
   it("refuses two of the same kind side by side", () => {
     expect(connectorProblem([S, C, C, S])).toMatch(/commutes/);
@@ -136,7 +137,7 @@ describe("planMove", () => {
     expect(planMove([s1, c1, s2, s3], "s3", 1, 1, START)).toMatchObject({ ok: true }); // [s1, s3, c1, s2]
     expect(planMove([s1, c1, s2, s3], "s1", 1, 1, START)).toMatchObject({ ok: false }); // [c1, s1, ...]: commute first
     expect(planMove([s1, c1, s2, s3], "s3", 1, 3, START)).toMatchObject({ ok: true }); // [s1, c1, s2, s3] unchanged order
-    expect(planMove([s1, c1, s2], "s2", 1, 1, START)).toMatchObject({ ok: false }); // [s1, s2, c1]: commute last
+    expect(planMove([s1, c1, s2], "s2", 1, 1, START)).toMatchObject({ ok: true }); // [s1, s2, c1]: a day may end on a commute
     expect(planMove([s1], "nope", 1, 0, START)).toMatchObject({ ok: false });
   });
 });
@@ -189,7 +190,7 @@ describe("stays on the timeline", () => {
 
 describe("timeLine", () => {
   it("joins time and length", () => {
-    expect(timeLine({ at_time: "08:00:00", duration_min: 60 })).toBe("08:00 · 1h");
+    expect(timeLine({ at_time: "08:00:00", duration_min: 60 })).toBe("8:00 AM · 1h");
     expect(timeLine({ at_time: null, duration_min: 90 })).toBe("1h 30m");
     expect(timeLine({ at_time: null, duration_min: null })).toBe("Any time");
   });
@@ -207,5 +208,32 @@ describe("planInsert", () => {
     const r = planInsert([a, p], 1, 1, START);
     expect(r.renumber.map((u) => [u.id, u.position])).toEqual([["a", 1000], ["p", 2000]]);
     expect(r.position).toBe(1500);
+  });
+});
+
+describe("itineraryUsage", () => {
+  const base = { at_time: null, activity: "x", duration_min: null, created_at: "2026-06-01T00:00:00Z" };
+  const row = (id: string, day: number | null, source: string | null, kind = "stop") => ({
+    ...base,
+    id,
+    day,
+    kind,
+    source_table: source ? "attractions" : null,
+    source_id: source,
+  });
+  it("lists the stops that came from a board idea, by idea, with their days", async () => {
+    const { itineraryUsage, usageLabel } = await import("./itinerary");
+    const m = itineraryUsage([row("a", 2, "i1"), row("b", 4, "i1"), row("c", 1, "i2"), row("d", 1, null), row("e", 1, "i1", "commute")], "2026-06-16");
+    expect(m.get("attractions:i1")?.map((u) => u.day)).toEqual([2, 4]);
+    expect(m.get("attractions:i2")?.length).toBe(1);
+    expect(m.size).toBe(2);
+    expect(usageLabel(m.get("attractions:i1"))).toBe("Days 2 and 4");
+    expect(usageLabel(m.get("attractions:i2"))).toBe("Day 1");
+    expect(usageLabel(undefined)).toBe("");
+  });
+  it("words an unscheduled stop and three days", async () => {
+    const { usageLabel } = await import("./itinerary");
+    expect(usageLabel([{ id: "a", day: null }])).toBe("no day yet");
+    expect(usageLabel([{ id: "a", day: 5 }, { id: "b", day: 1 }, { id: "c", day: 3 }])).toBe("Days 1, 3 and 5");
   });
 });

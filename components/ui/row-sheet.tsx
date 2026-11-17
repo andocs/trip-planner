@@ -13,6 +13,7 @@ export function RowSheet({
   onOpenChange,
   title,
   description,
+  badge,
   side,
   mode,
   onSubmit,
@@ -27,6 +28,8 @@ export function RowSheet({
   title: string;
   /** A short line under the title (e.g. the day an activity is being added to). */
   description?: string;
+  /** A chip on the description line (e.g. the category being edited). */
+  badge?: ReactNode;
   /** From 768px up, a right-hand panel instead of a centred dialog (the standard for the larger forms). */
   side?: boolean;
   mode: "add" | "edit";
@@ -44,6 +47,7 @@ export function RowSheet({
       onOpenChange={onOpenChange}
       title={title}
       description={description}
+      badge={badge}
       side={side}
       footer={
         <FormFooter

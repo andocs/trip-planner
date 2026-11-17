@@ -1,5 +1,6 @@
 import { addDays, dayNumberFor } from "./calc";
 import { formatDuration, formatTime } from "./format";
+import type { Json } from "./database.types";
 
 /**
  * The itinerary's rules, with no React and no network so they are easy to test:
@@ -101,13 +102,13 @@ export const endPosition = (dayItems: Item[]): number =>
 /* ---------- connectors ---------- */
 
 /**
- * Why a day's order is not allowed, or null. A connector cannot be the first or last thing in a day, and two of the
- * same kind cannot sit side by side (a commute next to a buffer is fine). `list` is the day in order.
+ * Why a day's order is not allowed, or null. A connector cannot be the first thing in a day, and two of the same kind
+ * cannot sit side by side (a commute next to a buffer is fine). A day MAY end on a connector: an overnight ride or a
+ * sleep is exactly that. `list` is the day in order.
  */
 export function connectorProblem(list: Pick<Item, "kind">[]): string | null {
   const kinds = list.map(kindOf);
   if (kinds.length > 0 && kinds[0] !== "stop") return "A commute or break can’t be the first thing in a day.";
-  if (kinds.length > 0 && kinds[kinds.length - 1] !== "stop") return "A commute or break can’t be the last thing in a day.";
   for (let i = 1; i < kinds.length; i++)
     if (kinds[i] !== "stop" && kinds[i] === kinds[i - 1])
       return kinds[i] === "commute" ? "Two commutes can’t sit side by side." : "Two breaks can’t sit side by side.";
@@ -273,4 +274,51 @@ export const timeLine = (i: Pick<Item, "at_time" | "duration_min">): string =>
 export function directionsUrl(stops: { lat: number; lng: number }[]): string | null {
   if (stops.length < 2) return null;
   return `https://www.google.com/maps/dir/${stops.map((s) => `${s.lat},${s.lng}`).join("/")}`;
+}
+
+/* ---------- links on a stop (website, Google Maps) ---------- */
+
+export type StopLinks = { website?: string; mapsUrl?: string };
+const isHttp = (v: unknown): v is string => typeof v === "string" && /^https?:\/\/[^\s]+$/i.test(v) && v.length <= 500;
+
+/** The website and Google Maps link saved on a stop. Anything that isn't a plain http(s) link reads as none. */
+export function stopLinks(raw: unknown): StopLinks {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+  const r = raw as Record<string, unknown>;
+  return { website: isHttp(r.website) ? r.website : undefined, mapsUrl: isHttp(r.mapsUrl) ? r.mapsUrl : undefined };
+}
+
+/** A stop's `details` with its links replaced (an empty link removes it). Other keys are kept as they were. */
+export function withStopLinks(raw: unknown, links: { website: string | null; mapsUrl: string | null }): { [key: string]: Json } {
+  const base: { [key: string]: Json } = raw && typeof raw === "object" && !Array.isArray(raw) ? { ...(raw as { [key: string]: Json }) } : {};
+  delete base.website;
+  delete base.mapsUrl;
+  if (links.website) base.website = links.website;
+  if (links.mapsUrl) base.mapsUrl = links.mapsUrl;
+  return base;
+}
+
+/* ---------- places already on the itinerary ---------- */
+
+export type UsageItem = Item & { source_table?: string | null; source_id?: string | null };
+export type Usage = { id: string; day: number | null };
+
+/** Which board ideas (keyed "table:id") already have a stop on the itinerary, and on which day. Connectors never count. */
+export function itineraryUsage(items: UsageItem[], start: string | null | undefined): Map<string, Usage[]> {
+  const by = new Map<string, Usage[]>();
+  for (const i of items) {
+    if (!isStop(i) || !i.source_table || !i.source_id) continue;
+    const key = `${i.source_table}:${i.source_id}`;
+    by.set(key, [...(by.get(key) ?? []), { id: i.id, day: dayOf(i, start) }]);
+  }
+  return by;
+}
+
+/** "Day 2", "Days 2 and 4", "Days 1, 3 and 5", or "no day yet" for stops that haven't been given one. */
+export function usageLabel(uses: Usage[] | undefined): string {
+  if (!uses || uses.length === 0) return "";
+  const days = [...new Set(uses.map((u) => u.day).filter((d): d is number => d !== null))].sort((a, b) => a - b);
+  if (days.length === 0) return "no day yet";
+  if (days.length === 1) return `Day ${days[0]}`;
+  return `Days ${days.slice(0, -1).join(", ")} and ${days[days.length - 1]}`;
 }

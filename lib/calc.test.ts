@@ -253,3 +253,38 @@ describe("scratch-first rules", () => {
     ).toEqual({ done: 1, total: 2, percent: 50 });
   });
 });
+
+describe("settleUp with custom splits", () => {
+  const aq = { id: "aq", name: "Aq" };
+  const jam = { id: "jam", name: "Jam" };
+  const kai = { id: "kai", name: "Kai" };
+
+  it("a percent split with a service charge changes who owes what", async () => {
+    const { personSummary } = await import("./calc");
+    // Aq pays 1,100 with a 10% service charge. Items 1,000: Aq's part 25%, Jam's 75%. Service shared in proportion.
+    const s = settleUp(
+      [{ currency: "PHP", amount: 1100, paid_by: "aq", split: { mode: "percent", shares: { aq: 25, jam: 75 }, servicePct: 10, serviceSplit: "proportional" } }],
+      [aq, jam],
+      trip,
+    );
+    expect(s.equal).toBe(false);
+    expect(s.rows.find((r) => r.traveler.id === "aq")).toMatchObject({ paid: 1100, share: 275, balance: 825 });
+    expect(s.rows.find((r) => r.traveler.id === "jam")).toMatchObject({ share: 825, balance: -825 });
+    expect(s.transfers).toEqual([{ from: jam, to: aq, amount: 825 }]);
+    expect(personSummary(s, "jam").owes).toHaveLength(1);
+    expect(personSummary(s, "jam").net).toBe(-825);
+    expect(personSummary(s, "aq").net).toBe(825);
+  });
+
+  it("splitting between only some people leaves the others out", () => {
+    const s = settleUp([{ currency: "PHP", amount: 900, paid_by: "aq", split: { mode: "equal", members: ["aq", "jam"] } }], [aq, jam, kai], trip);
+    expect(s.rows.find((r) => r.traveler.id === "kai")).toMatchObject({ share: 0, balance: 0 });
+    expect(s.transfers).toEqual([{ from: jam, to: aq, amount: 450 }]);
+  });
+
+  it("expenses without a split still split equally between everyone", () => {
+    const s = settleUp([{ currency: "PHP", amount: 300, paid_by: "aq", split: null }], [aq, jam, kai], trip);
+    expect(s.equal).toBe(true);
+    expect(s.share).toBe(100);
+  });
+});

@@ -28,7 +28,7 @@ import { DropdownMenu } from "radix-ui";
 import type { ReactNode } from "react";
 import { CHIP_ICONS, MustFlag } from "@/components/ideas/idea-chips";
 import { PhotoImg } from "@/components/photos/photo-img";
-import { formatDay, formatDuration, formatMoney } from "@/lib/format";
+import { formatDay, formatDuration, formatMoney, formatTime } from "@/lib/format";
 import { KIND_LABEL, type Idea } from "@/lib/drafts";
 import { connectorDetails, connectorLabel, formatTotal, kindOf, type DayGroup, type DayTotals, type StayMark } from "@/lib/itinerary";
 import { stopRows } from "@/lib/itinerary-rows";
@@ -94,6 +94,7 @@ export function StopCard({
   canEdit,
   compact,
   onOpen,
+  onEdit,
   onDone,
   onRemove,
   handle,
@@ -108,7 +109,10 @@ export function StopCard({
   canEdit: boolean;
   /** Reorder mode: a small photo and one line, so a long day fits on the screen while dragging. */
   compact: boolean;
+  /** Click on the card: view it. */
   onOpen: () => void;
+  /** The menu's Edit: the form. */
+  onEdit: () => void;
   onDone: (done: boolean) => void;
   onRemove: () => void;
   handle?: ReactNode;
@@ -125,7 +129,7 @@ export function StopCard({
         <div className="flex items-start gap-1">
           <div className="min-w-0 flex-1">
             <p className="flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-xs font-bold text-fg-muted">
-              <span>{item.at_time ? `${type} · ${item.at_time.slice(0, 5)}` : type}</span>
+              <span>{item.at_time ? `${type} · ${formatTime(item.at_time)}` : type}</span>
               {item.tentative && <span className="inline-flex min-h-5 items-center rounded-full px-2 font-sans text-[11px] ring-[1.5px] ring-line-strong">Tentative</span>}
               {idea?.dealBreaker && <MustFlag />}
             </p>
@@ -137,16 +141,16 @@ export function StopCard({
         </div>
         <div
           className={cn(
-            "relative mt-3 grid items-center gap-3 rounded-[22px] bg-surface p-2.5 shadow-card",
+            "press-card relative mt-3 grid items-center gap-3 rounded-[22px] bg-surface p-2.5 shadow-card",
             compact ? "grid-cols-[64px_1fr]" : "grid-cols-[112px_1fr] lg:grid-cols-[12rem_1fr] lg:p-3",
             item.tentative && "border-2 border-dashed border-line-strong bg-transparent shadow-none",
           )}
         >
           {/* The whole card opens it: an editor gets the form, a viewer the read-only view. Not while dragging, where the handle shows. */}
           {!handle && (
-            <button type="button" onClick={onOpen} aria-label={`Open ${item.activity}`} className="absolute inset-0 rounded-[22px] focus-visible:outline-3 focus-visible:outline-[var(--focus)]" />
+            <button type="button" data-card-open onClick={onOpen} aria-label={`Open ${item.activity}`} className="absolute inset-0 rounded-[22px] focus-visible:outline-3 focus-visible:outline-[var(--focus)]" />
           )}
-          <div className="absolute top-1 right-1 z-[1]">{handle ?? (canEdit ? <CardMenu item={item} onEdit={onOpen} onDone={onDone} onRemove={onRemove} /> : null)}</div>
+          <div className="absolute top-1 right-1 z-[1]">{handle ?? (canEdit ? <CardMenu item={item} onEdit={onEdit} onDone={onDone} onRemove={onRemove} /> : null)}</div>
           <Thumb item={item} idea={idea} images={images} urlOf={urlOf} small={compact} />
           <ul className={cn("pointer-events-none min-w-0", (handle || canEdit) && "pr-9")}>
             {shown.map((r, n) => {
@@ -276,9 +280,9 @@ export function StayRow({ mark, status }: { mark: StayMark; status: string }) {
 
 /** The quiet divider between days: the day, its date (worked out from the trip start), the total and a soft warning. */
 /** The day divider, as in the mockup: a centred label with a quiet line either side. No add button here. */
-export function DaySplit({ group, totals, stops }: { group: DayGroup; totals: DayTotals; stops: number }) {
+export function DaySplit({ group, totals }: { group: DayGroup; totals: DayTotals }) {
   const title = group.day === null ? "Unscheduled" : `Day ${group.day}${group.date ? ` · ${formatDay(group.date)}` : ""}`;
-  const summary = stops === 0 ? null : `${stops} ${stops === 1 ? "place" : "places"}${totals.total ? ` · ${formatTotal(totals.total)}` : ""}`;
+  const summary = totals.total ? formatTotal(totals.total) : null;
   return (
     <div role="separator" aria-label={title} className="mb-6 ml-[54px] flex flex-col items-center gap-2">
       <div className="flex w-full items-center gap-3">

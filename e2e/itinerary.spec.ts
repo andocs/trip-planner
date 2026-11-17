@@ -62,7 +62,7 @@ test("owner: a commute goes between two places, with its length and cost, and co
   await expect(page.getByRole("button", { name: /Taxi \/ Grab, 25m\. Edit/ })).toBeVisible();
   await expect(page.getByText("Grab from the lake")).toBeVisible();
   // Day 1: three places of an hour plus a 25-minute commute. The commute is not a place and is not counted as one.
-  await expect(page.getByRole("separator", { name: /^Day 1 ·/ }).locator("..").getByText("3 places · 3h 25m")).toBeVisible();
+  await expect(page.getByRole("separator", { name: /^Day 1 ·/ }).locator("..").getByText("3h 25m")).toBeVisible();
   await expect(page.getByText("0 of 4 done")).toBeVisible();
 });
 
@@ -77,6 +77,7 @@ test("owner: the + under a place opens into Commute, Rest and Activity, and an a
   await expect(options.getByRole("button", { name: "Commute" })).toBeVisible();
   await expect(options.getByRole("button", { name: "Rest" })).toBeVisible();
   await options.getByRole("button", { name: "Activity" }).click();
+  await page.getByRole("menuitem", { name: /^Sightseeing/ }).click();
 
   const sheet = page.getByRole("dialog", { name: "Add activity" });
   await expect(sheet.getByRole("button", { name: /^Day 1(?!\d)/ })).toHaveAttribute("aria-pressed", "true");
@@ -261,12 +262,16 @@ test("a viewer can open a card to read it (no form)", async ({ page }) => {
   await expect(view.getByRole("button", { name: "Save" })).toHaveCount(0);
 });
 
-test("clicking a card opens it for editing (owner)", async ({ page }) => {
+test("clicking a card views it (owner too); Edit details opens the form", async ({ page }) => {
   const fake = createFakeSupabase({ withSeed: true });
   plan(fake);
   await fake.install(page);
   await page.goto("/itinerary");
   await page.getByRole("button", { name: "Open Lake walk" }).click();
+  const view = page.getByRole("dialog", { name: "Lake walk" });
+  await expect(view).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "Edit activity" })).toHaveCount(0);
+  await view.getByRole("button", { name: "Edit details" }).click();
   await expect(page.getByRole("dialog", { name: "Edit activity" })).toBeVisible();
 });
 

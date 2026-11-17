@@ -20,7 +20,8 @@ test("food menu prices show VND and the PHP equivalent; a sight's details are ed
   // Details are edited from "Edit details", in the same form as adding.
   const sight = fake.tables.get("attractions")!.find((a) => a.name === "One Pillar Pagoda")!;
   await page.goto(`/places?cat=sight&idea=attractions:${sight.id}`);
-  await page.getByRole("dialog", { name: "One Pillar Pagoda" }).getByRole("button", { name: "Edit details" }).click();
+  await page.getByRole("dialog", { name: "One Pillar Pagoda" }).getByRole("button", { name: "More actions" }).click();
+  await page.getByRole("menuitem", { name: "Edit details" }).click();
   const edit = page.getByRole("dialog", { name: "Edit sight" });
   await edit.getByRole("button", { name: "Strenuous" }).click();
   await edit.getByRole("switch", { name: /Deal-breaker/ }).click();

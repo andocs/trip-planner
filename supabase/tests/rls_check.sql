@@ -820,6 +820,18 @@ begin
   select count(*) into n from public.item_images where item_id = item_a;
   if n <> 3 then failures := failures || format('owner should have added 3 photos, found %s', n); end if;
 
+  -- activity photos (migration 17): the owner can add one to an itinerary activity; an unknown table is refused
+  checks := checks + 1;
+  begin
+    insert into public.item_images (trip_id, item_table, item_id, source, url) values (trip_a, 'itinerary_items', gen_random_uuid(), 'link', 'https://cdn.example.com/act.jpg');
+    delete from public.item_images where item_table = 'itinerary_items';
+  exception when check_violation then failures := failures || 'an activity photo was refused'::text; end;
+  checks := checks + 1;
+  begin
+    insert into public.item_images (trip_id, item_table, item_id, source, url) values (trip_a, 'expenses', gen_random_uuid(), 'link', 'https://cdn.example.com/x.jpg');
+    failures := failures || 'a photo on an unknown table was accepted'::text;
+  exception when check_violation then null; end;
+
   -- the shape of each kind is enforced by the database
   checks := checks + 1;
   begin
@@ -1005,6 +1017,16 @@ begin
   values (trip_a, 12000, 'PHP', 'Flight MNL to HAN', current_date, 'flights', flight_id);
   select count(*) into n from public.expenses where source_id = flight_id;
   if n <> 1 then failures := failures || 'owner could not log a flight as an expense'::text; end if;
+  -- expense splits (migration 19): an object is kept, anything else is refused
+  checks := checks + 1;
+  update public.expenses set split = '{"mode":"equal","members":["a","b"]}'::jsonb where source_id = flight_id;
+  get diagnostics rc = row_count;
+  if rc <> 1 then failures := failures || 'owner could not set an expense split'::text; end if;
+  checks := checks + 1;
+  begin
+    update public.expenses set split = '[1,2]'::jsonb where source_id = flight_id;
+    failures := failures || 'an expense split that is not an object was accepted'::text;
+  exception when check_violation then null; end;
   checks := checks + 1;
   begin
     insert into public.expenses (trip_id, amount, currency, description, spent_on, source_table, source_id)
@@ -1096,6 +1118,21 @@ begin
   begin
     update public.flights set gate = 'TOOLONGGATE1' where id = ref_flight;
     failures := failures || 'a gate longer than 10 characters was accepted'::text;
+  exception when check_violation then null; end;
+  -- time zones (migration 18): the owner can set a flight's zones and the trip's home zone; an absurd zone id is refused
+  checks := checks + 1;
+  update public.flights set dep_tz = 'Asia/Manila', arr_tz = 'Asia/Tokyo' where id = ref_flight;
+  get diagnostics rc = row_count;
+  if rc <> 1 then failures := failures || 'owner could not set a flight time zone'::text; end if;
+  checks := checks + 1;
+  update public.trips set timezone = 'Asia/Tokyo' where id = trip_a;
+  get diagnostics rc = row_count;
+  if rc <> 1 then failures := failures || 'owner could not set the trip time zone'::text; end if;
+  update public.trips set timezone = 'Asia/Manila' where id = trip_a;
+  checks := checks + 1;
+  begin
+    update public.flights set dep_tz = repeat('x', 65) where id = ref_flight;
+    failures := failures || 'a time zone id longer than 64 characters was accepted'::text;
   exception when check_violation then null; end;
   reset role;
 

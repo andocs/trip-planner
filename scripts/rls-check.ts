@@ -354,6 +354,13 @@ async function main() {
         })
       ).error,
     );
+    // Activity photos (migration 17): the same table, item_table = itinerary_items. Added and removed here so the counts below hold.
+    const actPic = { trip_id: tripId, item_table: "itinerary_items", item_id: randomUUID(), source: "link", url: "https://cdn.example.com/act.jpg" };
+    const actAdd = await owner.from("item_images").insert(actPic).select("id").single();
+    check("owner can add a photo to an itinerary activity (migration 17)", !actAdd.error);
+    check("viewer cannot add a photo to an activity", !!(await viewer.from("item_images").insert({ ...actPic, item_id: randomUUID() })).error);
+    check("a photo cannot name an unknown table", !!(await owner.from("item_images").insert({ ...actPic, item_table: "expenses" })).error);
+    if (actAdd.data) await owner.from("item_images").delete().eq("id", actAdd.data.id);
     check(
       "a plain http picture link is refused",
       !!(await owner.from("item_images").insert({ ...pic, source: "link", url: "http://cdn.example.com/a.jpg" })).error,
@@ -469,6 +476,16 @@ async function main() {
       .select("id")
       .single();
     check("owner can log a flight as an expense", !logged.error);
+    // Expense splits (migration 19): the owner can set one; a viewer cannot; it has to be a small object.
+    if (logged.data) {
+      const split = { mode: "percent", shares: { a: 60, b: 40 }, servicePct: 10, serviceSplit: "equal" };
+      check("owner can set how an expense is split (migration 19)", !(await owner.from("expenses").update({ split }).eq("id", logged.data.id)).error);
+      check("a split must be an object", !!(await owner.from("expenses").update({ split: [1, 2] }).eq("id", logged.data.id)).error);
+      check(
+        "viewer cannot change a split",
+        ((await viewer.from("expenses").update({ split: null }).eq("id", logged.data.id).select()).data ?? []).length === 0,
+      );
+    }
     check(
       "the same flight cannot be logged twice",
       !!(await owner.from("expenses").insert(exp({ source_table: "flights", source_id: flightId }))).error,
@@ -524,6 +541,25 @@ async function main() {
       "viewer can see that a flight has a reference, not what it is",
       (await viewer.from("flights").select("has_ref").eq("id", flightId).single()).data?.has_ref === true,
     );
+    // Time zones (migration 18)
+    check(
+      "owner can set a flight's time zones",
+      !(await owner.from("flights").update({ dep_tz: "Asia/Manila", arr_tz: "Asia/Tokyo" }).eq("id", flightId)).error,
+    );
+    check(
+      "a flight time zone longer than 64 characters is refused",
+      !!(await owner.from("flights").update({ dep_tz: "x".repeat(65) }).eq("id", flightId)).error,
+    );
+    check(
+      "viewer cannot change a flight's time zone",
+      ((await viewer.from("flights").update({ arr_tz: "UTC" }).eq("id", flightId).select()).data ?? []).length === 0,
+    );
+    check(
+      "owner can set the trip's home time zone, a viewer cannot",
+      !(await owner.from("trips").update({ timezone: "Asia/Tokyo" }).eq("id", tripId)).error &&
+        ((await viewer.from("trips").update({ timezone: "UTC" }).eq("id", tripId).select()).data ?? []).length === 0,
+    );
+    await owner.from("trips").update({ timezone: "Asia/Manila" }).eq("id", tripId);
     await owner.from("flights").delete().eq("id", flightId);
     check(
       "deleting a flight deletes its reference but keeps the logged expense",

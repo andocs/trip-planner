@@ -57,7 +57,7 @@ test("add a VND expense and see it converted and split", async ({ page }) => {
 
   await page.getByRole("radio", { name: "Settle up" }).click();
   // Aq paid 2,457 of 16,935.08 → owes Jam (16,935.08 / 2 − 2,457) = 6,010.54
-  await expect(page.getByText("PHP 6,010.54", { exact: true })).toBeVisible(); // the transfer line
+  await expect(page.getByText("PHP 6,010.54", { exact: true }).first()).toBeVisible(); // the transfer line (also in the balance summary)
   await expect(page.getByText("−PHP 6,010.54")).toBeVisible(); // Aq's balance
 });
 

@@ -89,3 +89,20 @@ describe("status", () => {
     expect(isIdeaStatus("Booked")).toBe(false);
   });
 });
+
+describe("flightMinutes", () => {
+  const base = { departs_at: "2026-06-18T09:40", arrives_at: "2026-06-18T14:20" };
+  it("works the time out from the two zones", async () => {
+    const { flightMinutes } = await import("./flights");
+    expect(flightMinutes({ ...base, dep_tz: "Asia/Manila", arr_tz: "Asia/Tokyo" })).toBe(220);
+  });
+  it("prefers the time the owner typed", async () => {
+    const { flightMinutes } = await import("./flights");
+    expect(flightMinutes({ ...base, duration_min: 230, dep_tz: "Asia/Manila", arr_tz: "Asia/Tokyo" })).toBe(230);
+  });
+  it("does not guess when a zone is missing (older flights)", async () => {
+    const { flightMinutes } = await import("./flights");
+    expect(flightMinutes({ ...base, dep_tz: "Asia/Manila", arr_tz: null })).toBeNull();
+    expect(flightMinutes({ ...base })).toBeNull();
+  });
+});

@@ -99,6 +99,14 @@ export const optionalUrl = z
   .refine((v) => v === "" || /^https?:\/\/[^\s]+$/i.test(v), "Use a full link starting with https://")
   .transform((v) => (v === "" ? null : v));
 
+/** A Google Maps link: google.com/maps, maps.google.*, or the short maps.app.goo.gl / goo.gl/maps forms. Optional. */
+export const GOOGLE_MAPS_LINK = /^https?:\/\/(([a-z0-9-]+\.)?google\.[a-z.]{2,6}\/maps|maps\.google\.[a-z.]{2,6}|maps\.app\.goo\.gl|goo\.gl\/maps)[^\s]*$/i;
+export const optionalMapsUrl = z
+  .string()
+  .trim()
+  .refine((v) => v === "" || GOOGLE_MAPS_LINK.test(v), "Use a Google Maps link (google.com/maps or maps.app.goo.gl)")
+  .transform((v) => (v === "" ? null : v));
+
 /** Local wall-clock date-time from <input type="datetime-local">. */
 export const optionalDateTime = z
   .string()

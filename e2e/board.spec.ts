@@ -46,6 +46,8 @@ test("owner: confirm a draft; it moves to Confirmed and counts", async ({ page }
   await fake.install(page);
   await page.goto("/places");
   await page.getByRole("article", { name: CARD }).getByRole("button", { name: "Confirm" }).click();
+  // Nothing has votes or a price yet, so the gate asks first.
+  await page.getByRole("dialog", { name: /^Confirm “/ }).getByRole("button", { name: /^Confirm/ }).click();
   await expect.poll(() => fake.tables.get("attractions")!.find((a) => a.name === CARD)?.decision).toBe("confirmed");
   await expect(page.getByRole("article", { name: CARD })).toHaveCount(0);
   await expect(page.getByRole("radio", { name: /^Draft 19/ })).toBeVisible();
@@ -77,6 +79,7 @@ test("owner: a tentative stop is dashed and uncounted; confirming makes it solid
     .getByRole("dialog")
     .getByRole("button", { name: /^Confirm this sight/ })
     .click();
+  await page.getByRole("dialog", { name: /^Confirm “/ }).getByRole("button", { name: /^Confirm/ }).click();
   await expect.poll(() => fake.tables.get("itinerary_items")!.find((i) => i.activity === CARD)?.tentative).toBe(false);
   await page.goto("/itinerary");
   await expect(page.getByText("0 of 141 done")).toBeVisible();
@@ -94,7 +97,8 @@ test("owner: dropping an idea removes its tentative stop and lists it under Drop
   await expect.poll(() => fake.tables.get("itinerary_items")!.some((i) => i.activity === CARD)).toBe(true);
 
   await page.getByRole("button", { name: `Open ${CARD}` }).click();
-  await page.getByRole("dialog").getByRole("button", { name: "Drop", exact: true }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "More actions" }).click();
+  await page.getByRole("menuitem", { name: "Drop" }).click();
   await expect.poll(() => fake.tables.get("attractions")!.find((a) => a.name === CARD)?.decision).toBe("dropped");
   expect(fake.tables.get("itinerary_items")!.some((i) => i.activity === CARD)).toBe(false);
   await page.getByRole("radio", { name: /^Dropped 1/ }).click();
@@ -115,7 +119,8 @@ test("viewer: votes (name asked once), comments, and has no edit controls", asyn
 
   // First vote asks for a name, then saves the vote.
   const card = page.getByRole("article", { name: CARD });
-  await card.getByRole("button", { name: /I.m in/ }).click();
+  await card.getByRole("button", { name: /^Your vote on/ }).click();
+  await page.getByRole("menuitemcheckbox", { name: /I.m in/ }).click();
   const ask = page.getByRole("dialog", { name: "What should we call you?" });
   await ask.getByLabel("Your name").fill("Tita Rose");
   await ask.getByRole("button", { name: "Save and vote" }).click();
@@ -123,19 +128,15 @@ test("viewer: votes (name asked once), comments, and has no edit controls", asyn
   await expect
     .poll(() => fake.tables.get("votes")?.map((v) => [v.user_id, v.item_id, v.value]))
     .toEqual([[fake.userId, fake.tables.get("attractions")!.find((a) => a.name === CARD)!.id, "in"]]);
-  await expect(card.getByRole("button", { name: /I.m in/ })).toHaveAttribute("aria-pressed", "true");
+  await expect(card.getByRole("button", { name: /^Your vote on/ })).toContainText("Voted");
 
   // Changing it, then a different idea: no second name prompt.
-  await card
-    .getByRole("group", { name: /^Your vote on/ })
-    .getByRole("button", { name: "Maybe" })
-    .click();
+  await card.getByRole("button", { name: /^Your vote on/ }).click();
+  await page.getByRole("menuitemcheckbox", { name: "Maybe" }).click();
   await expect.poll(() => fake.tables.get("votes")?.[0]?.value).toBe("maybe");
   const other = page.getByRole("article", { name: "Bich Dong Pagoda" });
-  await other
-    .getByRole("group", { name: /^Your vote on/ })
-    .getByRole("button", { name: "Pass" })
-    .click();
+  await other.getByRole("button", { name: /^Your vote on/ }).click();
+  await page.getByRole("menuitemcheckbox", { name: "Pass" }).click();
   await expect.poll(() => fake.tables.get("votes")?.length).toBe(2);
   await expect(page.getByRole("dialog", { name: "What should we call you?" })).toHaveCount(0);
 
@@ -173,7 +174,7 @@ test("votes and comments from another phone appear live, with names", async ({ p
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   });
-  await expect(card.getByText(/In: 1/)).toBeVisible();
+  await expect(card.getByText("In: 1")).toBeVisible();
   fake.remoteChange("comments", "INSERT", {
     id: "c-remote",
     trip_id: fake.trip.id as string,
@@ -204,7 +205,8 @@ test("N opens quick add from any screen for the owner, and does nothing for a vi
   await expect(page.getByRole("dialog", { name: "Add place" })).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog", { name: "Add place" })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Add idea" })).toBeVisible(); // the floating button works on every screen
+  // Phones have no floating button (they add from the Places page); N still works there.
+  await expect(page.getByRole("button", { name: "Add idea" })).toBeHidden();
 });
 
 test("viewer: N and the quick-add button do not exist", async ({ page }) => {

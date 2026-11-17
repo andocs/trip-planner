@@ -4,6 +4,7 @@ import { useState } from "react";
 import { BudgetTiles, CategorySummary } from "@/components/spend/category-summary";
 import { ExpenseLog } from "@/components/spend/expense-log";
 import dynamic from "next/dynamic";
+import { OwesSummary } from "@/components/spend/owes-summary";
 import { SettleUp } from "@/components/spend/settle-up";
 import { PageSkeleton } from "@/components/trip-gate";
 import { ViewOnlyBanner } from "@/components/view-only-banner";
@@ -54,7 +55,10 @@ function Spend() {
             <CategorySummary budget={budget} />
           </div>
           <div className={panel("settle")}>
-            <SettleUp settlement={budget.settlement} />
+            <div className="space-y-4">
+              <OwesSummary settlement={budget.settlement} />
+              <SettleUp settlement={budget.settlement} />
+            </div>
           </div>
         </div>
       </div>

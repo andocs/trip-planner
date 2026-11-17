@@ -65,13 +65,14 @@ export function CaptureHost() {
         aria-keyshortcuts="N"
         aria-hidden={boardShowing || undefined}
         tabIndex={boardShowing ? -1 : undefined}
+        // Phones have no floating button: they add from the Places page. From the lg breakpoint up it floats at the top right.
         className={cn(
-          "fixed top-[calc(env(safe-area-inset-top)+0.5rem)] right-3 z-30 inline-flex size-11 items-center justify-center gap-2 rounded-full bg-surface font-bold text-fg shadow-float lg:top-6 lg:right-10 lg:w-auto lg:px-4",
-          boardShowing && "hidden",
+          "fixed top-6 right-10 z-30 hidden min-h-12 items-center justify-center gap-2.5 rounded-full bg-surface py-2 pr-4 pl-5 font-bold text-fg shadow-float",
+          !boardShowing && "lg:inline-flex",
         )}
       >
         <Lightbulb className="size-5" strokeWidth={2.4} aria-hidden />
-        <span className="hidden lg:inline">Add idea</span>
+        <span>Add idea</span>
         <kbd
           className="hidden rounded-md bg-surface-2 px-1.5 font-mono text-xs ring-1 ring-line-strong lg:inline"
           aria-hidden

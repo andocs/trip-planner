@@ -67,11 +67,32 @@ export function formatDuration(min: number | null | undefined): string {
   return [h ? `${h}h` : "", m ? `${m}m` : ""].filter(Boolean).join(" ");
 }
 
-/** "23:30:00" → "23:30". */
-export const formatTime = (t: string | null | undefined) => (t ? t.slice(0, 5) : "");
+/** "13:00" or "13:00:00" → "1:00 PM". Every time the app shows uses this form. */
+export function formatTime(t: string | null | undefined): string {
+  const m = t ? /^(\d{1,2}):(\d{2})/.exec(t) : null;
+  if (!m) return "";
+  const h = Number(m[1]);
+  return `${h % 12 || 12}:${m[2]} ${h < 12 ? "AM" : "PM"}`;
+}
 
-/** Local wall-clock timestamp "2026-06-16T22:20:00" → "Tue 16 Jun, 22:20". */
+/** Minutes since midnight of "HH:MM[:SS]", or null. */
+export function minutesOfDay(t: string | null | undefined): number | null {
+  const m = t ? /^(\d{1,2}):(\d{2})/.exec(t) : null;
+  return m ? Number(m[1]) * 60 + Number(m[2]) : null;
+}
+
+/** "1:00 PM - 3:00 PM" from a start time and a length; just the start when there is no length; "" with no start. */
+export function timeRange(start: string | null | undefined, durationMin: number | null | undefined): string {
+  const from = minutesOfDay(start);
+  if (from === null) return "";
+  if (!durationMin || durationMin <= 0) return formatTime(start);
+  const end = (from + durationMin) % (24 * 60);
+  const hhmm = `${String(Math.floor(end / 60)).padStart(2, "0")}:${String(end % 60).padStart(2, "0")}`;
+  return `${formatTime(start)} - ${formatTime(hhmm)}`;
+}
+
+/** Local wall-clock timestamp "2026-06-16T22:20:00" → "Tue 16 Jun, 10:20 PM". */
 export function formatDateTime(ts: string | null | undefined): string {
   if (!ts) return "";
-  return `${formatDay(ts.slice(0, 10))}, ${ts.slice(11, 16)}`;
+  return `${formatDay(ts.slice(0, 10))}, ${formatTime(ts.slice(11, 16))}`;
 }

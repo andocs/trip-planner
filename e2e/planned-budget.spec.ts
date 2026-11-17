@@ -93,12 +93,17 @@ test("owner: the form won't log an empty amount", async ({ page }) => {
   await page.goto("/plan?tab=flights");
   await page.getByRole("button", { name: "Log as expense" }).first().click();
   const sheet = page.getByRole("dialog", { name: "Log as expense" });
+  const before = fake.tables.get("expenses")!.length;
   await sheet.getByLabel(/^Amount/).fill("");
-  await expect(sheet.getByRole("button", { name: "Log expense" })).toBeDisabled();
+  await sheet.getByRole("button", { name: "Log expense" }).click();
+  await expect(sheet.getByText(/Amount is required|required/i)).toBeVisible();
   await sheet.getByLabel(/^Amount/).fill("0");
-  await expect(sheet.getByRole("button", { name: "Log expense" })).toBeDisabled();
+  await sheet.getByRole("button", { name: "Log expense" }).click();
+  await expect(sheet.getByText(/can.t be zero/i)).toBeVisible();
+  expect(fake.tables.get("expenses")!.length).toBe(before); // nothing was logged
   await sheet.getByLabel(/^Amount/).fill("1,234.50");
-  await expect(sheet.getByRole("button", { name: "Log expense" })).toBeEnabled();
+  await sheet.getByRole("button", { name: "Log expense" }).click();
+  await expect.poll(() => fake.tables.get("expenses")!.length).toBe(before + 1);
 });
 
 test("viewer: sees which bookings are logged, but never a Log button", async ({ page }) => {

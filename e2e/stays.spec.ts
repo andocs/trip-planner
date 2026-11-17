@@ -41,7 +41,7 @@ test("owner: the cancellation terms are saved with the stay", async ({ page }) =
 
   await expect
     .poll(() => fake.tables.get("stays")!.find((s) => s.id === stay.id)?.details)
-    .toEqual({ cancellation: "free", freeUntil: "2026-06-15", checkInTime: "14:00", breakfast: true });
+    .toMatchObject({ cancellation: "free", freeUntil: "2026-06-15", checkInTime: "14:00", breakfast: true }); // plus the idea it is now linked to
   await expect(page.getByRole("article", { name: String(stay.hotel) }).getByText("Free cancellation until 15 Jun")).toBeVisible();
 });
 

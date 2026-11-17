@@ -4,7 +4,7 @@ import { Camera, ImagePlus, Star, Trash2 } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useState } from "react";
 import { creditText, MAX_PER_IDEA, sourceLabel } from "@/lib/photos/shared";
-import type { Idea } from "@/lib/drafts";
+import type { PhotoOwner } from "@/lib/drafts";
 import { useMakeCover, useRemovePhoto, type ImageRow } from "@/lib/queries/images";
 import { cn } from "@/lib/utils";
 import { PhotoImg } from "./photo-img";
@@ -30,7 +30,7 @@ export function IdeaPhotos({
   urlOf,
   canEdit,
 }: {
-  idea: Pick<Idea, "table" | "id" | "key" | "name">;
+  idea: PhotoOwner;
   images: ImageRow[];
   urlOf: (row: ImageRow) => string | null;
   canEdit: boolean;
@@ -177,7 +177,7 @@ export function IdeaPhotos({
             <button
               type="button"
               onClick={() => setAdding(true)}
-              className="flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl font-bold ring-2 ring-line-strong"
+              className="inline-flex min-h-11 items-center gap-2 rounded-full px-4 text-sm font-bold ring-2 ring-line-strong transition-colors hover:bg-surface-2"
             >
               <ImagePlus className="size-5" strokeWidth={2.4} aria-hidden />
               Add a photo
@@ -218,7 +218,13 @@ export function IdeaPhotos({
           </div>
         )
       )}
-      {adding && <AddPhotoSheet idea={idea} onClose={() => setAdding(false)} />}
+      {adding && (
+        // The photo sheet is portalled, but React still bubbles its events to this component's parents. Without this, a submit
+        // inside it ("Find photo") would also submit the activity form this section sits in, and close it.
+        <div onSubmit={(e) => e.stopPropagation()}>
+          <AddPhotoSheet idea={idea} onClose={() => setAdding(false)} />
+        </div>
+      )}
     </section>
   );
 }

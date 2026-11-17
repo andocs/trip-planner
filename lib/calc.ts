@@ -9,6 +9,8 @@
 // ---------------------------------------------------------------------------
 
 export type RateInfo = { foreign_currency: string; rate: number | string };
+import { expenseShares, parseSplit } from "./split";
+
 export type MoneyLike = { currency: string; amount: number | string };
 
 const num = (v: number | string | null | undefined): number => {
@@ -84,13 +86,16 @@ export function effectivePlanned(allocation: number | null, fromItems: number): 
 // ---------------------------------------------------------------------------
 
 export type Traveler = { id: string; name: string };
-export type PaidExpense = MoneyLike & { paid_by: string | null };
+export type PaidExpense = MoneyLike & { paid_by: string | null; /** How it is shared (lib/split.ts); null or missing is equal between everyone. */ split?: unknown };
 
 export type SettleRow = { traveler: Traveler; paid: number; share: number; balance: number };
 export type Transfer = { from: Traveler; to: Traveler; amount: number };
 export type Settlement = {
   total: number;
+  /** The average part each traveler owes (the whole bill split equally). Only a fair share when `equal` is true. */
   share: number;
+  /** True when every expense is split equally between everyone (no custom splits). */
+  equal: boolean;
   rows: SettleRow[];
   transfers: Transfer[];
   /** Spend with no payer: counts toward the total but not toward anyone's "paid". */
@@ -99,8 +104,17 @@ export type Settlement = {
 
 const SETTLE_EPSILON = 0.5;
 
+/** One person's side of the settlement: who they pay, who pays them, and where that leaves them. */
+export function personSummary(settlement: Settlement, travelerId: string) {
+  const owes = settlement.transfers.filter((t) => t.from.id === travelerId);
+  const owedBy = settlement.transfers.filter((t) => t.to.id === travelerId);
+  const net = round2(owedBy.reduce((s, t) => s + t.amount, 0) - owes.reduce((s, t) => s + t.amount, 0));
+  return { owes, owedBy, net };
+}
+
 /**
- * Equal split of total spend. Balance = paid − fair share (positive = is owed money).
+ * Each expense is split the way it says (equally between everyone unless it has its own split: chosen people, percentages
+ * or flat amounts, with a service charge). Balance = paid − what you owe (positive = is owed money).
  * Transfers greedily match the largest debtor with the largest creditor, which gives
  * at most n−1 payments; balances under 0.5 are ignored as rounding noise.
  */
@@ -111,16 +125,22 @@ export function settleUp(expenses: PaidExpense[], travelers: Traveler[], trip: R
   const ids = new Set(travelers.map((t) => t.id));
 
   const paid = new Map<string, number>();
+  const owed = new Map<string, number>();
   let unassigned = 0;
+  let equal = true;
   for (const e of expenses) {
     const amt = homeAmount(e, trip);
+    const spec = parseSplit(e.split);
+    if (spec) equal = false;
+    for (const [id, v] of expenseShares(amt, spec, travelers.map((t) => t.id))) owed.set(id, (owed.get(id) ?? 0) + v);
     if (e.paid_by && ids.has(e.paid_by)) paid.set(e.paid_by, (paid.get(e.paid_by) ?? 0) + amt);
     else unassigned += amt;
   }
 
   const rows = travelers.map((traveler) => {
     const p = paid.get(traveler.id) ?? 0;
-    return { traveler, paid: round2(p), share: round2(share), balance: round2(p - share) };
+    const mine = owed.get(traveler.id) ?? 0;
+    return { traveler, paid: round2(p), share: round2(mine), balance: round2(p - mine) };
   });
 
   const debtors = rows
@@ -144,7 +164,7 @@ export function settleUp(expenses: PaidExpense[], travelers: Traveler[], trip: R
     if (creditors[j].amt < SETTLE_EPSILON) j++;
   }
 
-  return { total: round2(total), share: round2(share), rows, transfers, unassigned: round2(unassigned) };
+  return { total: round2(total), share: round2(share), equal, rows, transfers, unassigned: round2(unassigned) };
 }
 
 // ---------------------------------------------------------------------------

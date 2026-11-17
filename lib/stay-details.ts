@@ -14,6 +14,11 @@ export const stayRecordDetails = z.object({
   freeUntil: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   checkInTime: z.string().regex(/^\d{2}:\d{2}$/).optional(),
   breakfast: z.boolean().optional(),
+  /** The board idea this stay was confirmed from (hotel_ideas.id), so the two stay one stay. */
+  ideaId: z.string().uuid().optional(),
+  /** The stay's own website and its Google Maps link (plain browser links). */
+  website: z.string().trim().max(500).regex(/^https?:\/\/[^\s]+$/i).optional(),
+  mapsUrl: z.string().trim().max(500).regex(/^https?:\/\/[^\s]+$/i).optional(),
 });
 export type StayRecordDetails = z.infer<typeof stayRecordDetails>;
 
@@ -28,6 +33,9 @@ export function buildStayDetails(v: {
   freeUntil: string | null;
   checkInTime: string;
   breakfast: boolean;
+  website?: string | null;
+  mapsUrl?: string | null;
+  ideaId?: string | null;
 }): StayRecordDetails {
   return stayRecordDetails.parse(
     compact({
@@ -35,6 +43,9 @@ export function buildStayDetails(v: {
       freeUntil: v.cancellation === "free" ? v.freeUntil : undefined,
       checkInTime: v.checkInTime || undefined,
       breakfast: v.breakfast ? true : undefined,
+      website: v.website ?? undefined,
+      mapsUrl: v.mapsUrl ?? undefined,
+      ideaId: v.ideaId ?? undefined,
     }),
   );
 }

@@ -1,10 +1,11 @@
 "use client";
 
-import { Check, CircleHelp, X } from "lucide-react";
+import { CircleHelp, ThumbsDown, ThumbsUp } from "lucide-react";
+import { DropdownMenu } from "radix-ui";
 import { VOTE_LABEL, type VoteValue } from "@/lib/drafts";
 import { cn } from "@/lib/utils";
 
-const ICON = { in: Check, maybe: CircleHelp, pass: X } as const;
+const ICON = { in: ThumbsUp, maybe: CircleHelp, pass: ThumbsDown } as const;
 const ON: Record<VoteValue, string> = {
   in: "bg-teal text-teal-ink",
   maybe: "bg-warn-tint text-warn-text ring-[1.5px] ring-warn",
@@ -43,5 +44,50 @@ export function VoteButtons({
         );
       })}
     </div>
+  );
+}
+
+const MENU_TEXT: Record<VoteValue, string> = { in: "text-teal", maybe: "text-warn-text", pass: "text-danger" };
+const MENU_FILL: Record<VoteValue, string> = { in: "bg-teal-tint text-teal", maybe: "bg-warn-tint text-warn-text", pass: "bg-danger-tint text-danger" };
+
+/**
+ * A small Vote button for a card. Closed it says "Vote", or "Voted" in the colour of the vote already cast; it opens
+ * I’m in | Maybe | Pass. Choosing the vote you already have clears it.
+ */
+export function VoteMenu({ value, onVote, label, large }: { value: VoteValue | null; onVote: (v: VoteValue | null) => void; label: string; large?: boolean }) {
+  const Current = value ? ICON[value] : ThumbsUp;
+  return (
+    <DropdownMenu.Root>
+      <DropdownMenu.Trigger
+        aria-label={label}
+        className={cn(
+          "inline-flex items-center justify-center gap-1.5 rounded-full font-bold transition-colors",
+          large ? "min-h-12 w-full px-3 text-[13px] ring-2 ring-line-strong" : "min-h-9 px-3.5 text-[13px]",
+          value && large && "ring-0",
+          value ? MENU_FILL[value] : "bg-surface-2 text-fg hover:bg-line",
+        )}
+      >
+        <Current className="size-4" strokeWidth={2.6} aria-hidden />
+        {value ? "Voted" : "Vote"}
+      </DropdownMenu.Trigger>
+      <DropdownMenu.Portal>
+        <DropdownMenu.Content align="start" sideOffset={6} className="z-[60] min-w-44 rounded-2xl border border-border bg-surface p-1.5 shadow-card">
+          {(["in", "maybe", "pass"] as VoteValue[]).map((v) => {
+            const Icon = ICON[v];
+            return (
+              <DropdownMenu.CheckboxItem
+                key={v}
+                checked={value === v}
+                onCheckedChange={() => onVote(value === v ? null : v)}
+                className={cn("flex min-h-11 cursor-pointer items-center gap-2.5 rounded-xl px-3 text-sm font-bold outline-none data-[highlighted]:bg-surface-2", value === v && MENU_FILL[v])}
+              >
+                <Icon className={cn("size-4", value !== v && MENU_TEXT[v])} strokeWidth={2.8} aria-hidden />
+                {VOTE_LABEL[v]}
+              </DropdownMenu.CheckboxItem>
+            );
+          })}
+        </DropdownMenu.Content>
+      </DropdownMenu.Portal>
+    </DropdownMenu.Root>
   );
 }

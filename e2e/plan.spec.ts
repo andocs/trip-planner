@@ -24,13 +24,14 @@ test("itinerary groups by day, toggles done, and asks only for the day", async (
 
   // Adding asks for a day, never a date; the date is saved from the day and the trip start.
   await page.getByRole("button", { name: "Add", exact: true }).click();
+  await page.getByRole("menuitem", { name: /^Sightseeing/ }).click();
   const sheet = page.getByRole("dialog", { name: "Add activity" });
   await expect(sheet.getByLabel("Date")).toHaveCount(0);
   await sheet.getByLabel("Activity").fill("Egg coffee");
   await sheet.getByRole("button", { name: /^Day 5/ }).click();
   await expect(sheet.getByText("The date follows from the trip start: Sat 20 Jun.")).toBeVisible();
   await sheet.getByLabel("Time").fill("15:00");
-  await sheet.getByRole("button", { name: "Add" }).click();
+  await sheet.getByRole("button", { name: "Add", exact: true }).click();
   await expect.poll(() => fake.tables.get("itinerary_items")?.find((i) => i.activity === "Egg coffee")).toBeTruthy();
   const row = fake.tables.get("itinerary_items")!.find((i) => i.activity === "Egg coffee")!;
   expect(row).toMatchObject({ day: 5, on_date: "2026-06-20", at_time: "15:00" });
@@ -45,8 +46,8 @@ test("flights, stays and hotel ideas (now on Flights, Stays and Places)", async 
   await page.goto("/flights");
   const pass = page.getByRole("article", { name: /^MNL to HAN/ });
   await expect(pass).toBeVisible();
-  await expect(pass).toContainText("22:20");
-  await expect(pass).toContainText("00:45");
+  await expect(pass).toContainText("10:20 PM");
+  await expect(pass).toContainText("12:45 AM");
   await page.getByRole("button", { name: /MNL to HAN: Priced/ }).click();
   await page.getByRole("menuitem", { name: "Booked" }).click();
   await expect(page.getByRole("button", { name: /MNL to HAN: Booked/ })).toBeVisible();
