@@ -10,7 +10,6 @@ import { TravelersSection } from "@/components/settings/travelers-section";
 import { TripForm } from "@/components/settings/trip-form";
 import { useTheme, type ThemePref } from "@/components/theme";
 import { AccountSection } from "@/components/settings/account-section";
-import { ViewersSection } from "@/components/settings/viewers-section";
 import { useCanEdit } from "@/components/trip-gate";
 import { ViewOnlyBanner } from "@/components/view-only-banner";
 import { Button } from "@/components/ui/button";
@@ -70,7 +69,6 @@ function SettingsBody() {
       <div className="space-y-4">
         <TripForm />
         <InviteSection />
-        <ViewersSection />
         <TripTools />
       </div>
       <div className="space-y-4">
