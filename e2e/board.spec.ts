@@ -174,7 +174,7 @@ test("votes and comments from another phone appear live, with names", async ({ p
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   });
-  await expect(card.getByText("1 vote", { exact: true })).toBeVisible();
+  await expect(card.getByText("In: 1")).toBeVisible();
   fake.remoteChange("comments", "INSERT", {
     id: "c-remote",
     trip_id: fake.trip.id as string,

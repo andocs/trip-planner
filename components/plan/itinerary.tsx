@@ -155,6 +155,9 @@ export function Itinerary() {
     for (const m of marks.filter((x) => x.day === g.day && x.kind === "in")) entries.push({ kind: "mark", id: m.id, day: g.day, mark: m });
   }
   const nothing = items.length === 0 && marks.length === 0;
+  // After the last planned day: start the next one, unless that was the last day of the trip.
+  const lastDay = planned.length ? Math.max(...planned) : null;
+  const nextDay = lastDay !== null && (len === null || lastDay < len) ? lastDay + 1 : null;
   // The day pills filter the list and the map. Stops keep their numbers from the whole trip.
   const view = typeof pick === "number" && planned.includes(pick) ? pick : "all";
   const shown = view === "all" ? entries : entries.filter((e) => e.day === view);
@@ -519,6 +522,7 @@ export function Itinerary() {
             </EditOnly>
           </div>
         ) : (
+          <>
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={(e: DragStartEvent) => setDragging(String(e.active.id))} onDragCancel={() => setDragging(null)} onDragEnd={onDragEnd}>
             <SortableContext items={shown.map((x) => x.id)} strategy={verticalListSortingStrategy}>
               <ol className="relative before:absolute before:top-6 before:bottom-6 before:left-[19px] before:border-l-[3px] before:border-dotted before:border-line-strong">{list}</ol>
@@ -534,6 +538,15 @@ export function Itinerary() {
               ) : null}
             </DragOverlay>
           </DndContext>
+          {canEdit && !editing && nextDay !== null && (view === "all" || view === lastDay) && (
+            <CategoryMenu heading={`Plan Day ${nextDay}: which kind of activity first?`} align="center" onPick={(type) => addToDay(nextDay, type)}>
+              <Button variant="outline" className="mt-2 ml-[54px] w-[calc(100%-54px)]">
+                <CalendarPlus className="size-[18px]" aria-hidden />
+                Plan Day {nextDay}
+              </Button>
+            </CategoryMenu>
+          )}
+          </>
         )}
       </div>
 

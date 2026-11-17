@@ -543,3 +543,18 @@ test("Add activity: the category is chosen from a menu (top Add and the small +)
   await page.getByRole("menuitem", { name: /^Shopping/ }).click();
   await expect(page.getByRole("dialog", { name: "Add activity" }).getByRole("button", { name: "Category" })).toContainText("Shopping");
 });
+
+test("Itinerary: an outlined Plan Day N button follows the last planned day, and there is no Transport category", async ({ page }) => {
+  const fake = createFakeSupabase({ withSeed: true });
+  plan(fake);
+  await fake.install(page);
+  await page.goto("/itinerary");
+
+  const next = page.getByRole("button", { name: "Plan Day 11" });
+  await expect(next).toBeVisible();
+  await next.click();
+  await expect(page.getByRole("menuitem", { name: /^Transport/ })).toHaveCount(0);
+  await page.getByRole("menuitem", { name: /^Sightseeing/ }).click();
+  const sheet = page.getByRole("dialog", { name: "Add activity" });
+  await expect(sheet.getByRole("button", { name: /^Day 11/ })).toHaveAttribute("aria-pressed", "true");
+});

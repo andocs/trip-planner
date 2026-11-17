@@ -1,6 +1,6 @@
 "use client";
 
-import { BedDouble, Check, Ellipsis, Landmark, ShoppingBag, Sparkles, TrainFront, Utensils, type LucideIcon } from "lucide-react";
+import { BedDouble, Check, Ellipsis, Landmark, ShoppingBag, Sparkles, Utensils, type LucideIcon } from "lucide-react";
 import { DropdownMenu } from "radix-ui";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
@@ -12,7 +12,6 @@ export const ACTIVITY_CATEGORIES: { label: string; icon: LucideIcon; hint: strin
   { label: "Rest & Stay", icon: BedDouble, hint: "Check-in, nap, hotel time" },
   { label: "Activity", icon: Sparkles, hint: "Things to do" },
   { label: "Shopping", icon: ShoppingBag, hint: "Markets, malls" },
-  { label: "Transport", icon: TrainFront, hint: "Rides and transfers" },
   { label: "Other", icon: Ellipsis, hint: "Anything else" },
 ];
 

@@ -142,18 +142,23 @@ export function Tally({
   );
 }
 
-/** "12 votes", whatever the votes are, and the comment count at the right. */
+/** In, maybe and pass as colour-coded icons with their numbers, then the comments, each set off by a thin vertical rule. */
 export function VoteCounts({ votes, commentCount }: { votes: Vote[]; commentCount: number }) {
-  const n = votes.length;
-  return (
-    <span className="flex min-w-0 flex-1 items-center gap-3 text-[13px] font-medium tabular-nums">
-      <span className="text-fg-muted">{n === 1 ? "1 vote" : `${n} votes`}</span>
-      <span className="ml-auto inline-flex items-center gap-1.5 text-fg-muted">
-        <MessageCircle className="size-4" strokeWidth={2.4} aria-hidden />
-        <span className="sr-only">Comments: </span>
-        {commentCount}
-      </span>
+  const t = tally(votes);
+  const item = (Icon: typeof Check, n: number, tone: string, word: string, key: string) => (
+    <span key={key} className={cn("inline-flex min-h-5 flex-1 items-center justify-center gap-1.5", n === 0 ? "text-fg-muted opacity-60" : tone)}>
+      <Icon className="size-4" strokeWidth={2.8} aria-hidden />
+      <span className="sr-only">{word}: </span>
+      {n}
     </span>
+  );
+  return (
+    <div className="flex items-center text-[13px] font-extrabold tabular-nums [&>*+*]:border-l [&>*+*]:border-line-strong">
+      {item(Check, t.in, "text-teal", "In", "in")}
+      {item(CircleHelp, t.maybe, "text-warn-text", "Maybe", "maybe")}
+      {item(X, t.pass, "text-danger", "Pass", "pass")}
+      {item(MessageCircle, commentCount, "text-fg-muted", "Comments", "comments")}
+    </div>
   );
 }
 
@@ -173,7 +178,6 @@ export function IdeaCard({
   onRestore,
   onAddStop,
   inItinerary,
-  visits = 1,
   onDelete,
 }: {
   idea: Idea;
@@ -193,8 +197,6 @@ export function IdeaCard({
   onAddStop: () => void;
   /** "Day 2" when this place already has a stop on the itinerary. */
   inItinerary?: string;
-  /** How many stops of this place are on the itinerary. */
-  visits?: number;
   /** Dropped ideas only: delete it for good (the board asks first). */
   onDelete?: () => void;
 }) {
@@ -228,6 +230,12 @@ export function IdeaCard({
               </>
             )}
             {idea.dealBreaker && <MustFlag />}
+            {inItinerary && (
+              <span title={`Already in the itinerary: ${inItinerary}`} className="inline-flex min-h-6 items-center gap-1 rounded-full bg-teal-tint px-2.5 text-xs font-bold text-teal">
+                <Check className="size-3" strokeWidth={3} aria-hidden />
+                In itinerary
+              </span>
+            )}
             {idea.decision === "confirmed" && (
               <span className="inline-flex min-h-6 items-center rounded-full bg-teal-tint px-2.5 text-xs font-bold text-teal">
                 Confirmed
@@ -241,10 +249,7 @@ export function IdeaCard({
           </span>
           <IdeaChips idea={idea} currency={currency} />
         </button>
-        <div className="flex min-h-9 items-center gap-3">
-          <VoteMenu value={myVote} onVote={onVote} label={`Your vote on ${idea.name}`} />
-                    <VoteCounts votes={votes} commentCount={comments.length} />
-        </div>
+        <VoteCounts votes={votes} commentCount={comments.length} />
         {place && (
           <a
             href={mapsLinkFor(place.place_id)}
@@ -272,39 +277,30 @@ export function IdeaCard({
               </div>
             )
           ) : canEdit && idea.decision === "draft" ? (
-            inItinerary ? (
-              <div className="space-y-2.5 border-t border-border pt-3.5">
-                <div className="grid grid-cols-2 gap-2.5">
-                  <div className="flex min-h-12 items-center gap-2.5 rounded-full bg-teal-tint px-3.5 text-teal" title={`Already in the itinerary: ${inItinerary}`}>
-                    <Check className="size-4 shrink-0" strokeWidth={3} aria-hidden />
-                    <span className="min-w-0 leading-tight">
-                      <b className="block truncate text-[13px]">Added · {visits}</b>
-                      <small className="block truncate text-xs font-medium">In your itinerary</small>
-                    </span>
-                  </div>
-                  <Button variant="outline" size="sm" className="min-h-12 min-w-0 px-3 text-[13px]" aria-label={`Already in the itinerary (${inItinerary}). Add again`} onClick={onAddStop}>
-                    <Plus className="size-4" strokeWidth={2.6} aria-hidden />
-                    Add again
-                  </Button>
-                </div>
-                <Button variant="secondary" size="sm" className="min-h-12 w-full text-[13px]" onClick={onConfirm}>
-                  <CircleCheck className="size-4" aria-hidden />
-                  Confirm place
+            <div className="space-y-2.5 border-t border-border pt-3.5">
+              <div className="grid grid-cols-2 gap-2.5">
+                <VoteMenu large value={myVote} onVote={onVote} label={`Your vote on ${idea.name}`} />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="min-h-12 min-w-0 px-3 text-[13px]"
+                  aria-label={inItinerary ? `Already in the itinerary (${inItinerary}). Add again` : undefined}
+                  onClick={onAddStop}
+                >
+                  {inItinerary ? <Plus className="size-4" strokeWidth={2.6} aria-hidden /> : <CalendarPlus className="size-4" aria-hidden />}
+                  {inItinerary ? "Add again" : "Add to itinerary"}
                 </Button>
               </div>
-            ) : (
-              <div className="grid grid-cols-2 gap-2.5 border-t border-border pt-3.5">
-                <Button variant="outline" size="sm" className="min-h-12 min-w-0 px-3 text-[13px]" onClick={onAddStop}>
-                  <CalendarPlus className="size-4" aria-hidden />
-                  Add to itinerary
-                </Button>
-                <Button variant="secondary" size="sm" className="min-h-12 min-w-0 px-3 text-[13px]" onClick={onConfirm}>
-                  <CircleCheck className="size-4" aria-hidden />
-                  Confirm place
-                </Button>
-              </div>
-            )
-          ) : null}
+              <Button variant="secondary" size="sm" className="min-h-12 w-full text-[13px]" onClick={onConfirm}>
+                <CircleCheck className="size-4" aria-hidden />
+                Confirm place
+              </Button>
+            </div>
+          ) : (
+            <div className="border-t border-border pt-3.5">
+              <VoteMenu large value={myVote} onVote={onVote} label={`Your vote on ${idea.name}`} />
+            </div>
+          )}
         </div>
       </div>
     </article>

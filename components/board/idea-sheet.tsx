@@ -2,6 +2,7 @@
 
 import {
   CalendarPlus,
+  Plus,
   Check,
   CircleHelp,
   CircleOff,
@@ -114,14 +115,22 @@ export function IdeaSheet({
       title={idea.name}
       description={[KIND_LABEL[idea.kind], idea.city, idea.dealBreaker ? "Must-do" : null].filter(Boolean).join(" · ")}
       badge={
-        <span
-          className={cn(
-            "inline-flex min-h-6 items-center rounded-full px-2 text-xs font-extrabold",
-            idea.decision === "confirmed" ? "bg-teal-tint text-teal" : idea.decision === "dropped" ? "bg-danger-tint text-danger" : "bg-warn-tint text-warn-text",
+        <>
+          <span
+            className={cn(
+              "inline-flex min-h-6 items-center rounded-full px-2 text-xs font-extrabold",
+              idea.decision === "confirmed" ? "bg-teal-tint text-teal" : idea.decision === "dropped" ? "bg-danger-tint text-danger" : "bg-warn-tint text-warn-text",
+            )}
+          >
+            {statusLabel}
+          </span>
+          {inItinerary && (
+            <span className="inline-flex min-h-6 items-center gap-1 rounded-full bg-teal-tint px-2 text-xs font-extrabold text-teal">
+              <Check className="size-3" strokeWidth={3} aria-hidden />
+              In itinerary · {inItinerary}
+            </span>
           )}
-        >
-          {statusLabel}
-        </span>
+        </>
       }
       className="md:top-0 md:right-0 md:left-auto md:h-dvh md:max-h-none md:w-[27.5rem] md:translate-x-0 md:translate-y-0 md:rounded-l-3xl md:rounded-r-none"
       headerExtra={
@@ -199,15 +208,10 @@ export function IdeaSheet({
                 <Button size="xs" variant="outline" onClick={() => onDecision("draft")}>
                   Restore to drafts
                 </Button>
-              ) : inItinerary ? (
-                <Button size="xs" variant="secondary" aria-label={`Already in the itinerary (${inItinerary}). Add again`} title={`Already in the itinerary: ${inItinerary}`} className="text-teal" onClick={onAddStop}>
-                  <Check className="size-4" strokeWidth={2.8} aria-hidden />
-                  In itinerary · {inItinerary}
-                </Button>
               ) : (
-                <Button size="xs" variant="outline" onClick={onAddStop}>
-                  <CalendarPlus className="size-4" aria-hidden />
-                  Add to itinerary
+                <Button size="xs" variant="outline" aria-label={inItinerary ? `Already in the itinerary (${inItinerary}). Add again` : undefined} onClick={onAddStop}>
+                  {inItinerary ? <Plus className="size-4" strokeWidth={2.6} aria-hidden /> : <CalendarPlus className="size-4" aria-hidden />}
+                  {inItinerary ? "Add again" : "Add to itinerary"}
                 </Button>
               )}
             </>
