@@ -23,7 +23,7 @@ import {
   UNITS,
   type Unit,
 } from "./idea-details";
-import { currencyCode, optionalMapsUrl, optionalNumber, optionalText, optionalUrl, requiredText, str } from "./schemas";
+import { currencyCode, optionalDate, optionalMapsUrl, optionalNumber, optionalText, optionalUrl, requiredText, str } from "./schemas";
 
 /**
  * The shared add/edit modal's form: one set of string-friendly values, one zod schema per category, and the two
@@ -61,6 +61,12 @@ export const stayForm = z
     cancellation: oneOf(CANCELLATION),
     freeUntilDay: dayNo,
     breakfast: z.boolean(),
+    // Only used when a stay is saved from the Stays page (real dates and the booking), never by the board.
+    checkIn: optionalDate,
+    checkOut: optionalDate,
+    freeUntil: optionalDate,
+    confirmation: optionalText(60),
+    stayStatus: z.string(),
     amenities: picks(AMENITIES),
     nearby: optionalText(120),
     booking: oneOf(BOOKING),
@@ -68,6 +74,10 @@ export const stayForm = z
   .refine((v) => v.checkInDay === null || v.checkOutDay === null || v.checkOutDay >= v.checkInDay, {
     path: ["checkOutDay"],
     message: "Check-out can't be before check-in",
+  })
+  .refine((v) => !v.checkIn || !v.checkOut || v.checkOut >= v.checkIn, {
+    path: ["checkOut"],
+    message: "Check-out must be on or after check-in",
   });
 
 export const foodForm = z.object({
@@ -124,6 +134,11 @@ export type IdeaFormValues = {
   cancellation: string;
   freeUntilDay: string;
   breakfast: boolean;
+  checkIn: string;
+  checkOut: string;
+  freeUntil: string;
+  confirmation: string;
+  stayStatus: string;
   amenities: string[];
   nearby: string;
   booking: string;
@@ -173,6 +188,11 @@ export function blankForm(kind: IdeaKind, currency: string): IdeaFormValues {
     cancellation: "",
     freeUntilDay: "",
     breakfast: false,
+    checkIn: "",
+    checkOut: "",
+    freeUntil: "",
+    confirmation: "",
+    stayStatus: "Planned",
     amenities: [],
     nearby: "",
     booking: "",

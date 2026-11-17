@@ -46,6 +46,8 @@ test("owner: confirm a draft; it moves to Confirmed and counts", async ({ page }
   await fake.install(page);
   await page.goto("/places");
   await page.getByRole("article", { name: CARD }).getByRole("button", { name: "Confirm" }).click();
+  // Nothing has votes or a price yet, so the gate asks first.
+  await page.getByRole("dialog", { name: /^Confirm “/ }).getByRole("button", { name: /^Confirm/ }).click();
   await expect.poll(() => fake.tables.get("attractions")!.find((a) => a.name === CARD)?.decision).toBe("confirmed");
   await expect(page.getByRole("article", { name: CARD })).toHaveCount(0);
   await expect(page.getByRole("radio", { name: /^Draft 19/ })).toBeVisible();
@@ -77,6 +79,7 @@ test("owner: a tentative stop is dashed and uncounted; confirming makes it solid
     .getByRole("dialog")
     .getByRole("button", { name: /^Confirm this sight/ })
     .click();
+  await page.getByRole("dialog", { name: /^Confirm “/ }).getByRole("button", { name: /^Confirm/ }).click();
   await expect.poll(() => fake.tables.get("itinerary_items")!.find((i) => i.activity === CARD)?.tentative).toBe(false);
   await page.goto("/itinerary");
   await expect(page.getByText("0 of 141 done")).toBeVisible();
@@ -204,7 +207,8 @@ test("N opens quick add from any screen for the owner, and does nothing for a vi
   await expect(page.getByRole("dialog", { name: "Add place" })).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog", { name: "Add place" })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Add idea" })).toBeVisible(); // the floating button works on every screen
+  // Phones have no floating button (they add from the Places page); N still works there.
+  await expect(page.getByRole("button", { name: "Add idea" })).toBeHidden();
 });
 
 test("viewer: N and the quick-add button do not exist", async ({ page }) => {

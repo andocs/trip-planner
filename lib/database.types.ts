@@ -234,6 +234,7 @@ export type Database = {
           id: string
           note: string | null
           paid_by: string | null
+          split: Json | null
           source_id: string | null
           source_table: string | null
           spent_on: string
@@ -248,6 +249,7 @@ export type Database = {
           id?: string
           note?: string | null
           paid_by?: string | null
+          split?: Json | null
           source_id?: string | null
           source_table?: string | null
           spent_on: string
@@ -262,6 +264,7 @@ export type Database = {
           id?: string
           note?: string | null
           paid_by?: string | null
+          split?: Json | null
           source_id?: string | null
           source_table?: string | null
           spent_on?: string

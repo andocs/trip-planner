@@ -132,13 +132,13 @@ export function BoardingPass({
           className="flex min-w-0 flex-col items-center gap-1 text-xs font-bold text-fg-muted"
           aria-hidden={!minutes}
         >
-          <span>{formatDuration(minutes)}</span>
           <span className="flex w-full items-center gap-1.5 text-ink">
             <i className="h-0 flex-1 border-t-2 border-dashed border-line-strong" />
             <Plane className="size-5 shrink-0" strokeWidth={2.2} aria-hidden />
             <i className="h-0 flex-1 border-t-2 border-dashed border-line-strong" />
           </span>
-          <span className="sr-only">{`${from} to ${to}`}</span>
+          {minutes ? <span className="text-[13px] font-bold tabular-nums">{formatDuration(minutes)}</span> : null}
+          <span className="sr-only">{`${from} to ${to}${minutes ? `, ${formatDuration(minutes)}` : ""}`}</span>
         </span>
         <span className="text-right">
           <span

@@ -9,6 +9,7 @@ import {
   ExternalLink,
   MapPin,
   MessageCircle,
+  Trash2,
   Undo2,
   Utensils,
   X,
@@ -156,6 +157,7 @@ export function IdeaCard({
   onRestore,
   onAddStop,
   inItinerary,
+  onDelete,
 }: {
   idea: Idea;
   currency: string;
@@ -174,6 +176,8 @@ export function IdeaCard({
   onAddStop: () => void;
   /** "Day 2" when this place already has a stop on the itinerary. */
   inItinerary?: string;
+  /** Dropped ideas only: delete it for good (the board asks first). */
+  onDelete?: () => void;
 }) {
   const dropped = idea.decision === "dropped";
   return (
@@ -232,10 +236,17 @@ export function IdeaCard({
         <div className="mt-auto">
           {dropped ? (
             canEdit && (
-              <Button variant="outline" size="sm" className="w-full" onClick={onRestore}>
-                <Undo2 className="size-[18px]" aria-hidden />
-                Restore to drafts
-              </Button>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" className="min-w-0 flex-1" onClick={onRestore}>
+                  <Undo2 className="size-[18px]" aria-hidden />
+                  Restore to drafts
+                </Button>
+                {onDelete && (
+                  <Button variant="danger" size="icon" aria-label={`Delete ${idea.name}`} title="Delete for good" onClick={onDelete}>
+                    <Trash2 className="size-[18px]" aria-hidden />
+                  </Button>
+                )}
+              </div>
             )
           ) : canEdit && idea.decision === "draft" ? (
             <div className="flex gap-2">

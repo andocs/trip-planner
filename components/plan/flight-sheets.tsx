@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
-import { Clock, Plane, PlaneLanding, PlaneTakeoff, Ticket } from "lucide-react";
+import { Bus, Clock, Coins, Link2, Plane, PlaneLanding, PlaneTakeoff, Ticket } from "lucide-react";
 import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -274,7 +274,7 @@ export function FlightSheet({ sheet }: { sheet: ReturnType<typeof useSheet<Fligh
           hint="Leave empty to use the time worked out from the zones. Type one, like 3h 40m, to override it."
           error={errors.duration?.message}
         >
-          {(p) => <Input {...p} {...register("duration")} placeholder="3h 40m" autoComplete="off" />}
+          {(p) => <Input {...p} {...register("duration")} placeholder={worked ? formatDuration(worked) : "3h 40m"} autoComplete="off" />}
         </Field>
         <Field
           label="Booking reference"
@@ -337,18 +337,26 @@ export function TransferSheet({ sheet }: { sheet: ReturnType<typeof useSheet<Tra
           : undefined
       }
     >
-      <Field label="Route" error={errors.route?.message}>
-        {(p) => <Input {...p} {...register("route")} placeholder="Hanoi → Sapa (sleeper bus)" autoComplete="off" />}
-      </Field>
-      <Field label="Provider" error={errors.provider?.message}>
-        {(p) => <Input {...p} {...register("provider")} autoComplete="off" />}
-      </Field>
-      <Field label="Cost" error={errors.cost_text?.message} hint="Free text, e.g. “PHP 2,312.04 total”">
-        {(p) => <Input {...p} {...register("cost_text")} autoComplete="off" />}
-      </Field>
-      <Field label="Link" error={errors.link?.message}>
-        {(p) => <Input {...p} {...register("link")} type="url" inputMode="url" placeholder="https://" />}
-      </Field>
+      <FormGroup icon={Bus} title="The transfer">
+        <Field label="Route" error={errors.route?.message}>
+          {(p) => <Input {...p} {...register("route")} placeholder="Hanoi → Sapa (sleeper bus)" autoComplete="off" />}
+        </Field>
+        <Field label="Provider" error={errors.provider?.message}>
+          {(p) => <Input {...p} {...register("provider")} autoComplete="off" />}
+        </Field>
+      </FormGroup>
+
+      <FormGroup icon={Coins} title="Cost">
+        <Field label="Cost" error={errors.cost_text?.message} hint="Free text, e.g. “PHP 2,312.04 total”">
+          {(p) => <Input {...p} {...register("cost_text")} autoComplete="off" />}
+        </Field>
+      </FormGroup>
+
+      <FormGroup icon={Link2} title="Booking link">
+        <Field label="Link" error={errors.link?.message} hint="Optional. Where you booked it or can check it.">
+          {(p) => <Input {...p} {...register("link")} type="url" inputMode="url" placeholder="https://" autoComplete="off" />}
+        </Field>
+      </FormGroup>
     </RowSheet>
   );
 }

@@ -9,9 +9,11 @@ import { Button } from "@/components/ui/button";
 import { formatDay } from "@/lib/format";
 import { sourceKey, type LoggableKind } from "@/lib/log-expense";
 import { useRows, type Row } from "@/lib/queries/table";
+import { bySort, useSheet } from "@/lib/use-sheet";
 import { cn } from "@/lib/utils";
 
-const LogExpenseSheet = dynamic(() => import("./log-expense-sheet").then((m) => m.LogExpenseSheet), { ssr: false });
+// The same sheet as Spend's Add expense, opened from the booking and prefilled from it.
+const ExpenseSheet = dynamic(() => import("@/components/spend/expense-sheet").then((m) => m.ExpenseSheet), { ssr: false });
 
 /** Every expense that was logged from a flight or stay, by the booking it paid for. */
 export function useLoggedExpenses() {
@@ -37,7 +39,9 @@ export function LogExpenseRow({
 }) {
   const logged = useLoggedExpenses().get(sourceKey(kind, item.id));
   const amount = kind === "flights" ? (item as Row<"flights">).fare : (item as Row<"stays">).total;
-  const [open, setOpen] = useState(false);
+  const sheet = useSheet<Row<"expenses">>();
+  const categories = useRows("categories", bySort);
+  const travelers = useRows("travelers", bySort);
   // Only a chip that appears AFTER the page loaded pops in (a booking that was already logged just shows it).
   const [loggedOnLoad] = useState(!!logged);
 
@@ -63,12 +67,12 @@ export function LogExpenseRow({
   return (
     <EditOnly>
       <div className={cn("pb-2", className)}>
-        <Button size="sm" variant="secondary" onClick={() => setOpen(true)}>
+        <Button size="sm" variant="secondary" onClick={sheet.openAdd}>
           <Receipt className="size-4" aria-hidden />
           Log as expense
         </Button>
       </div>
-      {open && <LogExpenseSheet kind={kind} item={item} onClose={() => setOpen(false)} />}
+      {sheet.mounted && <ExpenseSheet sheet={sheet} categories={categories.data ?? []} travelers={travelers.data ?? []} source={{ kind, item }} />}
     </EditOnly>
   );
 }

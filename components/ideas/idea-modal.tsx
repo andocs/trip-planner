@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { BedDouble, ChevronDown, ClipboardPaste, Coins, Flag, Landmark, Link2, MapPin, NotebookText, Plus, Utensils } from "lucide-react";
+import { BedDouble, CalendarDays, ChevronDown, ClipboardPaste, Coins, Flag, Landmark, Link2, MapPin, NotebookText, Plus, Utensils } from "lucide-react";
 import { useState } from "react";
 import { Controller, useForm, useWatch, type Control, type Resolver, type UseFormRegister } from "react-hook-form";
 import { toast } from "sonner";
@@ -11,7 +11,10 @@ import { Field, Input, Select, Textarea } from "@/components/ui/field";
 import { FormGroup } from "@/components/ui/form-group";
 import { Segmented } from "@/components/ui/segmented";
 import { Sheet } from "@/components/ui/sheet";
-import { KIND_LABEL, type Idea, type IdeaKind } from "@/lib/drafts";
+import { IdeaPhotos } from "@/components/photos/idea-photos";
+import { ideaKey, KIND_LABEL, TABLE_OF_KIND, type Idea, type IdeaKind } from "@/lib/drafts";
+import { useImages, usePhotoUrls, useRemovePhoto } from "@/lib/queries/images";
+import { STAY_STATUSES, withDayNumbers } from "@/lib/stay-sync";
 import { formatMoney } from "@/lib/format";
 import {
   AMENITIES,
@@ -72,6 +75,17 @@ export type IdeaModalProps = {
   note?: string;
   /** Add mode only: open on "Paste a list" instead of "One place". */
   startMode?: "one" | "paste";
+  /**
+   * The Stays page: the same form, for a stay. The category and "paste a list" pills, the draft/confirmed status and the
+   * must-do flag go away, and a Booking group (status, real dates, confirmation number) comes in. The page saves.
+   */
+  stay?: {
+    defaults: IdeaFormValues;
+    editing: boolean;
+    /** `draftId` is the id the photos added in the form belong to: a new stay's idea takes it. */
+    save: (payload: IdeaPayload, out: Record<string, unknown>, draftId: string) => void;
+    onDelete?: () => void;
+  };
 };
 
 /**
@@ -79,14 +93,35 @@ export type IdeaModalProps = {
  * sights. Everything is short inputs, chips and switches. It never calls Google: a name or area that came from a
  * saved Google result is only prefilled. Used from the Places board (add and edit) and from Discover.
  */
-export function IdeaModal({ kind: startKind, idea, prefill, cities, onClose, onCreate, pending, submitLabel, note, startMode }: IdeaModalProps) {
-  const [kind, setKind] = useState<IdeaKind>(idea?.kind ?? startKind);
+export function IdeaModal({ kind: startKind, idea, prefill, cities, onClose, onCreate, pending, submitLabel, note, startMode, stay }: IdeaModalProps) {
+  const [kind, setKindRaw] = useState<IdeaKind>(stay ? "stay" : (idea?.kind ?? startKind));
+  // Photos added before the place is saved need an id to belong to: made up front, used when it is saved.
+  const [draftId, setDraftId] = useState(() => newId());
+  const { byIdea: imagesBy } = useImages();
+  const discard = useRemovePhoto();
+  const stagedOf = (k: IdeaKind) => imagesBy.get(ideaKey(TABLE_OF_KIND[k], draftId)) ?? [];
+  const discardStaged = (k: IdeaKind) => {
+    for (const r of stagedOf(k)) discard.mutate(r);
+  };
+  /** Leaving without saving: the photos that were added meanwhile have no place to belong to, so they go too. */
+  const cancel = () => {
+    if (!idea) discardStaged(kind);
+    onClose();
+  };
+  const setKind = (k: IdeaKind) => {
+    // A photo belongs to one category's table, so a category change starts the photos again.
+    if (k !== kind && stagedOf(kind).length > 0) {
+      discardStaged(kind);
+      toast("Photos were removed because the category changed.");
+    }
+    setKindRaw(k);
+  };
   // Switching category (add mode) keeps what was typed in the shared fields.
   const [carry, setCarry] = useState<Partial<IdeaFormValues>>({ name: prefill?.name ?? "", city: prefill?.city ?? "" });
-  const editing = !!idea;
+  const editing = stay ? stay.editing : !!idea;
   // Keep adding (on by default for places): after a save the name clears and the area and category stay.
   // A save from Discover is for one Google place, so it always closes.
-  const canPaste = !editing && !onCreate;
+  const canPaste = !editing && !onCreate && !stay;
   const [mode, setMode] = useState<"one" | "paste">(canPaste && startMode === "paste" ? "paste" : "one");
   const pasting = canPaste && mode === "paste";
   const [paste, setPaste] = useState<PasteSummary>({ count: 0, pending: false });
@@ -94,6 +129,7 @@ export function IdeaModal({ kind: startKind, idea, prefill, cities, onClose, onC
   const [keep, setKeep] = useState(true);
   const [round, setRound] = useState(0);
   const finish = (city: string) => {
+    setDraftId(newId()); // the photos added so far now belong to the saved place
     if (canKeep && keep) {
       setCarry({ name: "", city });
       setRound((r) => r + 1);
@@ -109,6 +145,11 @@ export function IdeaModal({ kind: startKind, idea, prefill, cities, onClose, onC
   const rows = { hotel_ideas: useRows("hotel_ideas"), food_places: useRows("food_places"), attractions: useRows("attractions") };
 
   const onDelete = () => {
+    if (stay?.onDelete) {
+      stay.onDelete();
+      onClose();
+      return;
+    }
     if (!idea) return;
     const row = rows[idea.table].data?.find((r) => r.id === idea.id);
     if (!row) return;
@@ -120,21 +161,21 @@ export function IdeaModal({ kind: startKind, idea, prefill, cities, onClose, onC
     <Sheet
       open
       side
-      onOpenChange={(o) => !o && onClose()}
-      title={editing ? `Edit ${KIND_LABEL[kind].toLowerCase()}` : "Add place"}
+      onOpenChange={(o) => !o && cancel()}
+      title={stay ? (editing ? "Edit stay" : "Add stay") : editing ? `Edit ${KIND_LABEL[kind].toLowerCase()}` : "Add place"}
       footer={
         <FormFooter
           mode={editing ? "edit" : "add"}
           formId={FORM_ID}
           submitLabel={pasting ? (paste.count > 1 ? `Add ${paste.count} places` : "Add") : submitLabel}
           pending={pasting ? pending || paste.pending || paste.count === 0 : pending}
-          onCancel={onClose}
-          onDelete={onDelete}
+          onCancel={cancel}
+          onDelete={editing ? onDelete : undefined}
           keepAdding={canKeep ? { value: keep, onChange: setKeep } : undefined}
         />
       }
     >
-      {!editing && (
+      {!editing && !stay && (
         <Segmented<IdeaKind>
           label="Category"
           value={kind}
@@ -162,6 +203,8 @@ export function IdeaModal({ kind: startKind, idea, prefill, cities, onClose, onC
           key={`${kind}-${round}`}
           kind={kind}
           idea={idea}
+          draftId={draftId}
+          stay={stay}
           carry={carry}
           onCarry={setCarry}
           cities={cities}
@@ -185,9 +228,13 @@ function IdeaForm({
   onCreate,
   note,
   fromGoogle,
+  draftId,
+  stay,
 }: {
   kind: IdeaKind;
   idea?: Idea;
+  draftId: string;
+  stay?: IdeaModalProps["stay"];
   carry: Partial<IdeaFormValues>;
   onCarry: (c: Partial<IdeaFormValues>) => void;
   cities: string[];
@@ -212,20 +259,35 @@ function IdeaForm({
   const menu = useRows("menu_items").data ?? [];
   const updateMenu = useUpdateRow("menu_items", "menu item");
 
-  const defaults: IdeaFormValues = idea ? formFromIdea(idea, home) : { ...blankForm(kind, home), ...carry };
+  const defaults: IdeaFormValues = stay ? stay.defaults : idea ? formFromIdea(idea, home) : { ...blankForm(kind, home), ...carry };
+  const urlOf = usePhotoUrls();
+  const { byIdea: imagesBy } = useImages();
+  // Photos are shared by every place that can be saved from this form (not a Google save, which makes its own row).
+  const photoTable = TABLE_OF_KIND[kind];
+  const photoOwnerId = idea?.id ?? draftId;
+  const photoKey = ideaKey(photoTable, photoOwnerId);
+  const showPhotos = !onCreate;
   const { register, handleSubmit, control, formState } = useForm<IdeaFormValues>({
     resolver: zodResolver(FORM_SCHEMA[kind]) as unknown as Resolver<IdeaFormValues>,
     defaultValues: defaults,
   });
   const errors = formState.errors;
   // Category details are folded away when adding; editing opens them.
-  const [detailsOpen, setDetailsOpen] = useState(!!idea);
+  const [detailsOpen, setDetailsOpen] = useState(!!idea || !!stay);
   const [name, city] = useWatch({ control, name: ["name", "city"] });
 
   // Remember the shared fields so a category switch (add mode) does not lose them.
   const remember = () => onCarry({ name, city });
 
   const onSubmit = handleSubmit((out) => {
+    if (stay) {
+      // The Stays page saves: the real dates give the day numbers the idea payload needs.
+      const prepared = withDayNumbers(out as never, trip.start_date);
+      const payload = toPayload("stay", prepared as never);
+      stay.save(payload, prepared as unknown as Record<string, unknown>, draftId);
+      onDone(out.city);
+      return;
+    }
     const payload = toPayload(kind as "stay", out as never);
     if (idea) {
       (update[payload.table].mutate as (v: unknown) => void)({ id: idea.id, patch: payload.columns });
@@ -237,7 +299,7 @@ function IdeaForm({
       return;
     }
     if (onCreate) return onCreate(payload, () => onDone(out.city));
-    (insert[payload.table].mutate as (v: unknown) => void)([{ id: newId(), ...payload.columns, ...payload.insertOnly }]);
+    (insert[payload.table].mutate as (v: unknown) => void)([{ id: draftId, ...payload.columns, ...payload.insertOnly }]);
     toast.success(payload.columns.decision === "confirmed" ? "Added." : "Added as a draft.");
     onDone(out.city);
   }, (errs) => {
@@ -321,7 +383,7 @@ function IdeaForm({
           </button>
           {detailsOpen && (
             <div className="mt-4 space-y-4">
-              {kind === "stay" && <StaySection control={control} register={register} errors={errors} currency={home} />}
+              {kind === "stay" && <StaySection control={control} register={register} errors={errors} currency={home} record={!!stay} />}
               {kind === "food" && <FoodSection control={control} register={register} errors={errors} />}
               {kind === "sight" && <SightSection control={control} register={register} errors={errors} />}
             </div>
@@ -329,19 +391,49 @@ function IdeaForm({
         </div>
       </FormGroup>
 
-      <FormGroup icon={Link2} title="Links">
+      {stay && (
+        <FormGroup icon={CalendarDays} title="Dates and booking">
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Check-in" error={errors.checkIn?.message}>
+              {(p) => <Input {...p} {...register("checkIn")} type="date" />}
+            </Field>
+            <Field label="Check-out" error={errors.checkOut?.message}>
+              {(p) => <Input {...p} {...register("checkOut")} type="date" />}
+            </Field>
+          </div>
+          <Controller
+            control={control}
+            name="stayStatus"
+            render={({ field }) => <ChipGroup label="Status" options={STAY_STATUSES} value={field.value} onChange={(v) => field.onChange((v as string) || field.value)} />}
+          />
+          <Field label="Confirmation no." error={errors.confirmation?.message} hint="Only you can see this.">
+            {(p) => <Input {...p} {...register("confirmation")} autoComplete="off" className="font-mono" />}
+          </Field>
+        </FormGroup>
+      )}
+
+      <FormGroup icon={Link2} title={showPhotos ? "Links and photos" : "Links"}>
         <Field label="Website" hint="Optional" error={errors.website?.message}>
           {(p) => <Input {...p} {...register("website")} type="url" inputMode="url" autoComplete="off" placeholder="https://" />}
         </Field>
         <Field label="Google Maps link" hint="Optional. Paste a share link from Google Maps." error={errors.mapsUrl?.message}>
           {(p) => <Input {...p} {...register("mapsUrl")} type="url" inputMode="url" autoComplete="off" placeholder="https://maps.app.goo.gl/…" />}
         </Field>
+        {showPhotos && (
+          <IdeaPhotos
+            idea={{ table: photoTable, id: photoOwnerId, key: photoKey, name: name?.trim() || "this place" }}
+            images={imagesBy.get(photoKey) ?? []}
+            urlOf={urlOf}
+            canEdit
+          />
+        )}
       </FormGroup>
 
-      <FormGroup icon={NotebookText} title="Notes and status">
-        <Field label="Notes" error={errors.notes?.message} hint="Photos are added from the idea itself.">
+      <FormGroup icon={NotebookText} title={stay ? "Notes" : "Notes and status"}>
+        <Field label="Notes" error={errors.notes?.message}>
           {(p) => <Textarea {...p} {...register("notes")} rows={2} placeholder="Anything the group should know" />}
         </Field>
+        {!stay && (
         <Controller
           control={control}
           name="dealBreaker"
@@ -356,7 +448,8 @@ function IdeaForm({
             />
           )}
         />
-        {(!idea || idea.decision !== "dropped") && (
+        )}
+        {!stay && (!idea || idea.decision !== "dropped") && (
           <Controller
             control={control}
             name="decision"
@@ -418,7 +511,7 @@ function Switch({ control, name, label, hint }: { control: Control<IdeaFormValue
   );
 }
 
-function StaySection({ control, register, errors, currency }: SectionProps & { currency: string }) {
+function StaySection({ control, register, errors, currency, record }: SectionProps & { currency: string; record?: boolean }) {
   const [cost, unit, nightsStr, cin, cout, cancellation, curr] = useWatch({
     control,
     name: ["cost", "unit", "nights", "checkInDay", "checkOutDay", "cancellation", "currency"],
@@ -431,14 +524,16 @@ function StaySection({ control, register, errors, currency }: SectionProps & { c
   return (
     <>
       <Chips control={control} name="stayType" label="Stay type" options={STAY_TYPES} />
-      <div className="grid grid-cols-2 gap-3">
-        <Field label="Check-in day" error={errors.checkInDay?.message} hint="A trip day number. The date is worked out from the trip start.">
-          {(p) => <Input {...p} {...register("checkInDay")} inputMode="numeric" placeholder="2" />}
-        </Field>
-        <Field label="Check-out day" error={errors.checkOutDay?.message}>
-          {(p) => <Input {...p} {...register("checkOutDay")} inputMode="numeric" placeholder="5" />}
-        </Field>
-      </div>
+      {!record && (
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Check-in day" error={errors.checkInDay?.message} hint="A trip day number. The date is worked out from the trip start.">
+            {(p) => <Input {...p} {...register("checkInDay")} inputMode="numeric" placeholder="2" />}
+          </Field>
+          <Field label="Check-out day" error={errors.checkOutDay?.message}>
+            {(p) => <Input {...p} {...register("checkOutDay")} inputMode="numeric" placeholder="5" />}
+          </Field>
+        </div>
+      )}
       <div className="grid grid-cols-2 gap-3">
         <Field label="Nights" error={errors.nights?.message} hint={fromDays !== null && !nightsStr ? `${fromDays} from the days` : undefined}>
           {(p) => <Input {...p} {...register("nights")} inputMode="decimal" placeholder={fromDays !== null ? String(fromDays) : ""} />}
@@ -462,17 +557,22 @@ function StaySection({ control, register, errors, currency }: SectionProps & { c
         </Field>
       </div>
       <Chips control={control} name="cancellation" label="Cancellation" options={CANCELLATION} />
-      {cancellation === "free" && (
-        <Field label="Free until day" error={errors.freeUntilDay?.message} hint="Optional. Adds a reminder on Home before it ends.">
-          {(p) => <Input {...p} {...register("freeUntilDay")} inputMode="numeric" placeholder="1" />}
-        </Field>
-      )}
+      {cancellation === "free" &&
+        (record ? (
+          <Field label="Free until" error={errors.freeUntil?.message} hint="Optional. Adds a reminder on Home before it ends.">
+            {(p) => <Input {...p} {...register("freeUntil")} type="date" />}
+          </Field>
+        ) : (
+          <Field label="Free until day" error={errors.freeUntilDay?.message} hint="Optional. Adds a reminder on Home before it ends.">
+            {(p) => <Input {...p} {...register("freeUntilDay")} inputMode="numeric" placeholder="1" />}
+          </Field>
+        ))}
       <Switch control={control} name="breakfast" label="Breakfast included" />
       <Chips control={control} name="amenities" label="Amenities" options={AMENITIES} multi display={(a) => a} />
       <Field label="Distance to a key spot" error={errors.nearby?.message}>
         {(p) => <Input {...p} {...register("nearby")} placeholder="5 min walk to the station" />}
       </Field>
-      <Chips control={control} name="booking" label="Booking" options={BOOKING} />
+      {!record && <Chips control={control} name="booking" label="Booking" options={BOOKING} />}
     </>
   );
 }

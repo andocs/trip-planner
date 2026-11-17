@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { useRows } from "@/lib/queries/table";
 import { ConfirmSheet } from "@/components/ui/confirm-sheet";
 import { itineraryUsage, usageLabel } from "@/lib/itinerary";
+import { confirmGate, needsConfirmation } from "@/lib/confirm-gate";
+import { ConfirmIdeaSheet } from "./confirm-idea-sheet";
 import { Card } from "@/components/ui/card";
 import { Select } from "@/components/ui/field";
 import { Segmented } from "@/components/ui/segmented";
@@ -23,7 +25,7 @@ import {
   type IdeaKind,
   type VoteValue,
 } from "@/lib/drafts";
-import { useCastVote, useIdeas, useMyName, usePeople, useSetDecision, useSocial, type Vote } from "@/lib/queries/ideas";
+import { useCastVote, useConfirmIdea, useDeleteIdea, useIdeas, useMyName, usePeople, useSetDecision, useSocial, type Vote } from "@/lib/queries/ideas";
 import { useImages, usePhotoUrls } from "@/lib/queries/images";
 import { usePlaceRefs } from "@/lib/queries/places";
 import { useUser } from "@/lib/queries/trip";
@@ -75,6 +77,13 @@ export function Board() {
   const [stopFor, setStopFor] = useState<Idea | null>(null);
   // A place that already has a stop on the itinerary asks before it is added again.
   const [readd, setReadd] = useState<Idea | null>(null);
+  // Confirming asks first when something is missing, and always for a stay (it is added to Stays too).
+  const [confirming, setConfirming] = useState<Idea | null>(null);
+  const [deleting, setDeleting] = useState<Idea | null>(null);
+  const confirmIdea = useConfirmIdea();
+  const deleteIdea = useDeleteIdea();
+  const gateOf = (idea: Idea) => confirmGate(idea, { tripStart: trip.start_date, votes: tally(votesBy.get(idea.key) ?? []) });
+  const askConfirm = (idea: Idea) => (needsConfirmation(idea, gateOf(idea)) ? setConfirming(idea) : confirmIdea(idea));
   const itineraryRows = useRows("itinerary_items");
   const usage = itineraryUsage(itineraryRows.data ?? [], trip.start_date);
   const askAddStop = (idea: Idea) => (usage.get(idea.key)?.length ? setReadd(idea) : setStopFor(idea));
@@ -212,7 +221,8 @@ export function Board() {
               urlOf={urlOf}
               onOpen={() => setSearchParam("idea", idea.key)}
               onVote={(v) => vote(idea, v)}
-              onConfirm={() => setDecision(idea, "confirmed")}
+              onConfirm={() => askConfirm(idea)}
+              onDelete={() => setDeleting(idea)}
               onRestore={() => setDecision(idea, "draft")}
               onAddStop={() => askAddStop(idea)}
               inItinerary={usageLabel(usage.get(idea.key))}
@@ -247,7 +257,9 @@ export function Board() {
           images={photos.byIdea.get(opened.key) ?? []}
           urlOf={urlOf}
           onVote={(v) => vote(opened, v)}
+          onDelete={() => setDeleting(opened)}
           onDecision={(d) => {
+            if (d === "confirmed") return askConfirm(opened);
             setDecision(opened, d);
             setSearchParam("idea", null); // the idea moves to another tab, so close its sheet
           }}
@@ -266,6 +278,35 @@ export function Board() {
             setNaming(null);
           }}
           onCancel={() => setNaming(null)}
+        />
+      )}
+      {confirming && (
+        <ConfirmIdeaSheet
+          idea={confirming}
+          gate={gateOf(confirming)}
+          onClose={() => setConfirming(null)}
+          onEdit={() => {
+            setEditing(confirming);
+            setConfirming(null);
+          }}
+          onConfirm={() => {
+            confirmIdea(confirming);
+            if (opened && opened.key === confirming.key) setSearchParam("idea", null); // it moves to the Confirmed tab
+            setConfirming(null);
+          }}
+        />
+      )}
+      {deleting && (
+        <ConfirmSheet
+          title="Delete this place?"
+          description={`“${deleting.name}” will be deleted, with its photos, votes and comments. You can undo it for a few seconds.`}
+          confirmLabel="Delete"
+          onClose={() => setDeleting(null)}
+          onConfirm={() => {
+            deleteIdea(deleting);
+            if (opened && opened.key === deleting.key) setSearchParam("idea", null);
+            setDeleting(null);
+          }}
         />
       )}
       {readd && (

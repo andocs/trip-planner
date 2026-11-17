@@ -476,6 +476,16 @@ async function main() {
       .select("id")
       .single();
     check("owner can log a flight as an expense", !logged.error);
+    // Expense splits (migration 19): the owner can set one; a viewer cannot; it has to be a small object.
+    if (logged.data) {
+      const split = { mode: "percent", shares: { a: 60, b: 40 }, servicePct: 10, serviceSplit: "equal" };
+      check("owner can set how an expense is split (migration 19)", !(await owner.from("expenses").update({ split }).eq("id", logged.data.id)).error);
+      check("a split must be an object", !!(await owner.from("expenses").update({ split: [1, 2] }).eq("id", logged.data.id)).error);
+      check(
+        "viewer cannot change a split",
+        ((await viewer.from("expenses").update({ split: null }).eq("id", logged.data.id).select()).data ?? []).length === 0,
+      );
+    }
     check(
       "the same flight cannot be logged twice",
       !!(await owner.from("expenses").insert(exp({ source_table: "flights", source_id: flightId }))).error,

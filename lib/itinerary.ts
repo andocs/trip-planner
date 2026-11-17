@@ -102,13 +102,13 @@ export const endPosition = (dayItems: Item[]): number =>
 /* ---------- connectors ---------- */
 
 /**
- * Why a day's order is not allowed, or null. A connector cannot be the first or last thing in a day, and two of the
- * same kind cannot sit side by side (a commute next to a buffer is fine). `list` is the day in order.
+ * Why a day's order is not allowed, or null. A connector cannot be the first thing in a day, and two of the same kind
+ * cannot sit side by side (a commute next to a buffer is fine). A day MAY end on a connector: an overnight ride or a
+ * sleep is exactly that. `list` is the day in order.
  */
 export function connectorProblem(list: Pick<Item, "kind">[]): string | null {
   const kinds = list.map(kindOf);
   if (kinds.length > 0 && kinds[0] !== "stop") return "A commute or break can’t be the first thing in a day.";
-  if (kinds.length > 0 && kinds[kinds.length - 1] !== "stop") return "A commute or break can’t be the last thing in a day.";
   for (let i = 1; i < kinds.length; i++)
     if (kinds[i] !== "stop" && kinds[i] === kinds[i - 1])
       return kinds[i] === "commute" ? "Two commutes can’t sit side by side." : "Two breaks can’t sit side by side.";

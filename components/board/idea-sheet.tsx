@@ -59,6 +59,7 @@ export function IdeaSheet({
   onDecision,
   onAddStop,
   inItinerary,
+  onDelete,
   onEdit,
   onClose,
 }: {
@@ -75,6 +76,8 @@ export function IdeaSheet({
   onAddStop: () => void;
   /** "Day 2" when this place already has a stop on the itinerary (then Add asks first), else empty. */
   inItinerary?: string;
+  /** Dropped ideas: delete for good (the board asks first). */
+  onDelete?: () => void;
   /** Owner or editor: open this idea's own details (name, city, price, notes, status) for editing. */
   onEdit: () => void;
   onClose: () => void;
@@ -179,9 +182,16 @@ export function IdeaSheet({
                 </Button>
               )}
               {idea.decision === "dropped" ? (
-                <Button size="sm" variant="outline" onClick={() => onDecision("draft")}>
-                  Restore to drafts
-                </Button>
+                <>
+                  <Button size="sm" variant="outline" onClick={() => onDecision("draft")}>
+                    Restore to drafts
+                  </Button>
+                  {onDelete && (
+                    <Button size="icon" variant="danger" aria-label="Delete for good" title="Delete for good" onClick={onDelete}>
+                      <Trash2 className="size-[18px]" aria-hidden />
+                    </Button>
+                  )}
+                </>
               ) : inItinerary ? (
                 <Button size="sm" variant="secondary" aria-label={`Already in the itinerary (${inItinerary}). Add again`} title={`Already in the itinerary: ${inItinerary}`} className="text-teal" onClick={onAddStop}>
                   <Check className="size-[18px]" strokeWidth={2.8} aria-hidden />

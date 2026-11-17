@@ -1,6 +1,8 @@
 "use client";
 
-import { CalendarDays, Coins, Receipt } from "lucide-react";
+import { CalendarDays, Coins, Receipt, Users } from "lucide-react";
+import { ChipGroup } from "@/components/ideas/chips";
+import { expenseShares, parseSplit, specToStore, splitProblem, type SplitSpec } from "@/lib/split";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useState } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
@@ -10,7 +12,9 @@ import { Field, Input, Select, Textarea } from "@/components/ui/field";
 import { FormGroup } from "@/components/ui/form-group";
 import { RowSheet } from "@/components/ui/row-sheet";
 import { Segmented } from "@/components/ui/segmented";
+import { toast } from "sonner";
 import { homeAmount, localISODate } from "@/lib/calc";
+import { expenseDefaults, type LoggableKind } from "@/lib/log-expense";
 import { formatMoney } from "@/lib/format";
 import { newId, useDeleteRow, useInsertRow, useUpdateRow, type Row } from "@/lib/queries/table";
 import { optionalText, requiredNumber, requiredText, str } from "@/lib/schemas";
@@ -24,19 +28,54 @@ const Schema = z.object({
   currency: z.string().regex(/^[A-Z]{3}$/),
   amount: requiredNumber("Amount").refine((v) => v !== 0, "Amount can't be zero"),
   note: optionalText(500),
+  // How the bill is shared (see lib/split.ts). Everyone, equally, no service charge is the default and stores nothing.
+  split_mode: z.enum(["equal", "percent", "amount"]),
+  split_members: z.array(z.string()),
+  split_shares: z.record(z.string(), z.string()),
+  service_pct: z.string(),
+  service_split: z.enum(["proportional", "equal"]),
 });
 type In = z.input<typeof Schema>;
 type Out = z.output<typeof Schema>;
 type Expense = Row<"expenses">;
 
+const round1 = (n: number) => Math.round(n * 100) / 100;
+const sumShares = (ids: string[], shares: Record<string, string>) => ids.reduce((s, id) => s + (Number(String(shares[id] ?? "").replace(/,/g, "")) || 0), 0);
+
+/** The form's split fields for a stored split (or the default: everyone, equally, no service charge). */
+function splitDefaults(raw: unknown, everyone: string[]) {
+  const spec = parseSplit(raw);
+  return {
+    split_mode: (spec?.mode ?? "equal") as "equal" | "percent" | "amount",
+    split_members: spec ? spec.members : everyone,
+    split_shares: Object.fromEntries(Object.entries(spec?.shares ?? {}).map(([k, v]) => [k, String(v)])),
+    service_pct: spec?.servicePct ? String(spec.servicePct) : "",
+    service_split: spec?.serviceSplit ?? ("proportional" as const),
+  };
+}
+
+/** What the form says so far, as a split spec, for the live preview (people with no number yet count as 0). */
+function splitPreview(mode: "equal" | "percent" | "amount", members: string[], shares: Record<string, string>, pct: string, svc: "proportional" | "equal"): SplitSpec {
+  const n = Number(pct.replace(/,/g, ""));
+  return {
+    mode,
+    members,
+    ...(mode === "equal" ? {} : { shares: Object.fromEntries(members.map((m) => [m, Number(String(shares[m] ?? "").replace(/,/g, "")) || 0])) }),
+    ...(n > 0 ? { servicePct: n, serviceSplit: svc } : {}),
+  };
+}
+
 export function ExpenseSheet({
   sheet,
   categories,
   travelers,
+  source,
 }: {
   sheet: ReturnType<typeof useSheet<Expense>>;
   categories: Row<"categories">[];
   travelers: Row<"travelers">[];
+  /** "Log as expense" from a booked flight or stay: the form opens prefilled from it, and the expense remembers it (once). */
+  source?: { kind: LoggableKind; item: Row<"flights"> | Row<"stays"> };
 }) {
   const trip = useTrip();
   const insert = useInsertRow("expenses", "expense");
@@ -44,7 +83,7 @@ export function ExpenseSheet({
   const remove = useDeleteRow("expenses", "expense");
   const [keepAdding, setKeepAdding] = useState(true);
 
-  const { register, handleSubmit, reset, formState, control, getValues, setFocus } = useForm<In, unknown, Out>({
+  const { register, handleSubmit, reset, formState, control, getValues, setFocus, setError, clearErrors } = useForm<In, unknown, Out>({
     resolver: zodResolver(Schema),
   });
   const errors = formState.errors;
@@ -52,18 +91,32 @@ export function ExpenseSheet({
   useEffect(() => {
     if (!sheet.open) return;
     const r = sheet.row;
+    const logged = !r && source ? expenseDefaults(source.kind, source.item, categories, localISODate()) : null;
     reset({
-      spent_on: r?.spent_on ?? localISODate(),
-      description: r?.description ?? "",
-      category_id: r?.category_id ?? "",
+      spent_on: r?.spent_on ?? logged?.spent_on ?? localISODate(),
+      description: r?.description ?? logged?.description ?? "",
+      category_id: r?.category_id ?? logged?.category_id ?? "",
       paid_by: r?.paid_by ?? "",
       currency: r?.currency ?? trip.home_currency,
-      amount: str(r?.amount),
+      amount: str(r?.amount) || logged?.amount || "",
       note: str(r?.note),
+      ...splitDefaults(r?.split, travelers.map((t) => t.id)),
     });
+    // categories and the source only matter when the sheet opens
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sheet.open, sheet.row, reset, trip.home_currency]);
 
-  const [currency, amountStr] = useWatch({ control, name: ["currency", "amount"] });
+  const [currency, amountStr, rawMode, rawMembers, rawShares, rawPct, rawSvc] = useWatch({
+    control,
+    name: ["currency", "amount", "split_mode", "split_members", "split_shares", "service_pct", "service_split"],
+  });
+  // Until the form has been filled in for this sheet these are undefined.
+  const splitMode = rawMode ?? "equal";
+  const splitMembers = rawMembers ?? [];
+  const splitShares = rawShares ?? {};
+  const servicePct = rawPct ?? "";
+  const serviceSplit = rawSvc ?? "proportional";
+  const nameOf = (id: string) => travelers.find((t) => t.id === id)?.name ?? "?";
   const amount = Number(String(amountStr ?? "").replace(/,/g, ""));
   const showConversion = currency === trip.foreign_currency && amountStr && Number.isFinite(amount);
 
@@ -73,15 +126,36 @@ export function ExpenseSheet({
   ] as string[];
 
   const onSubmit = handleSubmit((v) => {
+    const { split_mode, split_members, split_shares, service_pct, service_split, ...columns } = v;
+    // Who shares it and how. Equal between everyone with no service charge stores nothing (null).
+    const pct = Number(service_pct.replace(/,/g, ""));
+    const everyone = travelers.map((t) => t.id);
+    const chosen = split_mode === "equal" ? split_members : split_members.filter((m) => split_shares[m] !== undefined && split_shares[m] !== "");
+    const spec: SplitSpec = {
+      mode: split_mode,
+      members: chosen,
+      ...(split_mode === "equal" ? {} : { shares: Object.fromEntries(chosen.map((m) => [m, Number(String(split_shares[m]).replace(/,/g, ""))])) }),
+      ...(pct > 0 ? { servicePct: pct, serviceSplit: service_split } : {}),
+    };
+    const problem = travelers.length > 0 ? splitProblem(spec, Math.abs(columns.amount)) : null;
+    if (problem) return setError("split_mode", { message: problem });
+    const split = travelers.length > 0 ? specToStore(spec, everyone) : null;
+    const v2 = { ...columns, split: split as never };
     if (sheet.row) {
-      update.mutate({ id: sheet.row.id, patch: v });
+      update.mutate({ id: sheet.row.id, patch: v2 });
       sheet.close();
       return;
     }
-    insert.mutate([{ id: newId(), ...v }]);
+    insert.mutate([{ id: newId(), ...v2, ...(source ? { source_table: source.kind, source_id: source.item.id } : {}) }]);
+    if (source) {
+      toast.success("Logged as an expense.");
+      sheet.close();
+      return;
+    }
     if (keepAdding) {
       const keep = getValues();
-      reset({ ...keep, description: "", amount: "", note: "" });
+      // The next expense starts as an equal split again; the rest (date, payer, currency) is kept.
+      reset({ ...keep, description: "", amount: "", note: "", ...splitDefaults(null, travelers.map((t) => t.id)) });
       setFocus("description");
     } else sheet.close();
   });
@@ -90,11 +164,12 @@ export function ExpenseSheet({
     <RowSheet
       open={sheet.open}
       onOpenChange={sheet.setOpen}
-      title={sheet.row ? "Edit expense" : "Add expense"}
+      title={source ? "Log as expense" : sheet.row ? "Edit expense" : "Add expense"}
+      description={source ? "This counts toward Spent once. The booking will show “Logged”." : undefined}
       mode={sheet.mode}
       onSubmit={onSubmit}
-      submitLabel={sheet.row ? "Save" : "Add expense"}
-      keepAdding={{ value: keepAdding, onChange: setKeepAdding }}
+      submitLabel={source ? "Log expense" : sheet.row ? "Save" : "Add expense"}
+      keepAdding={source ? undefined : { value: keepAdding, onChange: setKeepAdding }}
       onDelete={
         sheet.row
           ? () => {
@@ -169,6 +244,92 @@ export function ExpenseSheet({
           </Field>
         </div>
       </FormGroup>
+
+      {travelers.length > 1 && (
+        <FormGroup icon={Users} title="Split">
+          <Controller
+            control={control}
+            name="split_members"
+            render={({ field }) => (
+              <ChipGroup
+                label="Split between"
+                options={travelers.map((t) => t.id)}
+                value={field.value}
+                multi
+                display={nameOf}
+                onChange={(next) => {
+                  clearErrors("split_mode");
+                  field.onChange(next);
+                }}
+              />
+            )}
+          />
+          <Controller
+            control={control}
+            name="split_mode"
+            render={({ field }) => (
+              <Segmented
+                label="How to split"
+                value={field.value}
+                onChange={(v) => {
+                  clearErrors("split_mode");
+                  field.onChange(v);
+                }}
+                className="w-full"
+                options={[
+                  { value: "equal", label: "Equally" },
+                  { value: "percent", label: "By percent" },
+                  { value: "amount", label: "By amount" },
+                ]}
+              />
+            )}
+          />
+          {splitMode !== "equal" && (
+            <div className="space-y-2">
+              {splitMembers.map((id) => (
+                <Field key={id} label={`${nameOf(id)}${splitMode === "percent" ? " (%)" : ` (${currency})`}`}>
+                  {(p) => <Input {...p} {...register(`split_shares.${id}`)} inputMode="decimal" placeholder="0" autoComplete="off" />}
+                </Field>
+              ))}
+              <p className="text-[13px] text-fg-muted" aria-live="polite">
+                {splitMode === "percent"
+                  ? `Total ${round1(sumShares(splitMembers, splitShares))}% of 100%`
+                  : `Total ${currency} ${round1(sumShares(splitMembers, splitShares))} of ${currency} ${round1(Math.abs(amount) / (1 + (Number(servicePct) || 0) / 100) || 0)} for the items`}
+              </p>
+            </div>
+          )}
+          <Field label="Service charge included (%)" hint="If the bill’s total already has a service charge in it, say how much, and the items are worked out without it.">
+            {(p) => <Input {...p} {...register("service_pct")} inputMode="decimal" placeholder="0" autoComplete="off" />}
+          </Field>
+          {Number(servicePct) > 0 && (
+            <Controller
+              control={control}
+              name="service_split"
+              render={({ field }) => (
+                <ChipGroup
+                  label="Split the service charge"
+                  options={["proportional", "equal"]}
+                  value={field.value}
+                  display={(o) => (o === "equal" ? "Equally" : "In proportion to the items")}
+                  onChange={(v) => field.onChange((v as string) || field.value)}
+                />
+              )}
+            />
+          )}
+          {errors.split_mode?.message && (
+            <p role="alert" className="text-sm font-semibold text-danger">
+              {errors.split_mode.message}
+            </p>
+          )}
+          {amount > 0 && splitMembers.length > 0 && !errors.split_mode && (
+            <p className="rounded-2xl bg-surface-2 px-3.5 py-3 text-sm" aria-live="polite">
+              {[...expenseShares(Math.abs(amount), splitPreview(splitMode, splitMembers, splitShares, servicePct, serviceSplit), splitMembers)]
+                .map(([id, v]) => `${nameOf(id)} ${v.toFixed(2)}`)
+                .join(" · ")}
+            </p>
+          )}
+        </FormGroup>
+      )}
 
       <FormGroup icon={CalendarDays} title="When and notes">
         <Field label="Date" error={errors.spent_on?.message}>

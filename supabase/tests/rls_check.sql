@@ -1017,6 +1017,16 @@ begin
   values (trip_a, 12000, 'PHP', 'Flight MNL to HAN', current_date, 'flights', flight_id);
   select count(*) into n from public.expenses where source_id = flight_id;
   if n <> 1 then failures := failures || 'owner could not log a flight as an expense'::text; end if;
+  -- expense splits (migration 19): an object is kept, anything else is refused
+  checks := checks + 1;
+  update public.expenses set split = '{"mode":"equal","members":["a","b"]}'::jsonb where source_id = flight_id;
+  get diagnostics rc = row_count;
+  if rc <> 1 then failures := failures || 'owner could not set an expense split'::text; end if;
+  checks := checks + 1;
+  begin
+    update public.expenses set split = '[1,2]'::jsonb where source_id = flight_id;
+    failures := failures || 'an expense split that is not an object was accepted'::text;
+  exception when check_violation then null; end;
   checks := checks + 1;
   begin
     insert into public.expenses (trip_id, amount, currency, description, spent_on, source_table, source_id)

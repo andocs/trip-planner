@@ -81,9 +81,10 @@ describe("connector rules", () => {
     expect(connectorProblem([S, C, B, S])).toBeNull(); // different kinds may touch
     expect(connectorProblem([])).toBeNull();
   });
-  it("refuses a connector first or last in a day", () => {
+  it("refuses a connector first in a day, but lets a day end on one (an overnight ride, a sleep)", () => {
     expect(connectorProblem([C, S])).toMatch(/first/);
-    expect(connectorProblem([S, B])).toMatch(/last/);
+    expect(connectorProblem([S, B])).toBeNull();
+    expect(connectorProblem([S, C])).toBeNull();
   });
   it("refuses two of the same kind side by side", () => {
     expect(connectorProblem([S, C, C, S])).toMatch(/commutes/);
@@ -136,7 +137,7 @@ describe("planMove", () => {
     expect(planMove([s1, c1, s2, s3], "s3", 1, 1, START)).toMatchObject({ ok: true }); // [s1, s3, c1, s2]
     expect(planMove([s1, c1, s2, s3], "s1", 1, 1, START)).toMatchObject({ ok: false }); // [c1, s1, ...]: commute first
     expect(planMove([s1, c1, s2, s3], "s3", 1, 3, START)).toMatchObject({ ok: true }); // [s1, c1, s2, s3] unchanged order
-    expect(planMove([s1, c1, s2], "s2", 1, 1, START)).toMatchObject({ ok: false }); // [s1, s2, c1]: commute last
+    expect(planMove([s1, c1, s2], "s2", 1, 1, START)).toMatchObject({ ok: true }); // [s1, s2, c1]: a day may end on a commute
     expect(planMove([s1], "nope", 1, 0, START)).toMatchObject({ ok: false });
   });
 });

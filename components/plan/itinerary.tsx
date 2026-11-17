@@ -356,7 +356,7 @@ export function Itinerary() {
           </p>
         </div>
         {/* Upper right of the map: enlarge or reduce it, and the road route in Google Maps (a link, so no API call and no quota). */}
-        <div className="absolute top-16 right-4 z-[2] flex gap-2 lg:top-auto lg:right-8">
+        <div className="absolute top-4 right-4 z-[2] flex gap-2 lg:top-auto lg:right-8">
           {directions && (
             <a
               href={directions}

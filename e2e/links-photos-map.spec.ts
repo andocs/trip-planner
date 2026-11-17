@@ -181,9 +181,14 @@ test("owner: a stay takes the same grouped form, with website and Google Maps li
   await fake.install(page);
   await page.goto("/stays");
   await page.getByRole("button", { name: "Add", exact: true }).click();
+  await page.getByRole("menuitem", { name: /Add a confirmed stay/ }).click();
+  await page.getByRole("dialog", { name: "Add a confirmed stay" }).getByRole("button", { name: "Enter a new stay" }).click();
   const sheet = page.getByRole("dialog", { name: "Add stay" });
-  await expect(sheet.getByRole("heading", { name: "The stay" })).toBeVisible();
+  await expect(sheet.getByRole("heading", { name: "The place" })).toBeVisible();
   await expect(sheet.getByRole("heading", { name: "Dates and booking" })).toBeVisible();
+  // The same form as a place, without the category, "how many" and draft/confirmed pills.
+  await expect(sheet.getByRole("radio", { name: "Food" })).toHaveCount(0);
+  await expect(sheet.getByRole("radio", { name: "Paste a list" })).toHaveCount(0);
   await sheet.getByLabel("Name").fill("Namba Guesthouse");
   await sheet.getByLabel("Website").fill("https://example.com/namba");
   await sheet.getByLabel("Google Maps link").fill("https://maps.app.goo.gl/namba");
@@ -295,4 +300,152 @@ test("Add activity: a place already on the itinerary is marked, and picking it a
   await expect(sheet.getByText(/is already on the itinerary \(Day 3\)\. Add it again\?/)).toBeVisible();
   await sheet.getByRole("button", { name: "Add again" }).click();
   await expect(sheet.getByLabel("Activity")).toHaveValue(String(idea.name));
+});
+
+/** A draft hotel idea to work with (the seed has none that is still a draft). */
+function addHotelIdea(fake: ReturnType<typeof createFakeSupabase>, details: Record<string, unknown>) {
+  const base = fake.tables.get("hotel_ideas")![0];
+  const idea = { ...base, id: "11111111-1111-4111-8111-111111111111", hotel: "Namba Test Inn", decision: "draft", total: null, nights: null, details };
+  fake.tables.set("hotel_ideas", [...fake.tables.get("hotel_ideas")!, idea]);
+  return idea;
+}
+
+test("Stays: a confirmed stay is picked from the ideas, and it links the idea to the stay", async ({ page }) => {
+  const fake = createFakeSupabase({ withSeed: true });
+  const idea = addHotelIdea(fake, {});
+  await fake.install(page);
+  await page.goto("/stays");
+  await page.getByRole("button", { name: "Add", exact: true }).click();
+  await page.getByRole("menuitem", { name: /Add a confirmed stay/ }).click();
+  const picker = page.getByRole("dialog", { name: "Add a confirmed stay" });
+  await picker.getByRole("button", { name: String(idea.hotel) }).first().click();
+  const sheet = page.getByRole("dialog", { name: "Add stay" });
+  await expect(sheet.getByLabel("Name")).toHaveValue(String(idea.hotel));
+  await sheet.getByLabel("Check-in", { exact: true }).fill("2026-06-20");
+  await sheet.getByLabel("Check-out", { exact: true }).fill("2026-06-23");
+  await sheet.getByRole("button", { name: "Booked", exact: true }).click();
+  await sheet.getByRole("button", { name: "Add", exact: true }).click();
+  await expect.poll(() => fake.tables.get("stays")!.find((s) => (s.details as Record<string, unknown>)?.ideaId === idea.id)).toBeTruthy();
+  const stay = fake.tables.get("stays")!.find((s) => (s.details as Record<string, unknown>)?.ideaId === idea.id)!;
+  expect(stay).toMatchObject({ check_in: "2026-06-20", check_out: "2026-06-23", status: "Booked" });
+  expect(fake.tables.get("hotel_ideas")!.find((h) => h.id === idea.id)!.decision).toBe("confirmed");
+});
+
+test("Stays: Add a plan or idea opens the place form on Stay", async ({ page }) => {
+  const fake = createFakeSupabase({ withSeed: true });
+  await fake.install(page);
+  await page.goto("/stays");
+  await page.getByRole("button", { name: "Add", exact: true }).click();
+  await page.getByRole("menuitem", { name: /Add a plan or idea/ }).click();
+  await expect(page.getByRole("dialog", { name: "Add place" })).toBeVisible();
+});
+
+test("confirming a stay idea asks first, and adds it to Stays too", async ({ page }) => {
+  const fake = createFakeSupabase({ withSeed: true });
+  const idea = addHotelIdea(fake, { checkInDay: 2, checkOutDay: 4, cancellation: "free" });
+  const before = fake.tables.get("stays")!.length;
+  await fake.install(page);
+  await page.goto("/places?cat=stay");
+  await page.getByRole("article", { name: String(idea.hotel) }).getByRole("button", { name: "Confirm" }).click();
+  const ask = page.getByRole("dialog", { name: /^Confirm “/ });
+  await expect(ask).toContainText("added to the Stays page");
+  await ask.getByRole("button", { name: /^Confirm/ }).click();
+  await expect.poll(() => fake.tables.get("stays")!.length).toBe(before + 1);
+  const stay = fake.tables.get("stays")!.find((s) => (s.details as Record<string, unknown>)?.ideaId === idea.id)!;
+  expect(stay).toMatchObject({ hotel: idea.hotel, check_in: "2026-06-17", check_out: "2026-06-19", status: "Planned" });
+});
+
+test("a stay idea with no dates cannot be confirmed until it has them", async ({ page }) => {
+  const fake = createFakeSupabase({ withSeed: true });
+  const idea = addHotelIdea(fake, {});
+  await fake.install(page);
+  await page.goto("/places?cat=stay");
+  await page.getByRole("article", { name: String(idea.hotel) }).getByRole("button", { name: "Confirm" }).click();
+  const ask = page.getByRole("dialog", { name: /^Confirm “/ });
+  await expect(ask).toContainText("Add a check-in day.");
+  await expect(ask.getByRole("button", { name: /^Confirm/ })).toHaveCount(0);
+  await ask.getByRole("button", { name: "Edit details" }).click();
+  await expect(page.getByRole("dialog", { name: "Edit stay" })).toBeVisible();
+});
+
+test("a dropped idea can be deleted for good, after asking", async ({ page }) => {
+  const fake = createFakeSupabase({ withSeed: true });
+  const idea = fake.tables.get("attractions")!.find((a) => a.decision === "draft")!;
+  idea.decision = "dropped";
+  await fake.install(page);
+  await page.goto("/places?cat=sight");
+  await page.getByRole("radio", { name: /^Dropped/ }).click();
+  await page.getByRole("article", { name: String(idea.name) }).getByRole("button", { name: /^Delete/ }).click();
+  await page.getByRole("dialog", { name: "Delete this place?" }).getByRole("button", { name: "Delete" }).click();
+  await expect(page.getByRole("article", { name: String(idea.name) })).toHaveCount(0);
+});
+
+test("a day may end on a commute (an overnight ride)", async ({ page }) => {
+  const fake = createFakeSupabase({ withSeed: true });
+  plan(fake);
+  await fake.install(page);
+  await page.goto("/itinerary");
+  await page.getByRole("button", { name: "Add after Dotonbori dinner" }).click();
+  await page.getByRole("button", { name: "Commute", exact: true }).click();
+  const sheet = page.getByRole("dialog", { name: "Add commute" });
+  await expect(sheet).toBeVisible();
+  await sheet.getByRole("button", { name: "Taxi / Grab" }).click();
+  await sheet.getByLabel("Or any number of minutes").fill("600");
+  await sheet.getByRole("button", { name: "Add", exact: true }).click();
+  await expect.poll(() => fake.tables.get("itinerary_items")!.some((i) => i.kind === "commute")).toBe(true);
+});
+
+test("Spend: split an expense by percent between two people; a split that doesn't add up is refused", async ({ page }) => {
+  const fake = createFakeSupabase({ withSeed: true });
+  const travelers = fake.tables.get("travelers")!;
+  const [a, b] = travelers;
+  await fake.install(page);
+  await page.goto("/spend");
+  await page.getByRole("button", { name: "Add expense" }).first().click();
+  const sheet = page.getByRole("dialog", { name: "Add expense" });
+  await sheet.getByLabel("Description").fill("Dinner at the lake");
+  await sheet.getByLabel(/^Amount/).fill("1100");
+  await sheet.getByRole("radio", { name: "By percent" }).click();
+  await sheet.getByLabel(`${a.name} (%)`).fill("60");
+  await sheet.getByLabel(`${b.name} (%)`).fill("30");
+  await sheet.getByRole("button", { name: "Add expense", exact: true }).click();
+  await expect(sheet.getByText(/add up to 90, not 100/)).toBeVisible();
+  await sheet.getByLabel(`${b.name} (%)`).fill("40");
+  await sheet.getByLabel("Service charge included (%)").fill("10");
+  await sheet.getByRole("button", { name: "Add expense", exact: true }).click();
+  await expect.poll(() => fake.tables.get("expenses")!.find((e) => e.description === "Dinner at the lake")).toBeTruthy();
+  const saved = fake.tables.get("expenses")!.find((e) => e.description === "Dinner at the lake")!;
+  expect(saved.split).toMatchObject({ mode: "percent", servicePct: 10, serviceSplit: "proportional" });
+  expect((saved.split as { shares: Record<string, number> }).shares).toMatchObject({ [String(a.id)]: 60, [String(b.id)]: 40 });
+});
+
+test("Spend: the balance summary says who owes whom, for any person", async ({ page }) => {
+  const fake = createFakeSupabase({ withSeed: true });
+  const tripId = fake.tables.get("travelers")![0].trip_id;
+  fake.tables.set("travelers", [
+    { id: "tv-ana", trip_id: tripId, name: "Ana", sort: 0, created_at: "2026-06-01T00:00:00Z" },
+    { id: "tv-ben", trip_id: tripId, name: "Ben", sort: 1, created_at: "2026-06-01T00:00:00Z" },
+  ]);
+  fake.tables.set("expenses", [
+    { id: "e1", trip_id: tripId, spent_on: "2026-06-16", description: "Hotel", amount: 1000, currency: "PHP", category_id: null, paid_by: "tv-ana", note: null, created_at: "2026-06-16T00:00:00Z", source_table: null, source_id: null, split: null },
+  ]);
+  await fake.install(page);
+  await page.goto("/spend");
+  await page.getByRole("radio", { name: "Settle up" }).click();
+  const summary = page.getByRole("heading", { name: /balance/i }).locator("..").locator("..");
+  await page.getByLabel("Show the balance of").selectOption("tv-ben");
+  await expect(summary).toContainText("Owes");
+  await expect(summary).toContainText("500");
+  await page.getByLabel("Show the balance of").selectOption("tv-ana");
+  await expect(summary).toContainText("Owed");
+});
+
+test("Add place: photos can be added before the place is saved", async ({ page }) => {
+  const fake = createFakeSupabase({ withSeed: true });
+  await fake.install(page);
+  await page.goto("/places");
+  await page.getByRole("button", { name: "Add" }).first().click();
+  const sheet = page.getByRole("dialog", { name: "Add place" });
+  await expect(sheet.getByRole("heading", { name: "Links and photos" })).toBeVisible();
+  await expect(sheet.getByRole("button", { name: "Add a photo" })).toBeVisible();
 });

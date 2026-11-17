@@ -45,14 +45,14 @@ export function SettleUp({ settlement }: { settlement: Settlement }) {
       <div>
         <CardTitle>Settle up</CardTitle>
         <p className="mt-1 text-sm text-fg-muted">
-          {formatMoney(settlement.total, cur)} split equally
-          {settlement.rows.length > 0 && ` · ${formatMoney(settlement.share, cur)} each`}
+          {formatMoney(settlement.total, cur)} {settlement.equal ? "split equally" : "split the way each expense says"}
+          {settlement.equal && settlement.rows.length > 0 && ` · ${formatMoney(settlement.share, cur)} each`}
         </p>
       </div>
 
       {settlement.rows.length > 0 && (
         <table className="w-full text-sm tabular-nums">
-          <caption className="sr-only">Paid, fair share and balance per traveler</caption>
+          <caption className="sr-only">Paid, share owed and balance per traveler</caption>
           <thead>
             <tr className="text-xs text-fg-muted uppercase">
               <th scope="col" className="pb-2 text-left font-semibold">
@@ -60,6 +60,9 @@ export function SettleUp({ settlement }: { settlement: Settlement }) {
               </th>
               <th scope="col" className="pb-2 text-right font-semibold">
                 Paid
+              </th>
+              <th scope="col" className="pb-2 text-right font-semibold">
+                Owes
               </th>
               <th scope="col" className="pb-2 text-right font-semibold">
                 Balance
@@ -73,6 +76,7 @@ export function SettleUp({ settlement }: { settlement: Settlement }) {
                   {r.traveler.name}
                 </th>
                 <td className="py-2 text-right">{formatMoney(r.paid, cur)}</td>
+                <td className="py-2 text-right">{formatMoney(r.share, cur)}</td>
                 <td
                   className={cn(
                     "py-2 text-right font-semibold",

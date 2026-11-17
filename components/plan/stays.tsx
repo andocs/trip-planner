@@ -1,6 +1,6 @@
 "use client";
 
-import { BedDouble, CalendarDays, Coffee, MapPin, Plus } from "lucide-react";
+import { BedDouble, CalendarDays, Coffee, MapPin } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useState } from "react";
 import { CoverHero } from "@/components/photos/cover-hero";
@@ -15,15 +15,14 @@ import { ideaKey } from "@/lib/drafts";
 import { formatDay, formatMoney } from "@/lib/format";
 import { useImages, usePhotoUrls, type ImageRow } from "@/lib/queries/images";
 import { useDeleteRow, useRows, useUpdateRow, type Row } from "@/lib/queries/table";
+import { AddStayMenu, type StayStep } from "./stay-flow";
 import { PlaceLinks } from "@/components/ui/place-links";
 import { cancellationFact, checkInFact, isBooked, parseStayDetails, type Fact } from "@/lib/stay-details";
 import { useClientValue } from "@/lib/use-client-value";
-import { useSheet } from "@/lib/use-sheet";
 import { cn } from "@/lib/utils";
 
 /** Form sheets load on first open, keeping zod / react-hook-form / vaul out of the page's initial JS. */
-const StaySheet = dynamic(() => import("./stay-sheet").then((m) => m.StaySheet), { ssr: false });
-export { StaySheet };
+const StayFlow = dynamic(() => import("./stay-flow").then((m) => m.StayFlow), { ssr: false });
 
 type Stay = Row<"stays">;
 const byCheckIn = (a: Stay, b: Stay) =>
@@ -91,7 +90,8 @@ export function Stays() {
   const canEdit = useCanEdit();
   const { data: stays = [], isPending } = useRows("stays", byCheckIn);
   const update = useUpdateRow("stays", "stay");
-  const sheet = useSheet<Stay>();
+  // What is open over the page: the idea picker, the stay form (the same form as a place), or an add-a-plan form.
+  const [flow, setFlow] = useState<StayStep | null>(null);
   const photos = useStayPhotos();
   const today = useClientValue(() => localISODate(), null);
   const [openId, setOpenId] = useState<string | null>(null);
@@ -131,10 +131,7 @@ export function Stays() {
           <p className="text-sm text-fg-muted">Where you&rsquo;ll sleep each night, and what&rsquo;s booked.</p>
         )}
         <EditOnly>
-          <Button size="sm" variant="secondary" className="shrink-0" onClick={sheet.openAdd}>
-            <Plus className="size-4" aria-hidden />
-            Add
-          </Button>
+          <AddStayMenu onChoose={setFlow} />
         </EditOnly>
       </div>
 
@@ -147,7 +144,7 @@ export function Stays() {
             No stays yet. Shortlist hotels on Places, then add the one you book here.
           </p>
           <EditOnly>
-            <Button onClick={sheet.openAdd}>Add a stay</Button>
+            <AddStayMenu onChoose={setFlow} label="Add a stay" variant="primary" />
           </EditOnly>
         </div>
       ) : (
@@ -226,12 +223,12 @@ export function Stays() {
           canEdit={canEdit}
           onEdit={() => {
             setOpenId(null);
-            sheet.openEdit(opened);
+            setFlow({ step: "form", stay: opened });
           }}
           onClose={() => setOpenId(null)}
         />
       )}
-      {sheet.mounted && <StaySheet sheet={sheet} />}
+      {flow && <StayFlow flow={flow} onFlow={setFlow} onClose={() => setFlow(null)} />}
     </div>
   );
 }
