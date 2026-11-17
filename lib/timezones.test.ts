@@ -55,3 +55,21 @@ describe("timezones", () => {
     expect(instantOf("tomorrow", "Asia/Manila")).toBeNull();
   });
 });
+
+describe("zoneForAirport", () => {
+  it("suggests a zone for known codes, any case, and nothing for the rest", async () => {
+    const { zoneForAirport } = await import("./timezones");
+    expect(zoneForAirport("kix")).toBe("Asia/Tokyo");
+    expect(zoneForAirport(" HAN ")).toBe("Asia/Ho_Chi_Minh");
+    expect(zoneForAirport("ZZZ")).toBeNull();
+    expect(zoneForAirport(null)).toBeNull();
+  });
+  it("every airport zone is offered in the picker", async () => {
+    const { ZONES } = await import("./timezones");
+    const ids = new Set(ZONES.map((z) => z.id));
+    for (const code of ["MNL", "KIX", "HAN", "LAX", "DPS", "AKL"]) {
+      const { zoneForAirport } = await import("./timezones");
+      expect(ids.has(zoneForAirport(code)!), code).toBe(true);
+    }
+  });
+});

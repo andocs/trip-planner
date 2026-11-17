@@ -15,6 +15,7 @@ import { ideaKey } from "@/lib/drafts";
 import { formatDay, formatMoney } from "@/lib/format";
 import { useImages, usePhotoUrls, type ImageRow } from "@/lib/queries/images";
 import { useDeleteRow, useRows, useUpdateRow, type Row } from "@/lib/queries/table";
+import { PlaceLinks } from "@/components/ui/place-links";
 import { cancellationFact, checkInFact, isBooked, parseStayDetails, type Fact } from "@/lib/stay-details";
 import { useClientValue } from "@/lib/use-client-value";
 import { useSheet } from "@/lib/use-sheet";
@@ -327,6 +328,7 @@ function StayDetail({
           </div>
         )}
         {stay.note && <p className="text-[15px]">{stay.note}</p>}
+        <PlaceLinks website={d.website} mapsUrl={d.mapsUrl} className="flex flex-wrap gap-x-5" />
       </div>
     </Sheet>
   );

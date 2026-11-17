@@ -1109,6 +1109,21 @@ begin
     update public.flights set gate = 'TOOLONGGATE1' where id = ref_flight;
     failures := failures || 'a gate longer than 10 characters was accepted'::text;
   exception when check_violation then null; end;
+  -- time zones (migration 18): the owner can set a flight's zones and the trip's home zone; an absurd zone id is refused
+  checks := checks + 1;
+  update public.flights set dep_tz = 'Asia/Manila', arr_tz = 'Asia/Tokyo' where id = ref_flight;
+  get diagnostics rc = row_count;
+  if rc <> 1 then failures := failures || 'owner could not set a flight time zone'::text; end if;
+  checks := checks + 1;
+  update public.trips set timezone = 'Asia/Tokyo' where id = trip_a;
+  get diagnostics rc = row_count;
+  if rc <> 1 then failures := failures || 'owner could not set the trip time zone'::text; end if;
+  update public.trips set timezone = 'Asia/Manila' where id = trip_a;
+  checks := checks + 1;
+  begin
+    update public.flights set dep_tz = repeat('x', 65) where id = ref_flight;
+    failures := failures || 'a time zone id longer than 64 characters was accepted'::text;
+  exception when check_violation then null; end;
   reset role;
 
   -- a viewer sees that a reference exists (the flag) but never the reference itself, and can change nothing

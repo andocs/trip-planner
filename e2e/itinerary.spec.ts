@@ -261,12 +261,16 @@ test("a viewer can open a card to read it (no form)", async ({ page }) => {
   await expect(view.getByRole("button", { name: "Save" })).toHaveCount(0);
 });
 
-test("clicking a card opens it for editing (owner)", async ({ page }) => {
+test("clicking a card views it (owner too); Edit details opens the form", async ({ page }) => {
   const fake = createFakeSupabase({ withSeed: true });
   plan(fake);
   await fake.install(page);
   await page.goto("/itinerary");
   await page.getByRole("button", { name: "Open Lake walk" }).click();
+  const view = page.getByRole("dialog", { name: "Lake walk" });
+  await expect(view).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "Edit activity" })).toHaveCount(0);
+  await view.getByRole("button", { name: "Edit details" }).click();
   await expect(page.getByRole("dialog", { name: "Edit activity" })).toBeVisible();
 });
 

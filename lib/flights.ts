@@ -6,6 +6,8 @@
  *    is only shown when the owner types it in.
  */
 
+import { travelMinutes } from "./timezones";
+
 type Stamp = string | null | undefined;
 
 const ms = (ts: Stamp): number | null => {
@@ -78,3 +80,20 @@ export const MASKED_REF = "••••••";
 
 /** Statuses whose pass is drawn as a plain idea (dashed, not in the plan). */
 export const isIdeaStatus = (status: string) => status === "Idea" || status === "Maybe";
+
+/**
+ * How long a flight is. The owner's typed time wins; otherwise it is worked out from the two local times and the zone of
+ * each airport, but only when BOTH zones were set (a flight saved before zones existed has none, and guessing Manila at
+ * both ends would give a wrong time).
+ */
+export function flightMinutes(f: {
+  duration_min?: number | null;
+  departs_at?: string | null;
+  arrives_at?: string | null;
+  dep_tz?: string | null;
+  arr_tz?: string | null;
+}): number | null {
+  if (f.duration_min) return f.duration_min;
+  if (!f.dep_tz || !f.arr_tz) return null;
+  return travelMinutes({ local: f.departs_at, zone: f.dep_tz }, { local: f.arrives_at, zone: f.arr_tz });
+}

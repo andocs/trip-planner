@@ -1,11 +1,13 @@
 "use client";
 
+import { CalendarDays, Coins, Receipt } from "lucide-react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useState } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 import { useTrip } from "@/components/trip-gate";
 import { Field, Input, Select, Textarea } from "@/components/ui/field";
+import { FormGroup } from "@/components/ui/form-group";
 import { RowSheet } from "@/components/ui/row-sheet";
 import { Segmented } from "@/components/ui/segmented";
 import { homeAmount, localISODate } from "@/lib/calc";
@@ -102,72 +104,80 @@ export function ExpenseSheet({
           : undefined
       }
     >
-      <Field label="Amount" error={errors.amount?.message ?? errors.currency?.message}>
-        {(p) => (
-          <div className="space-y-2">
-            <Controller
-              control={control}
-              name="currency"
-              render={({ field }) => (
-                <Segmented
-                  label="Currency"
-                  value={field.value}
-                  onChange={field.onChange}
-                  options={currencies.map((c) => ({ value: c, label: c }))}
-                  className="w-full"
-                />
-              )}
-            />
-            <Input
-              {...p}
-              {...register("amount")}
-              inputMode="decimal"
-              placeholder="0.00"
-              className="text-2xl font-bold tabular-nums"
-            />
-            <p className="min-h-5 text-sm text-fg-muted" aria-live="polite">
-              {showConversion
-                ? `≈ ${formatMoney(homeAmount({ currency, amount }, trip), trip.home_currency)} at ${Number(trip.rate)}`
-                : ""}
-            </p>
-          </div>
-        )}
-      </Field>
-      <Field label="Description" error={errors.description?.message}>
-        {(p) => <Input {...p} {...register("description")} autoComplete="off" placeholder="e.g. Pho for two" />}
-      </Field>
-      <div className="grid grid-cols-2 gap-3">
-        <Field label="Category">
+      <FormGroup icon={Coins} title="Amount">
+        <Field label="Amount" error={errors.amount?.message ?? errors.currency?.message}>
           {(p) => (
-            <Select {...p} {...register("category_id")}>
-              <option value="">None</option>
-              {categories.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </Select>
+            <div className="space-y-2">
+              <Controller
+                control={control}
+                name="currency"
+                render={({ field }) => (
+                  <Segmented
+                    label="Currency"
+                    value={field.value}
+                    onChange={field.onChange}
+                    options={currencies.map((c) => ({ value: c, label: c }))}
+                    className="w-full"
+                  />
+                )}
+              />
+              <Input
+                {...p}
+                {...register("amount")}
+                inputMode="decimal"
+                placeholder="0.00"
+                className="text-2xl font-bold tabular-nums"
+              />
+              <p className="min-h-5 text-sm text-fg-muted" aria-live="polite">
+                {showConversion
+                  ? `≈ ${formatMoney(homeAmount({ currency, amount }, trip), trip.home_currency)} at ${Number(trip.rate)}`
+                  : ""}
+              </p>
+            </div>
           )}
         </Field>
-        <Field label="Paid by">
-          {(p) => (
-            <Select {...p} {...register("paid_by")}>
-              <option value="">Not set</option>
-              {travelers.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                </option>
-              ))}
-            </Select>
-          )}
+      </FormGroup>
+
+      <FormGroup icon={Receipt} title="What it was for">
+        <Field label="Description" error={errors.description?.message}>
+          {(p) => <Input {...p} {...register("description")} autoComplete="off" placeholder="e.g. Pho for two" />}
         </Field>
-      </div>
-      <Field label="Date" error={errors.spent_on?.message}>
-        {(p) => <Input {...p} type="date" {...register("spent_on")} />}
-      </Field>
-      <Field label="Note" error={errors.note?.message}>
-        {(p) => <Textarea {...p} {...register("note")} rows={2} />}
-      </Field>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Category">
+            {(p) => (
+              <Select {...p} {...register("category_id")}>
+                <option value="">None</option>
+                {categories.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </Select>
+            )}
+          </Field>
+          <Field label="Paid by">
+            {(p) => (
+              <Select {...p} {...register("paid_by")}>
+                <option value="">Not set</option>
+                {travelers.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                  </option>
+                ))}
+              </Select>
+            )}
+          </Field>
+        </div>
+      </FormGroup>
+
+      <FormGroup icon={CalendarDays} title="When and notes">
+        <Field label="Date" error={errors.spent_on?.message}>
+          {(p) => <Input {...p} type="date" {...register("spent_on")} />}
+        </Field>
+        <Field label="Note" error={errors.note?.message}>
+          {(p) => <Textarea {...p} {...register("note")} rows={2} />}
+        </Field>
+      </FormGroup>
     </RowSheet>
   );
 }

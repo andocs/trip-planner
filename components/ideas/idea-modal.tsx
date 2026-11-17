@@ -1,13 +1,14 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { BedDouble, ChevronDown, ClipboardPaste, Flag, Landmark, Link2, Plus, Utensils } from "lucide-react";
+import { BedDouble, ChevronDown, ClipboardPaste, Coins, Flag, Landmark, Link2, MapPin, NotebookText, Plus, Utensils } from "lucide-react";
 import { useState } from "react";
 import { Controller, useForm, useWatch, type Control, type Resolver, type UseFormRegister } from "react-hook-form";
 import { toast } from "sonner";
 import { useTrip } from "@/components/trip-gate";
 import { FormFooter } from "@/components/ui/form-footer";
 import { Field, Input, Select, Textarea } from "@/components/ui/field";
+import { FormGroup } from "@/components/ui/form-group";
 import { Segmented } from "@/components/ui/segmented";
 import { Sheet } from "@/components/ui/sheet";
 import { KIND_LABEL, type Idea, type IdeaKind } from "@/lib/drafts";
@@ -51,6 +52,7 @@ const FOLD: Record<IdeaKind, [string, string]> = {
   food: ["Food details", "Cuisine, meal, hours, reservation"],
   sight: ["Sight details", "Type, tickets, duration, best time, effort"],
 };
+const KIND_GROUP_ICON = { stay: BedDouble, food: Utensils, sight: Landmark } as const;
 const menuKey = (s: string) => s.trim().toLowerCase();
 
 export type IdeaModalProps = {
@@ -252,114 +254,123 @@ function IdeaForm({
           <span>{note}</span>
         </p>
       )}
-      <Field label="Name" error={errors.name?.message}>
-        {(p) => (
-          <Input
-            {...p}
-            {...register("name")}
-            autoComplete="off"
-            placeholder={kind === "stay" ? "e.g. Old Quarter boutique hotel" : kind === "food" ? "e.g. Bún chả Hương Liên" : "e.g. Trang An boat tour"}
-          />
-        )}
-      </Field>
-      <Field
-        label="Location or area"
-        error={errors.city?.message}
-        hint={fromGoogle ? "Filled from the Google result you picked." : "A city or neighbourhood. Free text."}
-      >
-        {(p) => <Input {...p} {...register("city")} list={listId} autoComplete="off" />}
-      </Field>
-      <datalist id={listId}>
-        {cities.map((c) => (
-          <option key={c} value={c} />
-        ))}
-      </datalist>
-
-      <div className="grid grid-cols-[minmax(0,1.5fr)_minmax(0,1.25fr)_minmax(0,1fr)] items-end gap-3">
-        <Field label={COST_LABEL[kind]} error={errors.cost?.message}>
-          {(p) => <Input {...p} {...register("cost")} inputMode="decimal" placeholder="0" />}
-        </Field>
-        <Field label="Per">
+      <FormGroup icon={MapPin} title="The place">
+        <Field label="Name" error={errors.name?.message}>
           {(p) => (
-            <Select {...p} {...register("unit")}>
-              {UNITS.map((u) => (
-                <option key={u} value={u}>
-                  {UNIT_LABEL[u].replace(/^per /, "")}
-                </option>
-              ))}
-            </Select>
+            <Input
+              {...p}
+              {...register("name")}
+              autoComplete="off"
+              placeholder={kind === "stay" ? "e.g. Old Quarter boutique hotel" : kind === "food" ? "e.g. Bún chả Hương Liên" : "e.g. Trang An boat tour"}
+            />
           )}
         </Field>
-        <Field label="Currency" error={errors.currency?.message}>
-          {(p) => (
-            <Select {...p} {...register("currency")}>
-              {[...new Set([home, ...COMMON_CURRENCIES])].map((c) => (
-                <option key={c}>{c}</option>
-              ))}
-            </Select>
-          )}
-        </Field>
-      </div>
-
-      <div>
-        <button
-          type="button"
-          aria-expanded={detailsOpen}
-          onClick={() => setDetailsOpen((v) => !v)}
-          className="flex min-h-13 w-full items-center justify-between gap-3 rounded-2xl bg-surface-2 px-3.5 text-left font-bold"
+        <Field
+          label="Location or area"
+          error={errors.city?.message}
+          hint={fromGoogle ? "Filled from the Google result you picked." : "A city or neighbourhood. Free text."}
         >
-          <span>
-            {FOLD[kind][0]}
-            <small className="block text-[13px] font-medium text-fg-muted">{FOLD[kind][1]}</small>
-          </span>
-          <ChevronDown className={cn("size-5 shrink-0 transition-transform motion-reduce:transition-none", detailsOpen && "rotate-180")} aria-hidden />
-        </button>
-        {detailsOpen && (
-          <div className="mt-4 space-y-4">
-            {kind === "stay" && <StaySection control={control} register={register} errors={errors} currency={home} />}
-            {kind === "food" && <FoodSection control={control} register={register} errors={errors} />}
-            {kind === "sight" && <SightSection control={control} register={register} errors={errors} />}
-          </div>
-        )}
-      </div>
+          {(p) => <Input {...p} {...register("city")} list={listId} autoComplete="off" />}
+        </Field>
+        <datalist id={listId}>
+          {cities.map((c) => (
+            <option key={c} value={c} />
+          ))}
+        </datalist>
+      </FormGroup>
 
-      <Field label="Website" hint="Optional" error={errors.website?.message}>
-        {(p) => <Input {...p} {...register("website")} type="url" inputMode="url" autoComplete="off" placeholder="https://" />}
-      </Field>
-      <Field label="Google Maps link" hint="Optional. Paste a share link from Google Maps." error={errors.mapsUrl?.message}>
-        {(p) => <Input {...p} {...register("mapsUrl")} type="url" inputMode="url" autoComplete="off" placeholder="https://maps.app.goo.gl/…" />}
-      </Field>
-      <Field label="Notes" error={errors.notes?.message} hint="Photos are added from the idea itself.">
-        {(p) => <Textarea {...p} {...register("notes")} rows={2} placeholder="Anything the group should know" />}
-      </Field>
-      <Controller
-        control={control}
-        name="dealBreaker"
-        render={({ field }) => (
-          <ToggleRow
-            tone="must"
-            icon={<Flag className="size-4" strokeWidth={2.6} aria-hidden />}
-            label="Deal-breaker / must-do"
-            hint="Flagged on the card and in voting"
-            checked={field.value}
-            onChange={field.onChange}
-          />
-        )}
-      />
-      {(!idea || idea.decision !== "dropped") && (
+      <FormGroup icon={Coins} title="Price">
+        <div className="grid grid-cols-[minmax(0,1.5fr)_minmax(0,1.25fr)_minmax(0,1fr)] items-end gap-3">
+          <Field label={COST_LABEL[kind]} error={errors.cost?.message}>
+            {(p) => <Input {...p} {...register("cost")} inputMode="decimal" placeholder="0" />}
+          </Field>
+          <Field label="Per">
+            {(p) => (
+              <Select {...p} {...register("unit")}>
+                {UNITS.map((u) => (
+                  <option key={u} value={u}>
+                    {UNIT_LABEL[u].replace(/^per /, "")}
+                  </option>
+                ))}
+              </Select>
+            )}
+          </Field>
+          <Field label="Currency" error={errors.currency?.message}>
+            {(p) => (
+              <Select {...p} {...register("currency")}>
+                {[...new Set([home, ...COMMON_CURRENCIES])].map((c) => (
+                  <option key={c}>{c}</option>
+                ))}
+              </Select>
+            )}
+          </Field>
+        </div>
+      </FormGroup>
+
+      <FormGroup icon={KIND_GROUP_ICON[kind]} title={FOLD[kind][0]}>
+        <div>
+          <button
+            type="button"
+            aria-expanded={detailsOpen}
+            aria-label={FOLD[kind][0]}
+            onClick={() => setDetailsOpen((v) => !v)}
+            className="flex min-h-12 w-full items-center justify-between gap-3 rounded-2xl bg-surface-2 px-3.5 text-left"
+          >
+            <span className="text-sm font-medium text-fg-muted">{detailsOpen ? "Hide" : FOLD[kind][1]}</span>
+            <ChevronDown className={cn("size-5 shrink-0 transition-transform motion-reduce:transition-none", detailsOpen && "rotate-180")} aria-hidden />
+          </button>
+          {detailsOpen && (
+            <div className="mt-4 space-y-4">
+              {kind === "stay" && <StaySection control={control} register={register} errors={errors} currency={home} />}
+              {kind === "food" && <FoodSection control={control} register={register} errors={errors} />}
+              {kind === "sight" && <SightSection control={control} register={register} errors={errors} />}
+            </div>
+          )}
+        </div>
+      </FormGroup>
+
+      <FormGroup icon={Link2} title="Links">
+        <Field label="Website" hint="Optional" error={errors.website?.message}>
+          {(p) => <Input {...p} {...register("website")} type="url" inputMode="url" autoComplete="off" placeholder="https://" />}
+        </Field>
+        <Field label="Google Maps link" hint="Optional. Paste a share link from Google Maps." error={errors.mapsUrl?.message}>
+          {(p) => <Input {...p} {...register("mapsUrl")} type="url" inputMode="url" autoComplete="off" placeholder="https://maps.app.goo.gl/…" />}
+        </Field>
+      </FormGroup>
+
+      <FormGroup icon={NotebookText} title="Notes and status">
+        <Field label="Notes" error={errors.notes?.message} hint="Photos are added from the idea itself.">
+          {(p) => <Textarea {...p} {...register("notes")} rows={2} placeholder="Anything the group should know" />}
+        </Field>
         <Controller
           control={control}
-          name="decision"
+          name="dealBreaker"
           render={({ field }) => (
-            <ChipGroup
-              label="Status"
-              options={["draft", "confirmed"]}
-              value={field.value}
-              onChange={(v) => field.onChange(v || field.value)}
+            <ToggleRow
+              tone="must"
+              icon={<Flag className="size-4" strokeWidth={2.6} aria-hidden />}
+              label="Deal-breaker / must-do"
+              hint="Flagged on the card and in voting"
+              checked={field.value}
+              onChange={field.onChange}
             />
           )}
         />
-      )}
+        {(!idea || idea.decision !== "dropped") && (
+          <Controller
+            control={control}
+            name="decision"
+            render={({ field }) => (
+              <ChipGroup
+                label="Status"
+                options={["draft", "confirmed"]}
+                value={field.value}
+                onChange={(v) => field.onChange(v || field.value)}
+              />
+            )}
+          />
+        )}
+      </FormGroup>
     </form>
   );
 }

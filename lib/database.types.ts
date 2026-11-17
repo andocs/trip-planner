@@ -27,6 +27,7 @@ export type Database = {
           rate_date: string | null
           start_date: string | null
           status: string
+          timezone: string
         }
         Insert: {
           archived_at?: string | null
@@ -47,6 +48,7 @@ export type Database = {
           rate_date?: string | null
           start_date?: string | null
           status?: string
+          timezone?: string
         }
         Update: {
           archived_at?: string | null
@@ -67,6 +69,7 @@ export type Database = {
           rate_date?: string | null
           start_date?: string | null
           status?: string
+          timezone?: string
         }
         Relationships: [
 
@@ -363,9 +366,11 @@ export type Database = {
         Row: {
           airline: string | null
           arrives_at: string | null
+          arr_tz: string | null
           booking_ref: string | null
           created_at: string
           departs_at: string | null
+          dep_tz: string | null
           duration_min: number | null
           fare: number | null
           flight_no: string | null
@@ -382,9 +387,11 @@ export type Database = {
         Insert: {
           airline?: string | null
           arrives_at?: string | null
+          arr_tz?: string | null
           booking_ref?: string | null
           created_at?: string
           departs_at?: string | null
+          dep_tz?: string | null
           duration_min?: number | null
           fare?: number | null
           flight_no?: string | null
@@ -401,9 +408,11 @@ export type Database = {
         Update: {
           airline?: string | null
           arrives_at?: string | null
+          arr_tz?: string | null
           booking_ref?: string | null
           created_at?: string
           departs_at?: string | null
+          dep_tz?: string | null
           duration_min?: number | null
           fare?: number | null
           flight_no?: string | null

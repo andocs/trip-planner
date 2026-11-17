@@ -56,6 +56,7 @@ export function createFakeSupabase(
     rate_date: null,
     budget: 0,
     map_region: "world",
+    timezone: "Asia/Manila",
     archived_at: null,
     created_at: now,
     owner_id: null,

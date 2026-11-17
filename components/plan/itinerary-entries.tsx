@@ -94,6 +94,7 @@ export function StopCard({
   canEdit,
   compact,
   onOpen,
+  onEdit,
   onDone,
   onRemove,
   handle,
@@ -108,7 +109,10 @@ export function StopCard({
   canEdit: boolean;
   /** Reorder mode: a small photo and one line, so a long day fits on the screen while dragging. */
   compact: boolean;
+  /** Click on the card: view it. */
   onOpen: () => void;
+  /** The menu's Edit: the form. */
+  onEdit: () => void;
   onDone: (done: boolean) => void;
   onRemove: () => void;
   handle?: ReactNode;
@@ -146,7 +150,7 @@ export function StopCard({
           {!handle && (
             <button type="button" onClick={onOpen} aria-label={`Open ${item.activity}`} className="absolute inset-0 rounded-[22px] focus-visible:outline-3 focus-visible:outline-[var(--focus)]" />
           )}
-          <div className="absolute top-1 right-1 z-[1]">{handle ?? (canEdit ? <CardMenu item={item} onEdit={onOpen} onDone={onDone} onRemove={onRemove} /> : null)}</div>
+          <div className="absolute top-1 right-1 z-[1]">{handle ?? (canEdit ? <CardMenu item={item} onEdit={onEdit} onDone={onDone} onRemove={onRemove} /> : null)}</div>
           <Thumb item={item} idea={idea} images={images} urlOf={urlOf} small={compact} />
           <ul className={cn("pointer-events-none min-w-0", (handle || canEdit) && "pr-9")}>
             {shown.map((r, n) => {

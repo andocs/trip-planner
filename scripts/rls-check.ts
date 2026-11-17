@@ -531,6 +531,25 @@ async function main() {
       "viewer can see that a flight has a reference, not what it is",
       (await viewer.from("flights").select("has_ref").eq("id", flightId).single()).data?.has_ref === true,
     );
+    // Time zones (migration 18)
+    check(
+      "owner can set a flight's time zones",
+      !(await owner.from("flights").update({ dep_tz: "Asia/Manila", arr_tz: "Asia/Tokyo" }).eq("id", flightId)).error,
+    );
+    check(
+      "a flight time zone longer than 64 characters is refused",
+      !!(await owner.from("flights").update({ dep_tz: "x".repeat(65) }).eq("id", flightId)).error,
+    );
+    check(
+      "viewer cannot change a flight's time zone",
+      ((await viewer.from("flights").update({ arr_tz: "UTC" }).eq("id", flightId).select()).data ?? []).length === 0,
+    );
+    check(
+      "owner can set the trip's home time zone, a viewer cannot",
+      !(await owner.from("trips").update({ timezone: "Asia/Tokyo" }).eq("id", tripId)).error &&
+        ((await viewer.from("trips").update({ timezone: "UTC" }).eq("id", tripId).select()).data ?? []).length === 0,
+    );
+    await owner.from("trips").update({ timezone: "Asia/Manila" }).eq("id", tripId);
     await owner.from("flights").delete().eq("id", flightId);
     check(
       "deleting a flight deletes its reference but keeps the logged expense",

@@ -24,8 +24,9 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyText } from "@/components/view-only-banner";
 import { itineraryProgress, tripLength } from "@/lib/calc";
-import { formatDateRange, timeRange } from "@/lib/format";
+import { formatDateRange, formatDay, timeRange } from "@/lib/format";
 import {
+  dayOf,
   dayTotals,
   directionsUrl,
   groupDays,
@@ -236,7 +237,8 @@ export function Itinerary() {
         currency={trip.home_currency}
         canEdit={canEdit}
         compact={editing}
-        onOpen={() => (canEdit ? sheet.openEdit(item) : setViewing(item))}
+        onOpen={() => setViewing(item)}
+        onEdit={() => sheet.openEdit(item)}
         onDone={(done) => update.mutate({ id: item.id, patch: { done } })}
         onRemove={() => removeRow(item, `“${item.activity}”`)}
         handle={handle}
@@ -290,6 +292,17 @@ export function Itinerary() {
       ),
     ];
   });
+
+  /** Google Maps directions to a stop from wherever the person is: a browser link, no API call. Null without a position. */
+  const directionsFromHere = (it: ItineraryItem): string | null => {
+    const c = it.source_table && it.source_id ? freshCoords(refs.byIdea.get(`${it.source_table}:${it.source_id}`)) : null;
+    return c ? `https://www.google.com/maps/dir/?api=1&destination=${c.lat},${c.lng}` : null;
+  };
+
+  const dayLabelOf = (it: ItineraryItem): string => {
+    const d = dayOf(it, start);
+    return d === null ? "No day yet" : `Day ${d}${it.on_date ? ` · ${formatDay(it.on_date)}` : ""}`;
+  };
 
   const dayStops = shown.flatMap((e) => (e.kind === "item" && isStop(e.item) ? [e.item] : []));
   const selectedItem = selected ? (dayStops.find((i) => i.id === selected) ?? items.find((i) => i.id === selected && isStop(i))) : undefined;
@@ -438,7 +451,9 @@ export function Itinerary() {
             images={imagesOf(selectedItem, selectedIdea)}
             urlOf={urlOf}
             currency={trip.home_currency}
-            onOpen={() => (canEdit ? sheet.openEdit(selectedItem) : setViewing(selectedItem))}
+            onOpen={() => setViewing(selectedItem)}
+            directionsHref={directionsFromHere(selectedItem)}
+            dayLabel={dayLabelOf(selectedItem)}
             onClose={() => setSelected(null)}
           />
         )}
@@ -518,6 +533,14 @@ export function Itinerary() {
           currency={trip.home_currency}
           images={imagesOf(viewing, viewing.source_table && viewing.source_id ? ideaOf.get(`${viewing.source_table}:${viewing.source_id}`) : undefined)}
           urlOf={urlOf}
+          startDate={start}
+          canEdit={canEdit}
+          onEdit={() => {
+            sheet.openEdit(viewing);
+            setViewing(null);
+          }}
+          onDone={(done) => update.mutate({ id: viewing.id, patch: { done } })}
+          onRemove={() => removeRow(viewing, `“${viewing.activity}”`)}
           onClose={() => setViewing(null)}
         />
       )}

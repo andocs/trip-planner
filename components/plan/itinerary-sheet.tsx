@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ChevronRight, Lightbulb, MapPin } from "lucide-react";
+import { ChevronRight, Clock, Lightbulb, Link2, MapPin, NotebookText } from "lucide-react";
 import { useEffect, useState } from "react";
 import { IdeaPhotos } from "@/components/photos/idea-photos";
 import { useImages, usePhotoUrls, useRemovePhoto } from "@/lib/queries/images";
@@ -10,6 +10,7 @@ import { z } from "zod";
 import { ChipGroup, ToggleRow } from "@/components/ideas/chips";
 import { useTrip } from "@/components/trip-gate";
 import { Field, Input, Textarea } from "@/components/ui/field";
+import { FormGroup } from "@/components/ui/form-group";
 import { RowSheet } from "@/components/ui/row-sheet";
 import { tripLength } from "@/lib/calc";
 import { KIND_LABEL, type Idea } from "@/lib/drafts";
@@ -220,139 +221,149 @@ export function ItinerarySheet({
           </span>
         </p>
       )}
-      <Field label="Activity" error={errors.activity?.message}>
-        {(p) => <Input {...p} {...register("activity")} autoComplete="off" placeholder="e.g. Train Street coffee" />}
-      </Field>
-      {!sheet.row && (
-        <div>
-          <button
-            type="button"
-            aria-expanded={picking}
-            onClick={() => setPicking((v) => !v)}
-            className="flex min-h-14 w-full items-center gap-3 rounded-2xl border-2 border-dashed border-line-strong px-3.5 text-left"
-          >
-            <Lightbulb className="size-5 shrink-0 text-fg-muted" strokeWidth={2.4} aria-hidden />
-            <span className="min-w-0 flex-1 font-bold">
-              Pick from your Places
-              <small className="block text-[13px] font-medium text-fg-muted">
-                {source ? "Linked to a place on your board" : "Fills in the name, area and price"}
-              </small>
-            </span>
-            <ChevronRight className={cn("size-5 shrink-0 text-fg-muted transition-transform motion-reduce:transition-none", picking && "rotate-90")} aria-hidden />
-          </button>
-          {picking && (
-            <div className="mt-2 space-y-2 rounded-2xl bg-surface-2 p-2.5">
-              <Input aria-label="Search your places" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search your places" autoComplete="off" />
-              {matches.length === 0 ? (
-                <p className="px-1.5 py-2 text-sm text-fg-muted">Nothing on your board matches.</p>
-              ) : (
-                <ul>
-                  {matches.map((i) => (
-                    <li key={i.key}>
-                      <button type="button" onClick={() => pickIdea(i)} className="flex min-h-12 w-full items-center gap-2 rounded-xl px-2 text-left hover:bg-surface">
-                        <span className="min-w-0 flex-1 truncate font-bold">{i.name}</span>
-                        <span className="shrink-0 text-xs font-bold text-fg-muted">
-                          {KIND_LABEL[i.kind]}
-                          {i.decision === "draft" ? " · Draft" : ""}
-                        </span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-      <div className="space-y-2">
-        <span className="block text-[13px] font-bold text-fg-muted">Day</span>
-        <div role="group" aria-label="Day" className="-mx-5 -my-1 flex gap-2 overflow-x-auto px-5 py-1.5 [scrollbar-width:none]">
-          {dayList.map((d) => {
-            const date = dayDate(d);
-            const on = chosenDay(String(d));
-            return (
-              <button
-                key={d}
-                type="button"
-                aria-pressed={on}
-                onClick={() => setValue("day", String(d), { shouldDirty: true })}
-                className={cn("min-h-14 shrink-0 rounded-2xl px-3.5 text-left transition-colors", on ? "bg-teal-tint text-teal ring-2 ring-teal" : "bg-surface-2 text-fg")}
-              >
-                <b className="block text-[15px]">Day {d}</b>
-                {date && <span className="block text-xs font-medium opacity-80">{formatDay(date)}</span>}
-              </button>
-            );
-          })}
-          <button
-            type="button"
-            aria-pressed={chosenDay("")}
-            onClick={() => setValue("day", "", { shouldDirty: true })}
-            className={cn("min-h-14 shrink-0 rounded-2xl px-3.5 text-left transition-colors", chosenDay("") ? "bg-teal-tint text-teal ring-2 ring-teal" : "bg-surface-2 text-fg")}
-          >
-            <b className="block text-[15px]">Later</b>
-            <span className="block text-xs font-medium opacity-80">No day yet</span>
-          </button>
-        </div>
-        {picked && <p className="text-sm text-fg-muted">The date follows from the trip start: {formatDay(picked)}.</p>}
-      </div>
-      <Field label="Time" hint="Optional" error={errors.at_time?.message}>
-        {(p) => <Input {...p} type="time" {...register("at_time")} />}
-      </Field>
-      <ChipGroup
-        label="Length"
-        options={[...LENGTHS.map(([l]) => l), "Custom"]}
-        value={lengthChip}
-        display={(o) => o}
-        onChange={(next) => {
-          const n = Array.isArray(next) ? (next[0] ?? "") : next;
-          if (n === "Custom") return setValue("lenCustom", true);
-          setValue("lenCustom", false);
-          setValue("duration_min", LENGTHS.find(([l]) => l === n)?.[1] ?? "");
-        }}
-      />
-      {lengthChip === "Custom" && (
-        <Field label="Length in minutes" error={errors.duration_min?.message}>
-          {(p) => <Input {...p} {...register("duration_min")} inputMode="numeric" placeholder="90" />}
+      <FormGroup icon={MapPin} title="The activity">
+        <Field label="Activity" error={errors.activity?.message}>
+          {(p) => <Input {...p} {...register("activity")} autoComplete="off" placeholder="e.g. Train Street coffee" />}
         </Field>
-      )}
-      <Controller
-        control={control}
-        name="type"
-        render={({ field }) => <ChipGroup label="Type" options={TYPES} value={field.value ?? ""} display={(o) => o} onChange={(v) => field.onChange(Array.isArray(v) ? (v[0] ?? "") : v)} />}
-      />
-      <Field label="City or area" error={errors.city?.message}>
-        {(p) => <Input {...p} {...register("city")} list="itin-cities" autoComplete="off" />}
-      </Field>
-      <datalist id="itin-cities">
-        {cities.map((c) => (
-          <option key={c} value={c} />
-        ))}
-      </datalist>
-      <Field label="Notes" error={errors.note?.message}>
-        {(p) => <Textarea {...p} {...register("note")} rows={2} />}
-      </Field>
-      <Field label="Website" hint="Optional" error={errors.website?.message}>
-        {(p) => <Input {...p} {...register("website")} type="url" inputMode="url" autoComplete="off" placeholder="https://" />}
-      </Field>
-      <Field label="Google Maps link" hint="Optional. Paste a share link from Google Maps." error={errors.mapsUrl?.message}>
-        {(p) => <Input {...p} {...register("mapsUrl")} type="url" inputMode="url" autoComplete="off" placeholder="https://maps.app.goo.gl/…" />}
-      </Field>
-      <div className="space-y-2">
-        <span className="block text-[13px] font-bold text-fg-muted">Photos</span>
-        <IdeaPhotos
-          idea={{ table: "itinerary_items", id: activityId, key: photoKey, name: activityName?.trim() || "this activity" }}
-          images={imagesBy.get(photoKey) ?? []}
-          urlOf={urlOf}
-          canEdit
-        />
-      </div>
-      {sheet.row && (
+        {!sheet.row && (
+          <div>
+            <button
+              type="button"
+              aria-expanded={picking}
+              onClick={() => setPicking((v) => !v)}
+              className="flex min-h-14 w-full items-center gap-3 rounded-2xl border-2 border-dashed border-line-strong px-3.5 text-left"
+            >
+              <Lightbulb className="size-5 shrink-0 text-fg-muted" strokeWidth={2.4} aria-hidden />
+              <span className="min-w-0 flex-1 font-bold">
+                Pick from your Places
+                <small className="block text-[13px] font-medium text-fg-muted">
+                  {source ? "Linked to a place on your board" : "Fills in the name, area and price"}
+                </small>
+              </span>
+              <ChevronRight className={cn("size-5 shrink-0 text-fg-muted transition-transform motion-reduce:transition-none", picking && "rotate-90")} aria-hidden />
+            </button>
+            {picking && (
+              <div className="mt-2 space-y-2 rounded-2xl bg-surface-2 p-2.5">
+                <Input aria-label="Search your places" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search your places" autoComplete="off" />
+                {matches.length === 0 ? (
+                  <p className="px-1.5 py-2 text-sm text-fg-muted">Nothing on your board matches.</p>
+                ) : (
+                  <ul>
+                    {matches.map((i) => (
+                      <li key={i.key}>
+                        <button type="button" onClick={() => pickIdea(i)} className="flex min-h-12 w-full items-center gap-2 rounded-xl px-2 text-left hover:bg-surface">
+                          <span className="min-w-0 flex-1 truncate font-bold">{i.name}</span>
+                          <span className="shrink-0 text-xs font-bold text-fg-muted">
+                            {KIND_LABEL[i.kind]}
+                            {i.decision === "draft" ? " · Draft" : ""}
+                          </span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+          </div>
+        )}
         <Controller
           control={control}
-          name="done"
-          render={({ field }) => <ToggleRow label="Done" hint="Counts toward “done” on Home" checked={field.value} onChange={field.onChange} />}
+          name="type"
+          render={({ field }) => <ChipGroup label="Type" options={TYPES} value={field.value ?? ""} display={(o) => o} onChange={(v) => field.onChange(Array.isArray(v) ? (v[0] ?? "") : v)} />}
         />
-      )}
+        <Field label="City or area" error={errors.city?.message}>
+          {(p) => <Input {...p} {...register("city")} list="itin-cities" autoComplete="off" />}
+        </Field>
+        <datalist id="itin-cities">
+          {cities.map((c) => (
+            <option key={c} value={c} />
+          ))}
+        </datalist>
+      </FormGroup>
+
+      <FormGroup icon={Clock} title="When">
+        <div className="space-y-2">
+          <span className="block text-[13px] font-bold text-fg-muted">Day</span>
+          <div role="group" aria-label="Day" className="-mx-5 -my-1 flex gap-2 overflow-x-auto px-5 py-1.5 [scrollbar-width:none]">
+            {dayList.map((d) => {
+              const date = dayDate(d);
+              const on = chosenDay(String(d));
+              return (
+                <button
+                  key={d}
+                  type="button"
+                  aria-pressed={on}
+                  onClick={() => setValue("day", String(d), { shouldDirty: true })}
+                  className={cn("min-h-14 shrink-0 rounded-2xl px-3.5 text-left transition-colors", on ? "bg-teal-tint text-teal ring-2 ring-teal" : "bg-surface-2 text-fg")}
+                >
+                  <b className="block text-[15px]">Day {d}</b>
+                  {date && <span className="block text-xs font-medium opacity-80">{formatDay(date)}</span>}
+                </button>
+              );
+            })}
+            <button
+              type="button"
+              aria-pressed={chosenDay("")}
+              onClick={() => setValue("day", "", { shouldDirty: true })}
+              className={cn("min-h-14 shrink-0 rounded-2xl px-3.5 text-left transition-colors", chosenDay("") ? "bg-teal-tint text-teal ring-2 ring-teal" : "bg-surface-2 text-fg")}
+            >
+              <b className="block text-[15px]">Later</b>
+              <span className="block text-xs font-medium opacity-80">No day yet</span>
+            </button>
+          </div>
+          {picked && <p className="text-sm text-fg-muted">The date follows from the trip start: {formatDay(picked)}.</p>}
+        </div>
+        <Field label="Time" hint="Optional" error={errors.at_time?.message}>
+          {(p) => <Input {...p} type="time" {...register("at_time")} />}
+        </Field>
+        <ChipGroup
+          label="Length"
+          options={[...LENGTHS.map(([l]) => l), "Custom"]}
+          value={lengthChip}
+          display={(o) => o}
+          onChange={(next) => {
+            const n = Array.isArray(next) ? (next[0] ?? "") : next;
+            if (n === "Custom") return setValue("lenCustom", true);
+            setValue("lenCustom", false);
+            setValue("duration_min", LENGTHS.find(([l]) => l === n)?.[1] ?? "");
+          }}
+        />
+        {lengthChip === "Custom" && (
+          <Field label="Length in minutes" error={errors.duration_min?.message}>
+            {(p) => <Input {...p} {...register("duration_min")} inputMode="numeric" placeholder="90" />}
+          </Field>
+        )}
+      </FormGroup>
+
+      <FormGroup icon={Link2} title="Links and photos">
+        <Field label="Website" hint="Optional" error={errors.website?.message}>
+          {(p) => <Input {...p} {...register("website")} type="url" inputMode="url" autoComplete="off" placeholder="https://" />}
+        </Field>
+        <Field label="Google Maps link" hint="Optional. Paste a share link from Google Maps." error={errors.mapsUrl?.message}>
+          {(p) => <Input {...p} {...register("mapsUrl")} type="url" inputMode="url" autoComplete="off" placeholder="https://maps.app.goo.gl/…" />}
+        </Field>
+        <div className="space-y-2">
+          <IdeaPhotos
+            idea={{ table: "itinerary_items", id: activityId, key: photoKey, name: activityName?.trim() || "this activity" }}
+            images={imagesBy.get(photoKey) ?? []}
+            urlOf={urlOf}
+            canEdit
+          />
+        </div>
+      </FormGroup>
+
+      <FormGroup icon={NotebookText} title="Notes">
+        <Field label="Notes" error={errors.note?.message}>
+          {(p) => <Textarea {...p} {...register("note")} rows={2} />}
+        </Field>
+        {sheet.row && (
+          <Controller
+            control={control}
+            name="done"
+            render={({ field }) => <ToggleRow label="Done" hint="Counts toward “done” on Home" checked={field.value} onChange={field.onChange} />}
+          />
+        )}
+      </FormGroup>
     </RowSheet>
   );
 }

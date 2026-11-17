@@ -36,6 +36,7 @@ function seededData(): ExportData {
   data.trip = {
     id: "t",
     join_token: "x",
+    timezone: "Asia/Manila",
     archived_at: null,
     created_at: now,
     owner_id: null,

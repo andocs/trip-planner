@@ -25,6 +25,8 @@ import {
   requiredText,
   str,
 } from "@/lib/schemas";
+import { isValidTimezone, zoneOrDefault } from "@/lib/timezones";
+import { TimezoneSelect } from "@/components/ui/timezone-select";
 import { errorMessage } from "@/lib/utils";
 
 const TripSchema = z
@@ -38,6 +40,7 @@ const TripSchema = z
     rate: requiredNumber("Exchange rate", { gt: 0 }),
     budget: optionalNumber({ min: 0 }).transform((v) => v ?? 0),
     map_region: mapRegion,
+    timezone: z.string().refine(isValidTimezone, "Pick a time zone from the list"),
     rate_date: optionalDate,
   })
   .refine((v) => !v.start_date || !v.end_date || v.end_date >= v.start_date, {
@@ -58,6 +61,7 @@ const toForm = (t: Trip): FormIn => ({
   rate: str(t.rate),
   budget: str(t.budget),
   map_region: t.map_region,
+  timezone: zoneOrDefault(t.timezone),
   rate_date: str(t.rate_date),
 });
 
@@ -211,6 +215,9 @@ export function TripForm() {
           hint="A country code (VN, JP, PH), a region from the list, or world."
         >
           {(p) => <Input {...p} {...register("map_region")} list="regions" autoComplete="off" />}
+        </Field>
+        <Field label="Home time zone" error={errors.timezone?.message} hint="Where you live. Flights start with this zone, and flight times are worked out from it.">
+          {(p) => <TimezoneSelect {...p} {...register("timezone")} home={zoneOrDefault(trip.timezone)} current={trip.timezone} />}
         </Field>
         <datalist id="regions">
           {MAP_REGIONS.map((r) => (

@@ -5,8 +5,9 @@ import { LogExpenseRow } from "@/components/plan/log-expense";
 import { useCanEdit, useTrip } from "@/components/trip-gate";
 import { Board } from "@/components/ui/board";
 import { StatusBadge, StatusChip } from "@/components/ui/status-chip";
-import { arrivalDayOffset, formatDuration, isIdeaStatus, MASKED_REF } from "@/lib/flights";
+import { arrivalDayOffset, flightMinutes, formatDuration, isIdeaStatus, MASKED_REF } from "@/lib/flights";
 import { formatDay, formatMoney, formatTime } from "@/lib/format";
+import { gmtLabel, zoneCity } from "@/lib/timezones";
 import type { Status } from "@/lib/constants";
 import type { Row } from "@/lib/queries/table";
 import { cn } from "@/lib/utils";
@@ -59,6 +60,15 @@ function Fact({ label, value }: { label: string; value: string | null }) {
  * gate / seat, and a tear-off stub with the booking reference, the fare and "Log as expense". Phone: stacked. Desktop:
  * side by side. The booking reference is for the owner only; viewers see it hidden and the database never sends it.
  */
+/** "Manila · GMT+8" under a time: which clock that time is read on. */
+function ZoneLine({ zone, at }: { zone: string; at: string | null }) {
+  return (
+    <span className="mt-0.5 block text-xs font-bold text-fg-muted">
+      {zoneCity(zone)} · {gmtLabel(zone, at)}
+    </span>
+  );
+}
+
 export function BoardingPass({
   flight: f,
   bookingRef,
@@ -75,6 +85,7 @@ export function BoardingPass({
   const canEdit = useCanEdit();
   const idea = isIdeaStatus(f.status);
   const cancelled = f.status === "Cancelled";
+  const minutes = flightMinutes(f);
   const dep = time(f.departs_at);
   const arr = time(f.arrives_at);
   const plusDays = arrivalDayOffset(f.departs_at, f.arrives_at);
@@ -115,12 +126,13 @@ export function BoardingPass({
           >
             {dep || "–:–"}
           </span>
+          {f.dep_tz && <ZoneLine zone={f.dep_tz} at={f.departs_at} />}
         </span>
         <span
           className="flex min-w-0 flex-col items-center gap-1 text-xs font-bold text-fg-muted"
-          aria-hidden={!f.duration_min}
+          aria-hidden={!minutes}
         >
-          <span>{formatDuration(f.duration_min)}</span>
+          <span>{formatDuration(minutes)}</span>
           <span className="flex w-full items-center gap-1.5 text-ink">
             <i className="h-0 flex-1 border-t-2 border-dashed border-line-strong" />
             <Plane className="size-5 shrink-0" strokeWidth={2.2} aria-hidden />
@@ -146,6 +158,7 @@ export function BoardingPass({
             {arr || "–:–"}
             {plusDays > 0 && <sup className="ml-0.5 text-[11px] font-bold text-fg-muted">+{plusDays}</sup>}
           </span>
+          {f.arr_tz && <ZoneLine zone={f.arr_tz} at={f.arrives_at} />}
         </span>
       </span>
       {f.departs_at && (

@@ -129,3 +129,25 @@ export function gmtLabel(zone: string, atLocal?: string | null): string {
 export function zoneCity(id: string): string {
   return ZONES.find((z) => z.id === id)?.city ?? id.split("/").pop()!.replace(/_/g, " ");
 }
+
+/** Zones of common airports, to suggest a zone when a code is typed. A suggestion only: the owner can always change it. */
+const AIRPORT_ZONE: Record<string, string> = {
+  MNL: "Asia/Manila", CEB: "Asia/Manila", CRK: "Asia/Manila", DVO: "Asia/Manila", ILO: "Asia/Manila", KLO: "Asia/Manila",
+  SIN: "Asia/Singapore", HKG: "Asia/Hong_Kong", TPE: "Asia/Taipei", TSA: "Asia/Taipei",
+  NRT: "Asia/Tokyo", HND: "Asia/Tokyo", KIX: "Asia/Tokyo", ITM: "Asia/Tokyo", NGO: "Asia/Tokyo", FUK: "Asia/Tokyo", CTS: "Asia/Tokyo", OKA: "Asia/Tokyo",
+  ICN: "Asia/Seoul", GMP: "Asia/Seoul", PUS: "Asia/Seoul", PVG: "Asia/Shanghai", PEK: "Asia/Shanghai", CAN: "Asia/Shanghai",
+  HAN: "Asia/Ho_Chi_Minh", SGN: "Asia/Ho_Chi_Minh", DAD: "Asia/Ho_Chi_Minh", PQC: "Asia/Ho_Chi_Minh", CXR: "Asia/Ho_Chi_Minh",
+  BKK: "Asia/Bangkok", DMK: "Asia/Bangkok", HKT: "Asia/Bangkok", CNX: "Asia/Bangkok",
+  CGK: "Asia/Jakarta", DPS: "Asia/Makassar", KUL: "Asia/Kuala_Lumpur", DEL: "Asia/Kolkata", BOM: "Asia/Kolkata", DAC: "Asia/Dhaka",
+  DXB: "Asia/Dubai", AUH: "Asia/Dubai", DOH: "Asia/Qatar", IST: "Europe/Istanbul",
+  LHR: "Europe/London", LGW: "Europe/London", CDG: "Europe/Paris", AMS: "Europe/Amsterdam", FRA: "Europe/Berlin", MUC: "Europe/Berlin",
+  ZRH: "Europe/Zurich", FCO: "Europe/Rome", MAD: "Europe/Madrid", ATH: "Europe/Athens", KEF: "Atlantic/Reykjavik",
+  CAI: "Africa/Cairo", JNB: "Africa/Johannesburg", NBO: "Africa/Nairobi",
+  SYD: "Australia/Sydney", MEL: "Australia/Sydney", PER: "Australia/Perth", AKL: "Pacific/Auckland",
+  HNL: "Pacific/Honolulu", LAX: "America/Los_Angeles", SFO: "America/Los_Angeles", SEA: "America/Los_Angeles", DEN: "America/Denver",
+  ORD: "America/Chicago", JFK: "America/New_York", EWR: "America/New_York", YVR: "America/Vancouver", YYZ: "America/Toronto",
+  MEX: "America/Mexico_City", BOG: "America/Bogota", LIM: "America/Lima", GRU: "America/Sao_Paulo", EZE: "America/Argentina/Buenos_Aires",
+};
+
+/** The zone of an airport code ("kix" gives "Asia/Tokyo"), or null when the code isn't one we know. */
+export const zoneForAirport = (code: string | null | undefined): string | null => AIRPORT_ZONE[(code ?? "").trim().toUpperCase()] ?? null;

@@ -78,6 +78,7 @@ test("owner: an activity takes a website and a Google Maps link, saved with it, 
 
   // Edit: the saved links are there, and changing one is saved without losing the other.
   await page.getByRole("button", { name: "Open Umeda Sky Building" }).click();
+  await page.getByRole("dialog", { name: "Umeda Sky Building" }).getByRole("button", { name: "Edit details" }).click();
   const edit = page.getByRole("dialog", { name: "Edit activity" });
   await expect(edit.getByLabel("Website")).toHaveValue("https://example.com/umeda");
   await expect(edit.getByLabel("Google Maps link")).toHaveValue("https://maps.app.goo.gl/umeda");
@@ -111,6 +112,7 @@ test("Find photo inside Edit activity keeps the activity sheet open", async ({ p
   await fake.install(page);
   await page.goto("/itinerary");
   await page.getByRole("button", { name: "Open Osaka Castle" }).click();
+  await page.getByRole("dialog", { name: "Osaka Castle" }).getByRole("button", { name: "Edit details" }).click();
   const edit = page.getByRole("dialog", { name: "Edit activity" });
   await edit.getByRole("button", { name: "Add a photo" }).click();
   const add = page.getByRole("dialog", { name: "Add a photo" });
@@ -133,4 +135,103 @@ test("times read as 1:00 PM, activity pills show a range under the name, day hea
   const pills = page.getByRole("group", { name: "Activities on day 1" });
   await expect(pills.getByRole("button", { name: /Osaka Castle/ })).toContainText("9:00 AM - 10:00 AM");
   await expect(pills.getByRole("button", { name: /Dotonbori dinner/ })).toContainText("6:30 PM - 7:30 PM");
+});
+
+test("flight time zones: suggested from the airport codes, saved, and the flight time is worked out from them", async ({ page }) => {
+  const fake = createFakeSupabase({ withSeed: true });
+  await fake.install(page);
+  await page.goto("/flights");
+  await page.getByRole("button", { name: /^MNL to HAN.*Edit$/ }).click();
+  const sheet = page.getByRole("dialog", { name: "Edit flight" });
+  // Manila to Hanoi: the zones come from the codes. Manila is 1 hour ahead, so 22:20 -> 00:45 is 3h 25m in the air.
+  const zones = sheet.getByLabel("Time zone");
+  await expect(zones.nth(0)).toHaveValue("Asia/Manila");
+  await expect(zones.nth(1)).toHaveValue("Asia/Ho_Chi_Minh");
+  await expect(sheet.getByRole("status")).toContainText("Flight time 3h 25m");
+  await sheet.getByRole("button", { name: "Save" }).click();
+  await expect.poll(() => fake.tables.get("flights")?.find((f) => f.from_code === "MNL")?.arr_tz).toBe("Asia/Ho_Chi_Minh");
+  const flight = fake.tables.get("flights")!.find((f) => f.from_code === "MNL")!;
+  expect(flight).toMatchObject({ dep_tz: "Asia/Manila", duration_min: null });
+  const pass = page.getByRole("article", { name: /^MNL to HAN/ });
+  await expect(pass).toContainText("3h 25m");
+  await expect(pass).toContainText("GMT+8");
+  await expect(pass).toContainText("GMT+7");
+});
+
+test("a flight saved without zones shows no calculated time", async ({ page }) => {
+  const fake = createFakeSupabase({ withSeed: true });
+  await fake.install(page);
+  await page.goto("/flights");
+  await expect(page.getByRole("article", { name: /^MNL to HAN/ })).not.toContainText("3h 25m");
+});
+
+test("owner: the trip's home time zone is set in Settings", async ({ page }) => {
+  const fake = createFakeSupabase({ withSeed: true });
+  await fake.install(page);
+  await page.goto("/settings");
+  const zone = page.getByLabel("Home time zone");
+  await expect(zone).toHaveValue("Asia/Manila");
+  await zone.selectOption("Asia/Tokyo");
+  await page.getByRole("button", { name: /^Save/ }).first().click();
+  await expect.poll(() => fake.trip.timezone).toBe("Asia/Tokyo");
+});
+
+test("owner: a stay takes the same grouped form, with website and Google Maps link", async ({ page }) => {
+  const fake = createFakeSupabase({ withSeed: true });
+  await fake.install(page);
+  await page.goto("/stays");
+  await page.getByRole("button", { name: "Add", exact: true }).click();
+  const sheet = page.getByRole("dialog", { name: "Add stay" });
+  await expect(sheet.getByRole("heading", { name: "The stay" })).toBeVisible();
+  await expect(sheet.getByRole("heading", { name: "Dates and booking" })).toBeVisible();
+  await sheet.getByLabel("Name").fill("Namba Guesthouse");
+  await sheet.getByLabel("Website").fill("https://example.com/namba");
+  await sheet.getByLabel("Google Maps link").fill("https://maps.app.goo.gl/namba");
+  await sheet.getByRole("button", { name: "Add", exact: true }).click();
+  await expect.poll(() => fake.tables.get("stays")?.find((s) => s.hotel === "Namba Guesthouse")).toBeTruthy();
+  expect(fake.tables.get("stays")!.find((s) => s.hotel === "Namba Guesthouse")!.details).toMatchObject({ website: "https://example.com/namba", mapsUrl: "https://maps.app.goo.gl/namba" });
+});
+
+test("the activity view has the idea-sheet layout: facts, actions for the owner, Mark complete works from it", async ({ page }) => {
+  const fake = createFakeSupabase({ withSeed: true });
+  plan(fake, { website: "https://example.com/castle" });
+  await fake.install(page);
+  await page.goto("/itinerary");
+  await page.getByRole("button", { name: "Open Osaka Castle" }).click();
+  const view = page.getByRole("dialog", { name: "Osaka Castle" });
+  await expect(view.getByRole("heading", { name: "Details" })).toBeVisible();
+  await expect(view.getByRole("link", { name: /Website/ })).toBeVisible();
+  await expect(view.getByText("9:00 AM - 10:00 AM")).toBeVisible();
+  await view.getByRole("button", { name: "Mark complete" }).click();
+  await expect.poll(() => fake.tables.get("itinerary_items")!.find((i) => i.activity === "Osaka Castle")?.done).toBe(true);
+});
+
+test("a viewer's activity view has no actions", async ({ page }) => {
+  const fake = createFakeSupabase({ withSeed: true, role: "viewer" });
+  plan(fake);
+  await fake.install(page);
+  await page.goto("/itinerary");
+  await page.getByRole("button", { name: "Open Osaka Castle" }).click();
+  const view = page.getByRole("dialog", { name: "Osaka Castle" });
+  await expect(view).toBeVisible();
+  await expect(view.getByRole("button", { name: "Edit details" })).toHaveCount(0);
+  await expect(view.getByRole("button", { name: "Remove" })).toHaveCount(0);
+});
+
+test("the map card has a photo area, day and facts, and View details opens the view; reducing the map closes it", async ({ page }) => {
+  const fake = createFakeSupabase({ withSeed: true });
+  plan(fake);
+  await fake.install(page);
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto("/itinerary");
+  await page.getByRole("group", { name: "Show days" }).getByRole("button", { name: "Day 1", exact: true }).click();
+  await page.getByRole("group", { name: "Activities on day 1" }).getByRole("button", { name: /Osaka Castle/ }).click();
+  const card = page.getByRole("complementary", { name: /Osaka Castle, selected stop/ });
+  await expect(card).toContainText("Day 1 · Tue 16 Jun");
+  await expect(card).toContainText("9:00 AM - 10:00 AM");
+  await card.getByRole("button", { name: "View details" }).click();
+  await expect(page.getByRole("dialog", { name: "Osaka Castle" })).toBeVisible();
+  await page.getByRole("dialog", { name: "Osaka Castle" }).getByRole("button", { name: "Close" }).click();
+  await page.getByRole("button", { name: "Reduce map" }).click();
+  await expect(card).toHaveCount(0);
 });
