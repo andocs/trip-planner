@@ -17,6 +17,8 @@ type SheetProps = {
   className?: string;
   /** From 768px up, slide in from the right edge as a full-height panel instead of a centred dialog. Phones are unchanged. */
   side?: boolean;
+  /** Something small in the header beside Close, e.g. a "more" menu. */
+  headerExtra?: ReactNode;
 };
 
 /**
@@ -44,7 +46,7 @@ function Body({ children, footer }: Pick<SheetProps, "children" | "footer">) {
 const closeClass =
   "-mr-2 grid size-11 shrink-0 place-items-center rounded-full text-fg-muted hover:bg-surface-2 hover:text-fg";
 
-function BottomSheet({ open, onOpenChange, title, description, children, footer, className }: SheetProps) {
+function BottomSheet({ open, onOpenChange, title, description, children, footer, className, headerExtra }: SheetProps) {
   return (
     <Drawer.Root open={open} onOpenChange={onOpenChange} repositionInputs={false}>
       <Drawer.Portal>
@@ -65,10 +67,13 @@ function BottomSheet({ open, onOpenChange, title, description, children, footer,
                 <Drawer.Description className="sr-only">{title}</Drawer.Description>
               )}
             </div>
-            <Drawer.Close className={closeClass}>
-              <X className="size-5" aria-hidden />
-              <span className="sr-only">Close</span>
-            </Drawer.Close>
+            <div className="flex items-center">
+              {headerExtra}
+              <Drawer.Close className={closeClass}>
+                <X className="size-5" aria-hidden />
+                <span className="sr-only">Close</span>
+              </Drawer.Close>
+            </div>
           </div>
           <Body footer={footer}>{children}</Body>
         </Drawer.Content>
@@ -77,7 +82,7 @@ function BottomSheet({ open, onOpenChange, title, description, children, footer,
   );
 }
 
-function CenteredDialog({ open, onOpenChange, title, description, children, footer, className, side }: SheetProps) {
+function CenteredDialog({ open, onOpenChange, title, description, children, footer, className, side, headerExtra }: SheetProps) {
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
@@ -100,10 +105,13 @@ function CenteredDialog({ open, onOpenChange, title, description, children, foot
                 <Dialog.Description className="sr-only">{title}</Dialog.Description>
               )}
             </div>
-            <Dialog.Close className={closeClass}>
-              <X className="size-5" aria-hidden />
-              <span className="sr-only">Close</span>
-            </Dialog.Close>
+            <div className="flex items-center">
+              {headerExtra}
+              <Dialog.Close className={closeClass}>
+                <X className="size-5" aria-hidden />
+                <span className="sr-only">Close</span>
+              </Dialog.Close>
+            </div>
           </div>
           <Body footer={footer}>{children}</Body>
         </Dialog.Content>

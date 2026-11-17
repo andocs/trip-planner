@@ -141,14 +141,14 @@ export function StopCard({
         </div>
         <div
           className={cn(
-            "relative mt-3 grid items-center gap-3 rounded-[22px] bg-surface p-2.5 shadow-card",
+            "press-card relative mt-3 grid items-center gap-3 rounded-[22px] bg-surface p-2.5 shadow-card",
             compact ? "grid-cols-[64px_1fr]" : "grid-cols-[112px_1fr] lg:grid-cols-[12rem_1fr] lg:p-3",
             item.tentative && "border-2 border-dashed border-line-strong bg-transparent shadow-none",
           )}
         >
           {/* The whole card opens it: an editor gets the form, a viewer the read-only view. Not while dragging, where the handle shows. */}
           {!handle && (
-            <button type="button" onClick={onOpen} aria-label={`Open ${item.activity}`} className="absolute inset-0 rounded-[22px] focus-visible:outline-3 focus-visible:outline-[var(--focus)]" />
+            <button type="button" data-card-open onClick={onOpen} aria-label={`Open ${item.activity}`} className="absolute inset-0 rounded-[22px] focus-visible:outline-3 focus-visible:outline-[var(--focus)]" />
           )}
           <div className="absolute top-1 right-1 z-[1]">{handle ?? (canEdit ? <CardMenu item={item} onEdit={onEdit} onDone={onDone} onRemove={onRemove} /> : null)}</div>
           <Thumb item={item} idea={idea} images={images} urlOf={urlOf} small={compact} />

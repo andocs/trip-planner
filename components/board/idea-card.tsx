@@ -183,14 +183,15 @@ export function IdeaCard({
   return (
     <article
       aria-label={idea.name}
-      className="flex h-full flex-col overflow-hidden rounded-[20px] bg-surface shadow-card"
+      className="press-card flex h-full flex-col overflow-hidden rounded-[20px] bg-surface shadow-card"
     >
-      <button type="button" onClick={onOpen} className="block text-left" aria-label={`Open ${idea.name}`}>
+      <button type="button" data-card-open onClick={onOpen} className="block text-left" aria-label={`Open ${idea.name}`}>
         <Hero idea={idea} images={images} urlOf={urlOf} className={cn(dropped && "opacity-80")} />
       </button>
       <div className="flex flex-1 flex-col gap-2.5 p-4 pt-3.5">
         <button
           type="button"
+          data-card-open
           onClick={onOpen}
           className={cn("flex flex-col gap-2.5 text-left", dropped && "opacity-80")}
         >

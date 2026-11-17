@@ -580,3 +580,23 @@
     }
   }
 }
+
+/* A card that opens when pressed moves as ONE piece: the whole card dips, not just the photo or the details inside it.
+   The open buttons are marked data-card-open; the card (.press-card) reacts when any of them is pressed. */
+.press-card {
+  transition: transform 150ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.press-card:has([data-card-open]:active) {
+  transform: scale(0.985);
+}
+button[data-card-open]:not(:disabled):active {
+  transform: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .press-card {
+    transition: none;
+  }
+  .press-card:has([data-card-open]:active) {
+    transform: none;
+  }
+}

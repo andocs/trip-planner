@@ -5,13 +5,19 @@ import {
   Check,
   CircleHelp,
   CircleOff,
+  EllipsisVertical,
   ExternalLink,
-  MapPin,
+  ListTree,
+  MessageCircle,
   Pencil,
   SendHorizontal,
   Trash2,
+  Undo2,
   X,
 } from "lucide-react";
+import { DropdownMenu } from "radix-ui";
+import { FormGroup } from "@/components/ui/form-group";
+import { cn } from "@/lib/utils";
 import { useState } from "react";
 import { useCanEdit, useRole, useTrip } from "@/components/trip-gate";
 import { Avatar } from "@/components/ui/avatar";
@@ -98,13 +104,51 @@ export function IdeaSheet({
     if (addComment(idea, text)) setText("");
   };
 
+  const statusLabel = idea.decision === "draft" ? "Draft" : idea.decision === "confirmed" ? "Confirmed" : "Dropped";
+  const menuRow = "flex min-h-11 cursor-pointer items-center gap-2.5 rounded-xl px-3 text-sm font-semibold outline-none data-[highlighted]:bg-surface-2";
+
   return (
     <Sheet
       open
       onOpenChange={(o) => !o && onClose()}
       title={idea.name}
-      description={`${KIND_LABEL[idea.kind]} · ${idea.decision === "draft" ? "Draft" : idea.decision === "confirmed" ? "Confirmed" : "Dropped"}${idea.dealBreaker ? " · Must-do" : ""}`}
+      description={[KIND_LABEL[idea.kind], idea.city, idea.dealBreaker ? "Must-do" : null].filter(Boolean).join(" · ")}
       className="md:top-0 md:right-0 md:left-auto md:h-dvh md:max-h-none md:w-[27.5rem] md:translate-x-0 md:translate-y-0 md:rounded-l-3xl md:rounded-r-none"
+      headerExtra={
+        canEdit ? (
+          <DropdownMenu.Root>
+            <DropdownMenu.Trigger aria-label="More actions" className="grid size-11 place-items-center rounded-full text-fg-muted hover:bg-surface-2 hover:text-fg">
+              <EllipsisVertical className="size-5" aria-hidden />
+            </DropdownMenu.Trigger>
+            <DropdownMenu.Portal>
+              <DropdownMenu.Content align="end" sideOffset={4} className="z-[60] min-w-52 rounded-2xl border border-border bg-surface p-1.5 shadow-card">
+                <DropdownMenu.Item onSelect={onEdit} className={menuRow}>
+                  <Pencil className="size-4 text-fg-muted" aria-hidden />
+                  Edit details
+                </DropdownMenu.Item>
+                {idea.decision === "confirmed" && (
+                  <DropdownMenu.Item onSelect={() => onDecision("draft")} className={menuRow}>
+                    <Undo2 className="size-4 text-fg-muted" aria-hidden />
+                    Back to drafts
+                  </DropdownMenu.Item>
+                )}
+                {idea.decision === "draft" && (
+                  <DropdownMenu.Item onSelect={() => onDecision("dropped")} className={cn(menuRow, "text-danger")}>
+                    <CircleOff className="size-4" aria-hidden />
+                    Drop
+                  </DropdownMenu.Item>
+                )}
+                {idea.decision === "dropped" && onDelete && (
+                  <DropdownMenu.Item onSelect={onDelete} className={cn(menuRow, "text-danger")}>
+                    <Trash2 className="size-4" aria-hidden />
+                    Delete for good
+                  </DropdownMenu.Item>
+                )}
+              </DropdownMenu.Content>
+            </DropdownMenu.Portal>
+          </DropdownMenu.Root>
+        ) : undefined
+      }
       footer={
         <form
           className="flex items-center gap-2"
@@ -132,49 +176,17 @@ export function IdeaSheet({
       }
     >
       <div className="space-y-5 pt-1">
-        {images.length > 0 || canEdit ? (
-          <IdeaPhotos idea={idea} images={images} urlOf={urlOf} canEdit={canEdit} />
-        ) : (
-          <Hero idea={idea} images={images} urlOf={urlOf} className="rounded-[18px]" />
-        )}
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-fg-muted">
-          <PriceTag idea={idea} currency={trip.home_currency} />
-          {idea.city && (
-            <span className="inline-flex items-center gap-1">
-              <MapPin className="size-[15px]" strokeWidth={2.4} aria-hidden />
-              {idea.city}
-            </span>
-          )}
-          {idea.note && /^https?:\/\//.test(idea.note) && (
-            <a
-              href={idea.note}
-              target="_blank"
-              rel="noopener noreferrer nofollow"
-              className="inline-flex min-h-11 items-center gap-1 font-bold text-teal"
-            >
-              <ExternalLink className="size-[15px]" strokeWidth={2.4} aria-hidden />
-              Link
-            </a>
-          )}
-        </div>
-        {idea.note && !/^https?:\/\//.test(idea.note) && <p className="-mt-2 text-[15px]">{idea.note}</p>}
-        {place && (
-          <a
-            href={mapsLinkFor(place.place_id)}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="-mt-2 inline-flex min-h-11 items-center gap-2 font-bold text-teal"
+        <div className="flex flex-wrap items-center gap-2">
+          <span
+            className={cn(
+              "inline-flex min-h-7 items-center rounded-full px-2.5 text-xs font-extrabold",
+              idea.decision === "confirmed" ? "bg-teal-tint text-teal" : idea.decision === "dropped" ? "bg-danger-tint text-danger" : "bg-warn-tint text-warn-text",
+            )}
           >
-            <ExternalLink className="size-[18px]" strokeWidth={2.4} aria-hidden />
-            Open in Google Maps
-          </a>
-        )}
-
-        <PlaceLinks website={links.website} mapsUrl={links.mapsUrl} className="-mt-2 flex flex-wrap gap-x-5" />
-
-        {canEdit && (
-          <section aria-label="Actions" className="-mt-1 space-y-2">
-            <div className="flex flex-wrap gap-2">
+            {statusLabel}
+          </span>
+          {canEdit && (
+            <>
               {idea.decision === "draft" && (
                 <Button size="sm" aria-label={`Confirm this ${KIND_LABEL[idea.kind].toLowerCase()}`} onClick={() => onDecision("confirmed")}>
                   <Check className="size-[18px]" strokeWidth={2.8} aria-hidden />
@@ -182,20 +194,13 @@ export function IdeaSheet({
                 </Button>
               )}
               {idea.decision === "dropped" ? (
-                <>
-                  <Button size="sm" variant="outline" onClick={() => onDecision("draft")}>
-                    Restore to drafts
-                  </Button>
-                  {onDelete && (
-                    <Button size="icon" variant="danger" aria-label="Delete for good" title="Delete for good" onClick={onDelete}>
-                      <Trash2 className="size-[18px]" aria-hidden />
-                    </Button>
-                  )}
-                </>
+                <Button size="sm" variant="outline" onClick={() => onDecision("draft")}>
+                  Restore to drafts
+                </Button>
               ) : inItinerary ? (
                 <Button size="sm" variant="secondary" aria-label={`Already in the itinerary (${inItinerary}). Add again`} title={`Already in the itinerary: ${inItinerary}`} className="text-teal" onClick={onAddStop}>
                   <Check className="size-[18px]" strokeWidth={2.8} aria-hidden />
-                  In itinerary
+                  In itinerary · {inItinerary}
                 </Button>
               ) : (
                 <Button size="sm" variant="outline" onClick={onAddStop}>
@@ -203,113 +208,129 @@ export function IdeaSheet({
                   Add to itinerary
                 </Button>
               )}
-              <Button size="icon" variant="secondary" aria-label="Edit details" title="Edit details" onClick={onEdit}>
-                <Pencil className="size-[18px]" aria-hidden />
-              </Button>
-              {idea.decision === "confirmed" && (
-                <Button size="sm" variant="ghost" onClick={() => onDecision("draft")}>
-                  Back to drafts
-                </Button>
-              )}
-              {idea.decision === "draft" && (
-                <Button size="icon" variant="danger" aria-label="Drop" title="Drop" onClick={() => onDecision("dropped")}>
-                  <CircleOff className="size-[18px]" aria-hidden />
-                </Button>
-              )}
+            </>
+          )}
+        </div>
+
+        <FormGroup>
+          {images.length > 0 || canEdit ? (
+            <IdeaPhotos idea={idea} images={images} urlOf={urlOf} canEdit={canEdit} />
+          ) : (
+            <Hero idea={idea} images={images} urlOf={urlOf} className="rounded-[18px]" />
+          )}
+          <div className="grid grid-cols-2 gap-2.5">
+            <div className="rounded-2xl bg-surface-2 px-3.5 py-3">
+              <small className="block text-xs font-bold text-fg-muted">Price</small>
+              <b className="block text-[17px] leading-tight">
+                <PriceTag idea={idea} currency={trip.home_currency} />
+              </b>
             </div>
-            {inItinerary && <p className="text-[13px] text-fg-muted">Already in the itinerary: {inItinerary}.</p>}
-            {idea.decision === "draft" && (
-              <p className="text-[13px] text-fg-muted">
-                Confirming keeps it in the plan and lets it count toward the budget and exports.
-              </p>
+            <div className="rounded-2xl bg-surface-2 px-3.5 py-3">
+              <small className="block text-xs font-bold text-fg-muted">Votes</small>
+              <b className="block text-[17px] leading-tight">
+                {t.total === 0 ? "None yet" : `${t.in} in · ${t.maybe} maybe`}
+              </b>
+            </div>
+          </div>
+        </FormGroup>
+
+        <FormGroup icon={ListTree} title="Details">
+          {idea.note && /^https?:\/\//.test(idea.note) && (
+            <a href={idea.note} target="_blank" rel="noopener noreferrer nofollow" className="inline-flex min-h-11 items-center gap-1 font-bold text-teal">
+              <ExternalLink className="size-[15px]" strokeWidth={2.4} aria-hidden />
+              Link
+            </a>
+          )}
+          {idea.note && !/^https?:\/\//.test(idea.note) && <p className="text-[15px]">{idea.note}</p>}
+          <DetailsList idea={idea} />
+          <div className="flex flex-wrap gap-x-5">
+            <PlaceLinks website={links.website} mapsUrl={links.mapsUrl} className="contents" />
+            {place && (
+              <a href={mapsLinkFor(place.place_id)} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center gap-2 font-bold text-teal">
+                <ExternalLink className="size-[18px]" strokeWidth={2.4} aria-hidden />
+                Open in Google Maps
+              </a>
+            )}
+          </div>
+          {idea.kind === "food" && <MenuSection restaurant={idea.name} />}
+          {idea.decision === "draft" && canEdit && (
+            <p className="text-[13px] text-fg-muted">Confirming keeps it in the plan and lets it count toward the budget and exports.</p>
+          )}
+        </FormGroup>
+
+        <FormGroup icon={MessageCircle} title="Discussion">
+          {!decided && (
+            <section aria-label="Your vote" className="space-y-2">
+              <h4 className="flex items-center gap-2 text-sm font-bold">
+                Your vote
+                {idea.dealBreaker && <MustFlag />}
+              </h4>
+              <VoteButtons value={myVote} onVote={onVote} label="Your vote" />
+            </section>
+          )}
+
+          <section aria-label="Votes" className="space-y-2">
+            <h4 className="flex items-baseline justify-between text-sm font-bold">
+              Votes
+              <span className="text-[13px] font-medium text-fg-muted">
+                {t.in} in · {t.maybe} maybe · {t.pass} pass
+              </span>
+            </h4>
+            {voters.length === 0 ? (
+              <p className="text-sm text-fg-muted">No votes yet.</p>
+            ) : (
+              <ul className="flex flex-wrap gap-2">
+                {voters.map((v) => {
+                  const Icon = VOTE_ICON[v.value as VoteValue] ?? Check;
+                  const name = people.name(v.user_id);
+                  return (
+                    <li key={v.id} className="inline-flex min-h-9 items-center gap-2 rounded-full bg-surface-2 py-1 pr-3 pl-1 text-sm font-bold">
+                      <Avatar name={name} className="size-7 text-[11px]" />
+                      {name}
+                      <Icon className={`size-4 ${VOTE_COLOR[v.value as VoteValue] ?? ""}`} strokeWidth={3} aria-label={v.value} />
+                    </li>
+                  );
+                })}
+              </ul>
             )}
           </section>
-        )}
 
-        <DetailsList idea={idea} />
-
-        {idea.kind === "food" && <MenuSection restaurant={idea.name} />}
-
-        {!decided && (
-          <section aria-label="Your vote" className="space-y-2">
-            <h3 className="flex items-center gap-2 font-display text-[17px] font-extrabold">
-              Your vote
-              {idea.dealBreaker && <MustFlag />}
-            </h3>
-            <VoteButtons value={myVote} onVote={onVote} label="Your vote" />
-          </section>
-        )}
-
-        <section aria-label="Votes" className="space-y-2">
-          <h3 className="flex items-baseline justify-between font-display text-[17px] font-extrabold">
-            Votes
-            <span className="font-sans text-[13px] font-medium text-fg-muted">
-              {t.in} in · {t.maybe} maybe · {t.pass} pass
-            </span>
-          </h3>
-          {voters.length === 0 ? (
-            <p className="text-sm text-fg-muted">No votes yet.</p>
-          ) : (
-            <ul className="flex flex-wrap gap-2">
-              {voters.map((v) => {
-                const Icon = VOTE_ICON[v.value as VoteValue] ?? Check;
-                const name = people.name(v.user_id);
-                return (
-                  <li
-                    key={v.id}
-                    className="inline-flex min-h-9 items-center gap-2 rounded-full bg-surface-2 py-1 pr-3 pl-1 text-sm font-bold"
-                  >
-                    <Avatar name={name} className="size-7 text-[11px]" />
-                    {name}
-                    <Icon
-                      className={`size-4 ${VOTE_COLOR[v.value as VoteValue] ?? ""}`}
-                      strokeWidth={3}
-                      aria-label={v.value}
-                    />
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </section>
-
-        <section aria-label="Comments" className="space-y-3 pb-2">
-          <h3 className="flex items-baseline justify-between font-display text-[17px] font-extrabold">
-            Comments
-            <span className="font-sans text-[13px] font-medium text-fg-muted">{comments.length}</span>
-          </h3>
-          {comments.length === 0 && (
-            <p className="text-sm text-fg-muted">No comments yet. Ask a question or share a thought.</p>
-          )}
-          {comments.map((c) => {
-            const name = people.name(c.user_id);
-            const canDelete = c.user_id === me || isOwner;
-            return (
-              <div key={c.id} className="flex gap-2.5">
-                <Avatar name={name} className="size-9 text-sm" />
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 text-sm font-bold">
-                    {name}
-                    <time dateTime={c.created_at} className="text-xs font-medium text-fg-muted">
-                      {when(c.created_at)}
-                    </time>
-                    {canDelete && (
-                      <button
-                        type="button"
-                        aria-label={`Delete comment by ${name}`}
-                        onClick={() => removeComment(c, "the comment")}
-                        className="-my-2 -mr-2.5 ml-auto grid size-11 place-items-center text-fg-muted hover:text-danger"
-                      >
-                        <Trash2 className="size-[18px]" aria-hidden />
-                      </button>
-                    )}
+          <section aria-label="Comments" className="space-y-3 pb-2">
+            <h4 className="flex items-baseline justify-between text-sm font-bold">
+              Comments
+              <span className="text-[13px] font-medium text-fg-muted">{comments.length}</span>
+            </h4>
+            {comments.length === 0 && <p className="text-sm text-fg-muted">No comments yet. Ask a question or share a thought.</p>}
+            {comments.map((c) => {
+              const name = people.name(c.user_id);
+              const canDelete = c.user_id === me || isOwner;
+              return (
+                <div key={c.id} className="flex gap-2.5">
+                  <Avatar name={name} className="size-9 text-sm" />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 text-sm font-bold">
+                      {name}
+                      <time dateTime={c.created_at} className="text-xs font-medium text-fg-muted">
+                        {when(c.created_at)}
+                      </time>
+                      {canDelete && (
+                        <button
+                          type="button"
+                          aria-label={`Delete comment by ${name}`}
+                          onClick={() => removeComment(c, "the comment")}
+                          className="-my-2 -mr-2.5 ml-auto grid size-11 place-items-center text-fg-muted hover:text-danger"
+                        >
+                          <Trash2 className="size-[18px]" aria-hidden />
+                        </button>
+                      )}
+                    </div>
+                    <p className="max-w-[62ch] text-[15px] leading-snug break-words whitespace-pre-wrap">{c.body}</p>
                   </div>
-                  <p className="max-w-[62ch] text-[15px] leading-snug break-words whitespace-pre-wrap">{c.body}</p>
                 </div>
-              </div>
-            );
-          })}
-        </section>
+              );
+            })}
+          </section>
+        </FormGroup>
       </div>
     </Sheet>
   );

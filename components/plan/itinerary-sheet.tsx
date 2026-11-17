@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Check, ChevronRight, Clock, Lightbulb, Link2, MapPin, NotebookText } from "lucide-react";
+import { BedDouble, Check, ChevronDown, ChevronRight, Clock, Landmark, Utensils, Lightbulb, Link2, MapPin, NotebookText } from "lucide-react";
 import { useEffect, useState } from "react";
 import { IdeaPhotos } from "@/components/photos/idea-photos";
 import { useImages, usePhotoUrls, useRemovePhoto } from "@/lib/queries/images";
@@ -13,8 +13,12 @@ import { Field, Input, Textarea } from "@/components/ui/field";
 import { FormGroup } from "@/components/ui/form-group";
 import { RowSheet } from "@/components/ui/row-sheet";
 import { tripLength } from "@/lib/calc";
-import { KIND_LABEL, type Idea } from "@/lib/drafts";
+import { KIND_LABEL, TABLE_OF_KIND, type Idea, type IdeaKind } from "@/lib/drafts";
+import { toast } from "sonner";
 import { formatDay } from "@/lib/format";
+import { kindOfType, placeOf, withPlace } from "@/lib/activity-details";
+import { FoodSection, SightSection, StaySection } from "@/components/ideas/idea-modal";
+import { blankForm, FORM_SCHEMA, formFromIdea, toPayload, type IdeaFormValues } from "@/lib/idea-form";
 import { dateForDay, itineraryUsage, stopLinks, usageLabel, withStopLinks, type InsertPlan } from "@/lib/itinerary";
 import { Button } from "@/components/ui/button";
 import { useIdeas } from "@/lib/queries/ideas";
@@ -52,7 +56,17 @@ const LENGTHS: [label: string, minutes: string][] = [
   ["2h", "120"],
   ["3h", "180"],
 ];
-const TYPES = ["Sightseeing", "Food & Drink", "Activity", "Shopping", "Transport", "Other"];
+const TYPES = ["Sightseeing", "Food & Drink", "Rest & Stay", "Activity", "Shopping", "Transport", "Other"];
+const CATEGORY_ICON = { stay: BedDouble, food: Utensils, sight: Landmark } as const;
+const CATEGORY_HINT = {
+  stay: "Type, check-in time, cancellation, amenities",
+  food: "Cuisine, meal, hours, reservation",
+  sight: "Type, tickets, duration, best time, effort",
+} as const;
+/** A stand-in place to build the details form from the category details kept on an activity. */
+const standIn = (kind: IdeaKind, details: unknown): Idea => ({
+  table: TABLE_OF_KIND[kind], id: "x", key: "x", kind, name: "", city: null, price: null, priceUnit: null, decision: "draft", note: null, nights: null, total: null, details, dealBreaker: false, created_at: "",
+});
 const TYPE_OF_KIND = { food: "Food & Drink", stay: "Rest & Stay", sight: "Sightseeing" } as const;
 
 /** Where in a day a new activity goes, and which two places it sits between (when added from a place's "+"). */
@@ -96,7 +110,14 @@ export function ItinerarySheet({
     resolver: zodResolver(Schema),
   });
   const errors = formState.errors;
-  const [day, duration, lenCustom, activityName] = useWatch({ control, name: ["day", "duration_min", "lenCustom", "activity"] });
+  const [day, duration, lenCustom, activityName, typeChip] = useWatch({ control, name: ["day", "duration_min", "lenCustom", "activity", "type"] });
+  // The category's own details (type, tickets, cuisine, hours ...) are a second small form with the same fields as a place.
+  const dform = useForm<IdeaFormValues>({ defaultValues: blankForm("sight", trip.home_currency) });
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const linkedKey = sheet.row?.source_table && sheet.row.source_id ? `${sheet.row.source_table}:${sheet.row.source_id}` : source ? `${source.table}:${source.id}` : "";
+  const linked = linkedKey ? ideas.find((i) => i.key === linkedKey) : undefined;
+  // A linked place keeps its own category; a hand-added activity takes it from its Type chip (sight is the generic one).
+  const category: IdeaKind = linked?.kind ?? kindOfType(typeChip);
   const activityId = sheet.row?.id ?? draftId;
   const photoKey = `itinerary_items:${activityId}`;
 
@@ -127,6 +148,12 @@ export function ItinerarySheet({
       mapsUrl: stopLinks(r?.details).mapsUrl ?? "",
       done: r?.done ?? false,
     });
+    const rowIdea = r?.source_table && r.source_id ? ideas.find((i) => i.key === `${r.source_table}:${r.source_id}`) : undefined;
+    const kind = rowIdea?.kind ?? kindOfType(r?.type);
+    const place = placeOf(r?.details);
+    dform.reset(place ? formFromIdea(standIn(kind, place), trip.home_currency) : rowIdea ? formFromIdea(rowIdea, trip.home_currency) : blankForm(kind, trip.home_currency));
+    // The place list and the details form only matter when the sheet opens.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sheet.open, sheet.row, reset, defaults]);
 
   // The spot only applies while the day is still the one it was tapped on, and only to the first activity.
@@ -137,7 +164,15 @@ export function ItinerarySheet({
     void _custom;
     const links = { website, mapsUrl };
     const toDay = dayStr === "" ? null : Number(dayStr);
-    const fields = { ...rest, details: withStopLinks(sheet.row?.details, links) };
+    // The category's details, in the same shape the board keeps them.
+    const checked = (FORM_SCHEMA[category] as z.ZodType).safeParse({ ...dform.getValues(), name: rest.activity, city: rest.city ?? "" });
+    if (!checked.success) {
+      setDetailsOpen(true);
+      toast.error("Check the details section.");
+      return;
+    }
+    const place = toPayload(category as "stay", checked.data as never).columns.details as Record<string, unknown>;
+    const fields = { ...rest, details: withPlace(withStopLinks(sheet.row?.details, links), place) as never };
     if (sheet.row) {
       const moved = toDay !== sheet.row.day;
       // Changing the day sends it to the end of the new day; otherwise its place in the day is kept.
@@ -174,6 +209,7 @@ export function ItinerarySheet({
     setValue("city", i.city ?? "");
     setValue("type", TYPE_OF_KIND[i.kind]);
     setSource({ table: i.table, id: i.id, tentative: i.decision === "draft" });
+    dform.reset(formFromIdea(i, trip.home_currency));
     setPicking(false);
     setSearch("");
   };
@@ -365,6 +401,26 @@ export function ItinerarySheet({
           <Field label="Length in minutes" error={errors.duration_min?.message}>
             {(p) => <Input {...p} {...register("duration_min")} inputMode="numeric" placeholder="90" />}
           </Field>
+        )}
+      </FormGroup>
+
+      <FormGroup icon={CATEGORY_ICON[category]} title={`${KIND_LABEL[category]} details`}>
+        <button
+          type="button"
+          aria-expanded={detailsOpen}
+          aria-label={`${KIND_LABEL[category]} details`}
+          onClick={() => setDetailsOpen((v) => !v)}
+          className="flex min-h-12 w-full items-center justify-between gap-3 rounded-2xl bg-surface-2 px-3.5 text-left"
+        >
+          <span className="text-sm font-medium text-fg-muted">{detailsOpen ? "Hide" : CATEGORY_HINT[category]}</span>
+          <ChevronDown className={cn("size-5 shrink-0 transition-transform motion-reduce:transition-none", detailsOpen && "rotate-180")} aria-hidden />
+        </button>
+        {detailsOpen && (
+          <div className="space-y-4">
+            {category === "stay" && <StaySection control={dform.control} register={dform.register} errors={dform.formState.errors} currency={trip.home_currency} record />}
+            {category === "food" && <FoodSection control={dform.control} register={dform.register} errors={dform.formState.errors} />}
+            {category === "sight" && <SightSection control={dform.control} register={dform.register} errors={dform.formState.errors} />}
+          </div>
         )}
       </FormGroup>
 

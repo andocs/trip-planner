@@ -97,7 +97,8 @@ test("owner: dropping an idea removes its tentative stop and lists it under Drop
   await expect.poll(() => fake.tables.get("itinerary_items")!.some((i) => i.activity === CARD)).toBe(true);
 
   await page.getByRole("button", { name: `Open ${CARD}` }).click();
-  await page.getByRole("dialog").getByRole("button", { name: "Drop", exact: true }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "More actions" }).click();
+  await page.getByRole("menuitem", { name: "Drop" }).click();
   await expect.poll(() => fake.tables.get("attractions")!.find((a) => a.name === CARD)?.decision).toBe("dropped");
   expect(fake.tables.get("itinerary_items")!.some((i) => i.activity === CARD)).toBe(false);
   await page.getByRole("radio", { name: /^Dropped 1/ }).click();

@@ -177,7 +177,7 @@ export function BoardingPass({
     <article
       aria-label={`${from} to ${to}, ${f.airline ?? "airline not set"} ${f.flight_no ?? ""}, ${f.status}`}
       className={cn(
-        "relative flex flex-col rounded-[22px] text-fg lg:flex-row",
+        "press-card relative flex flex-col rounded-[22px] text-fg lg:flex-row",
         idea ? "bg-transparent ring-2 ring-line-strong ring-inset" : "bg-surface shadow-card",
         f.status === "Done" && "opacity-80",
       )}
@@ -186,6 +186,7 @@ export function BoardingPass({
         {canEdit ? (
           <button
             type="button"
+            data-card-open
             onClick={onOpen}
             aria-label={`${label}. Edit`}
             className="flex w-full flex-col gap-3.5 p-[18px] pb-4 text-left lg:px-6 lg:py-5"

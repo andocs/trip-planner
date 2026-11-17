@@ -1,6 +1,7 @@
 "use client";
 
-import { BedDouble, CalendarDays, Coffee, MapPin } from "lucide-react";
+import { Ban, BedDouble, CalendarDays, Clock, Coffee, EllipsisVertical, MapPin, NotebookText, Pencil, Ticket, Trash2 } from "lucide-react";
+import { DropdownMenu } from "radix-ui";
 import dynamic from "next/dynamic";
 import { useState } from "react";
 import { CoverHero } from "@/components/photos/cover-hero";
@@ -12,7 +13,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge, StatusChip } from "@/components/ui/status-chip";
 import { localISODate, pricePerNight, stayNights, tripNights } from "@/lib/calc";
 import { ideaKey } from "@/lib/drafts";
-import { formatDay, formatMoney } from "@/lib/format";
+import { formatDay, formatMoney, formatTime } from "@/lib/format";
+import { FormGroup } from "@/components/ui/form-group";
 import { useImages, usePhotoUrls, type ImageRow } from "@/lib/queries/images";
 import { useDeleteRow, useRows, useUpdateRow, type Row } from "@/lib/queries/table";
 import { AddStayMenu, type StayStep } from "./stay-flow";
@@ -155,9 +157,9 @@ export function Stays() {
             const d = parseStayDetails(s.details);
             return (
               <li key={s.id}>
-                <article aria-label={s.hotel} className="flex h-full flex-col overflow-hidden rounded-[22px] bg-surface shadow-card">
+                <article aria-label={s.hotel} className="press-card flex h-full flex-col overflow-hidden rounded-[22px] bg-surface shadow-card">
                   <div className="relative">
-                    <button type="button" onClick={() => setOpenId(s.id)} className="block w-full text-left" aria-label={`Open ${s.hotel}`}>
+                    <button type="button" data-card-open onClick={() => setOpenId(s.id)} className="block w-full text-left" aria-label={`Open ${s.hotel}`}>
                       <Photo stay={s} photos={photos} className="aspect-[16/10] lg:aspect-[4/3]" />
                     </button>
                     <span className="absolute top-2.5 left-2.5 rounded-full bg-surface px-0.5 shadow-float">
@@ -250,82 +252,134 @@ function StayDetail({
 }) {
   const trip = useTrip();
   const remove = useDeleteRow("stays", "stay");
+  const update = useUpdateRow("stays", "stay");
+  const [showRef, setShowRef] = useState(false);
   const cur = trip.home_currency;
   const n = stayNights(stay.check_in, stay.check_out);
   const ppn = pricePerNight(stay.total, n);
   const d = parseStayDetails(stay.details);
   const cancel = cancellationFact(d, today);
-  const rows: [string, string | null][] = [
-    ["Check-in", stay.check_in ? [formatDay(stay.check_in), d.checkInTime].filter(Boolean).join(" · ") : null],
-    ["Check-out", stay.check_out ? formatDay(stay.check_out) : null],
-    ["Nights", n !== null ? String(n) : null],
-    ["Room", stay.room],
-    ["Cancellation", cancel?.label ?? null],
-  ];
+  const menuRow = "flex min-h-11 cursor-pointer items-center gap-2.5 rounded-xl px-3 text-sm font-semibold outline-none data-[highlighted]:bg-surface-2";
+  const cancelled = stay.status === "Cancelled";
+  const tile = "rounded-2xl px-3.5 py-3";
   return (
     <Sheet
       open
       side
       onOpenChange={(o) => !o && onClose()}
       title={stay.hotel}
-      description={[stay.city, stay.status].filter(Boolean).join(" · ")}
-      footer={
+      description={stay.city ?? undefined}
+      headerExtra={
         canEdit ? (
-          <div className="flex gap-3">
-            <Button
-              variant="secondary"
-              size="lg"
-              onClick={() => {
-                remove(stay, stay.hotel);
-                onClose();
-              }}
-            >
-              Delete
-            </Button>
-            <Button size="lg" className="flex-1" onClick={onEdit}>
-              Edit stay
-            </Button>
-          </div>
+          <DropdownMenu.Root>
+            <DropdownMenu.Trigger aria-label="More actions" className="grid size-11 place-items-center rounded-full text-fg-muted hover:bg-surface-2 hover:text-fg">
+              <EllipsisVertical className="size-5" aria-hidden />
+            </DropdownMenu.Trigger>
+            <DropdownMenu.Portal>
+              <DropdownMenu.Content align="end" sideOffset={4} className="z-[60] min-w-52 rounded-2xl border border-border bg-surface p-1.5 shadow-card">
+                {!cancelled && (
+                  <DropdownMenu.Item onSelect={() => update.mutate({ id: stay.id, patch: { status: "Cancelled" } })} className={menuRow}>
+                    <Ban className="size-4 text-fg-muted" aria-hidden />
+                    Cancel stay
+                  </DropdownMenu.Item>
+                )}
+                <DropdownMenu.Item
+                  onSelect={() => {
+                    remove(stay, stay.hotel);
+                    onClose();
+                  }}
+                  className={cn(menuRow, "text-danger")}
+                >
+                  <Trash2 className="size-4" aria-hidden />
+                  Delete stay
+                </DropdownMenu.Item>
+              </DropdownMenu.Content>
+            </DropdownMenu.Portal>
+          </DropdownMenu.Root>
         ) : undefined
       }
     >
-      <div className="space-y-4 pt-1">
-        <Photo stay={stay} photos={photos} className="aspect-[16/9] rounded-[18px]" />
+      <div className="space-y-5 pt-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <StatusBadge status={stay.status} />
+          {canEdit && (
+            <Button size="sm" aria-label="Edit stay" onClick={onEdit}>
+              <Pencil className="size-[18px]" aria-hidden />
+              Edit
+            </Button>
+          )}
+          <LogExpenseRow kind="stays" item={stay} className="pb-0" />
+        </div>
+
+        <Photo stay={stay} photos={photos} className="aspect-[2/1] rounded-[18px]" />
+
         <dl className="grid grid-cols-2 gap-2.5">
-          {rows
-            .filter(([, v]) => v)
-            .map(([k, v]) => (
-              <div key={k} className="rounded-2xl bg-surface-2 px-3.5 py-3">
-                <dt className="font-mono text-[11px] font-bold tracking-[0.08em] text-fg-muted uppercase">{k}</dt>
-                <dd className="font-semibold">{v}</dd>
-              </div>
-            ))}
+          <div className={cn(tile, "bg-teal-tint text-teal")}>
+            <dt className="text-xs font-bold">Check-in</dt>
+            <dd className="text-[17px] leading-tight font-bold">
+              {stay.check_in ? [formatDay(stay.check_in), d.checkInTime ? formatTime(d.checkInTime) : null].filter(Boolean).join(" · ") : "Not set"}
+            </dd>
+          </div>
+          <div className={cn(tile, "bg-teal-tint text-teal")}>
+            <dt className="text-xs font-bold">Check-out</dt>
+            <dd className="text-[17px] leading-tight font-bold">{stay.check_out ? formatDay(stay.check_out) : "Not set"}</dd>
+          </div>
+          <div className={cn(tile, "bg-surface-2")}>
+            <dt className="text-xs font-bold text-fg-muted">Nights</dt>
+            <dd className="text-[17px] leading-tight font-bold">{n !== null ? n : "–"}</dd>
+          </div>
+          <div className={cn(tile, "bg-surface-2")}>
+            <dt className="text-xs font-bold text-fg-muted">Total</dt>
+            <dd className="text-[17px] leading-tight font-bold">{stay.total !== null ? formatMoney(stay.total, cur) : "–"}</dd>
+            {ppn !== null && n !== null && <dd className="text-xs text-fg-muted">{formatMoney(ppn, cur)} per night</dd>}
+          </div>
         </dl>
+
+        {cancel && (
+          <p className={cn("flex items-center gap-3 rounded-2xl px-3.5 py-3 text-sm font-bold", cancel.tone === "warn" ? "bg-warn-tint text-warn-text" : "bg-teal-tint text-teal")}>
+            <Clock className="size-5 shrink-0" aria-hidden />
+            {cancel.label}
+          </p>
+        )}
         {d.breakfast && (
           <p className="inline-flex items-center gap-2 text-sm font-bold">
             <Coffee className="size-4" strokeWidth={2.4} aria-hidden />
             Breakfast included
           </p>
         )}
-        {stay.total !== null && (
-          <div className="rounded-2xl bg-surface-2 px-3.5 py-3">
-            {ppn !== null && n !== null && (
-              <p className="text-sm text-fg-muted">
-                {n} {n === 1 ? "night" : "nights"} × {formatMoney(ppn, cur)}
-              </p>
+
+        {(stay.room || (canEdit && stay.confirmation) || d.website || d.mapsUrl) && (
+          <FormGroup icon={Ticket} title="Booking">
+            {(stay.room || (canEdit && stay.confirmation)) && (
+              <ul className="overflow-hidden rounded-2xl bg-surface-2">
+                {canEdit && stay.confirmation && (
+                  <li className="grid min-h-14 grid-cols-[1fr_auto] items-center gap-3 px-3.5 py-1.5">
+                    <span className="min-w-0">
+                      <small className="block text-xs text-fg-muted">Confirmation no. (only you)</small>
+                      <b className="block font-mono text-[15px] tracking-wider">{showRef ? stay.confirmation : "••••••"}</b>
+                    </span>
+                    <button type="button" onClick={() => setShowRef((v) => !v)} aria-pressed={showRef} className="min-h-11 px-2 text-sm font-extrabold text-teal">
+                      {showRef ? "Hide" : "Show"}
+                    </button>
+                  </li>
+                )}
+                {stay.room && (
+                  <li className={cn("min-h-14 px-3.5 py-2", canEdit && stay.confirmation && "border-t border-border")}>
+                    <small className="block text-xs text-fg-muted">Room</small>
+                    <b className="block text-[15px] leading-tight">{stay.room}</b>
+                  </li>
+                )}
+              </ul>
             )}
-            <p className="font-display text-2xl font-extrabold">{formatMoney(stay.total, cur)}</p>
-          </div>
+            <PlaceLinks website={d.website} mapsUrl={d.mapsUrl} className="flex flex-wrap gap-x-5" />
+          </FormGroup>
         )}
-        <LogExpenseRow kind="stays" item={stay} />
-        {canEdit && stay.confirmation && (
-          <div className="rounded-2xl bg-surface-2 px-3.5 py-3">
-            <p className="text-xs font-bold text-fg-muted">Confirmation no.</p>
-            <p className="font-mono text-lg font-bold tracking-wider">{stay.confirmation}</p>
-          </div>
+
+        {stay.note && (
+          <FormGroup icon={NotebookText} title="Notes">
+            <p className="rounded-2xl bg-surface-2 px-3.5 py-3 text-[15px] whitespace-pre-line">{stay.note}</p>
+          </FormGroup>
         )}
-        {stay.note && <p className="text-[15px]">{stay.note}</p>}
-        <PlaceLinks website={d.website} mapsUrl={d.mapsUrl} className="flex flex-wrap gap-x-5" />
       </div>
     </Sheet>
   );

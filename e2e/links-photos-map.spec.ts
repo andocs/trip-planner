@@ -449,3 +449,64 @@ test("Add place: photos can be added before the place is saved", async ({ page }
   await expect(sheet.getByRole("heading", { name: "Links and photos" })).toBeVisible();
   await expect(sheet.getByRole("button", { name: "Add a photo" })).toBeVisible();
 });
+
+test("Edit activity follows the category: food shows food details, and they are saved with the activity", async ({ page }) => {
+  const fake = createFakeSupabase({ withSeed: true });
+  plan(fake);
+  await fake.install(page);
+  await page.goto("/itinerary");
+  await page.getByRole("button", { name: "Open Osaka Castle" }).click();
+  await page.getByRole("dialog", { name: "Osaka Castle" }).getByRole("button", { name: "Edit details" }).click();
+  const edit = page.getByRole("dialog", { name: "Edit activity" });
+  // Sight is the layout for sightseeing (and the generic one).
+  await expect(edit.getByRole("heading", { name: "Sight details" })).toBeVisible();
+  await edit.getByRole("button", { name: "Food & Drink", exact: true }).click();
+  await expect(edit.getByRole("heading", { name: "Food details" })).toBeVisible();
+  await edit.getByRole("button", { name: "Food details" }).click();
+  await edit.getByLabel("Opening hours / best time to go").fill("11:00 to 14:00");
+  await edit.getByRole("button", { name: "Save" }).click();
+  await expect
+    .poll(() => (fake.tables.get("itinerary_items")!.find((i) => i.activity === "Osaka Castle")!.details as { place?: { hours?: string } }).place?.hours)
+    .toBe("11:00 to 14:00");
+  // The details show in the view.
+  await page.getByRole("button", { name: "Open Osaka Castle" }).click();
+  await expect(page.getByRole("dialog", { name: "Osaka Castle" })).toContainText("11:00 to 14:00");
+});
+
+test("a stay's view: dates, total, a hidden confirmation number you can show, and a menu for Cancel and Delete", async ({ page }) => {
+  const fake = createFakeSupabase({ withSeed: true });
+  const stay = fake.tables.get("stays")![0];
+  stay.hotel = "Lakeside Inn";
+  Object.assign(stay, { status: "Booked", check_in: "2026-06-20", check_out: "2026-06-23", total: 11400, confirmation: "ABC123", details: { cancellation: "free", freeUntil: "2026-06-15" } });
+  await fake.install(page);
+  await page.goto("/stays");
+  await page.getByRole("button", { name: "Open Lakeside Inn" }).click();
+  const view = page.getByRole("dialog", { name: "Lakeside Inn" });
+  await expect(view.getByText("Nights")).toBeVisible();
+  await expect(view.getByText("PHP 3,800.00 per night")).toBeVisible();
+  await expect(view.getByText("ABC123")).toHaveCount(0);
+  await view.getByRole("button", { name: "Show" }).click();
+  await expect(view.getByText("ABC123")).toBeVisible();
+  await view.getByRole("button", { name: "More actions" }).click();
+  await page.getByRole("menuitem", { name: "Cancel stay" }).click();
+  await expect.poll(() => fake.tables.get("stays")!.find((s) => s.id === stay.id)?.status).toBe("Cancelled");
+});
+
+test("a card dips as one piece when pressed", async ({ page }) => {
+  const fake = createFakeSupabase({ withSeed: true });
+  await fake.install(page);
+  await page.goto("/places?cat=sight");
+  const card = page.getByRole("article").first();
+  const open = card.getByRole("button", { name: /^Open / }).first();
+  const box = await card.boundingBox();
+  await open.hover();
+  await page.mouse.down();
+  await page.waitForTimeout(250);
+  // The article itself carries the transform (the :has rule), not only the photo or the text button.
+  const scale = await card.evaluate((el) => getComputedStyle(el).transform);
+  expect(scale).not.toBe("none");
+  const now = await card.boundingBox();
+  expect(now!.width).toBeLessThan(box!.width);
+  await page.mouse.move(0, 0);
+  await page.mouse.up();
+});

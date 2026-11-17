@@ -511,7 +511,7 @@ function Switch({ control, name, label, hint }: { control: Control<IdeaFormValue
   );
 }
 
-function StaySection({ control, register, errors, currency, record }: SectionProps & { currency: string; record?: boolean }) {
+export function StaySection({ control, register, errors, currency, record }: SectionProps & { currency: string; record?: boolean }) {
   const [cost, unit, nightsStr, cin, cout, cancellation, curr] = useWatch({
     control,
     name: ["cost", "unit", "nights", "checkInDay", "checkOutDay", "cancellation", "currency"],
@@ -577,7 +577,7 @@ function StaySection({ control, register, errors, currency, record }: SectionPro
   );
 }
 
-function FoodSection({ control, register, errors }: SectionProps) {
+export function FoodSection({ control, register, errors }: SectionProps) {
   const reservationNeeded = useWatch({ control, name: "reservationNeeded" });
   return (
     <>
@@ -599,7 +599,7 @@ function FoodSection({ control, register, errors }: SectionProps) {
   );
 }
 
-function SightSection({ control, register, errors }: SectionProps) {
+export function SightSection({ control, register, errors }: SectionProps) {
   const ticketsNeeded = useWatch({ control, name: "ticketsNeeded" });
   return (
     <>

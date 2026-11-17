@@ -49,6 +49,7 @@ import { useDeleteRow, useRows, useUpdateRow } from "@/lib/queries/table";
 import { useMedia } from "@/lib/use-media";
 import { useSheet } from "@/lib/use-sheet";
 import { cn } from "@/lib/utils";
+import { ideaForItem } from "@/lib/activity-details";
 import { AddHere } from "./add-here";
 import { MapStopCard } from "./map-stop-card";
 import type { ConnectorTarget } from "./connector-sheet";
@@ -127,6 +128,9 @@ export function Itinerary() {
   const groups = groupDays(items, start, len);
   const marks = stayMarks(stays.data ?? [], start);
   const ideaOf = new Map(ideas.map((i) => [i.key, i]));
+  /** The place an activity reads as: its board idea (with its own category details over it), or a stand-in from its own details. */
+  const placeOfItem = (item: ItineraryItem): Idea | undefined =>
+    ideaForItem(item, item.source_table && item.source_id ? ideaOf.get(`${item.source_table}:${item.source_id}`) : undefined);
   const progress = itineraryProgress(items);
   const draftCount = ideas.filter((i) => i.decision === "draft").length;
   const cities = [...new Set(items.map((i) => i.city).filter(Boolean) as string[])].sort();
@@ -226,7 +230,7 @@ export function Itinerary() {
   const renderItem = (item: ItineraryItem, handle: ReactNode) => {
     if (!isStop(item))
       return <ConnectorRow item={item} currency={trip.home_currency} canEdit={canEdit && !editing} onOpen={() => setConnector({ kind: kindOf(item) as "commute" | "buffer", day: item.day, existing: item })} handle={handle} />;
-    const idea = item.source_table && item.source_id ? ideaOf.get(`${item.source_table}:${item.source_id}`) : undefined;
+    const idea = placeOfItem(item);
     return (
       <StopCard
         item={item}
@@ -306,7 +310,7 @@ export function Itinerary() {
 
   const dayStops = shown.flatMap((e) => (e.kind === "item" && isStop(e.item) ? [e.item] : []));
   const selectedItem = selected ? (dayStops.find((i) => i.id === selected) ?? items.find((i) => i.id === selected && isStop(i))) : undefined;
-  const selectedIdea = selectedItem?.source_table && selectedItem.source_id ? ideaOf.get(`${selectedItem.source_table}:${selectedItem.source_id}`) : undefined;
+  const selectedIdea = selectedItem ? placeOfItem(selectedItem) : undefined;
 
   const dragged = dragging ? items.find((i) => i.id === dragging) : undefined;
 
@@ -529,9 +533,9 @@ export function Itinerary() {
       {viewing && (
         <StopView
           item={viewing}
-          idea={viewing.source_table && viewing.source_id ? ideaOf.get(`${viewing.source_table}:${viewing.source_id}`) : undefined}
+          idea={placeOfItem(viewing)}
           currency={trip.home_currency}
-          images={imagesOf(viewing, viewing.source_table && viewing.source_id ? ideaOf.get(`${viewing.source_table}:${viewing.source_id}`) : undefined)}
+          images={imagesOf(viewing, placeOfItem(viewing))}
           urlOf={urlOf}
           startDate={start}
           canEdit={canEdit}
