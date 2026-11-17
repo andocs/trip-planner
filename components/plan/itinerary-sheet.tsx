@@ -1,20 +1,24 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { ChevronRight, Lightbulb, MapPin } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Controller, useForm } from "react-hook-form";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
+import { ChipGroup, ToggleRow } from "@/components/ideas/chips";
 import { useTrip } from "@/components/trip-gate";
-import { Field, Input, Select, Textarea } from "@/components/ui/field";
+import { Field, Input, Textarea } from "@/components/ui/field";
 import { RowSheet } from "@/components/ui/row-sheet";
 import { tripLength } from "@/lib/calc";
-import { ITINERARY_TYPES } from "@/lib/constants";
+import { KIND_LABEL, type Idea } from "@/lib/drafts";
 import { formatDay } from "@/lib/format";
-import { dateForDay } from "@/lib/itinerary";
-import { placeAtEndOfDay } from "@/lib/queries/itinerary";
+import { dateForDay, type InsertPlan } from "@/lib/itinerary";
+import { useIdeas } from "@/lib/queries/ideas";
+import { placeAtEndOfDay, useMoveItems } from "@/lib/queries/itinerary";
 import { newId, useDeleteRow, useInsertRow, useRows, useUpdateRow, type Row } from "@/lib/queries/table";
 import { optionalNumber, optionalText, requiredText, str } from "@/lib/schemas";
 import type { useSheet } from "@/lib/use-sheet";
+import { cn } from "@/lib/utils";
 
 const Schema = z.object({
   /** The day of the trip. The date is worked out from the trip start, so it is never asked for. */
@@ -27,12 +31,31 @@ const Schema = z.object({
   activity: requiredText("Activity", 200),
   type: z.string().transform((v) => (v === "" ? null : v)),
   duration_min: optionalNumber({ min: 0, max: 24 * 60 * 7, int: true }),
+  /** Only the Custom length chip: show the minutes box even while it is empty. Never saved. */
+  lenCustom: z.boolean(),
   note: optionalText(500),
   done: z.boolean(),
 });
 type In = z.input<typeof Schema>;
 type Out = z.output<typeof Schema>;
 export type ItineraryItem = Row<"itinerary_items">;
+
+const LENGTHS: [label: string, minutes: string][] = [
+  ["30m", "30"],
+  ["1h", "60"],
+  ["2h", "120"],
+  ["3h", "180"],
+];
+const TYPES = ["Sightseeing", "Food & Drink", "Activity", "Shopping", "Transport", "Other"];
+const TYPE_OF_KIND = { food: "Food & Drink", stay: "Rest & Stay", sight: "Sightseeing" } as const;
+
+/** Where in a day a new activity goes, and which two places it sits between (when added from a place's "+"). */
+export type ActivityDefaults = Partial<Pick<In, "day">> & {
+  plan?: InsertPlan;
+  between?: { before: string; after?: string };
+};
+
+type Source = { table: Idea["table"]; id: string; tentative: boolean };
 
 export function ItinerarySheet({
   sheet,
@@ -41,19 +64,27 @@ export function ItinerarySheet({
 }: {
   sheet: ReturnType<typeof useSheet<ItineraryItem>>;
   cities: string[];
-  /** Prefill for "add" (e.g. the day you tapped + on). */
-  defaults?: Partial<Pick<In, "day">>;
+  /** Prefill for "add": the day you tapped + on, and where in that day (right after a place) the new activity goes. */
+  defaults?: ActivityDefaults;
 }) {
   const trip = useTrip();
   const all = useRows("itinerary_items").data ?? [];
+  const { ideas } = useIdeas();
+  const move = useMoveItems();
+  // The spot is used once; with "Keep adding" the next ones go to the end of the day.
+  const [usedPlan, setUsedPlan] = useState<InsertPlan | null>(null);
+  const [source, setSource] = useState<Source | null>(null);
+  const [picking, setPicking] = useState(false);
+  const [search, setSearch] = useState("");
   const insert = useInsertRow("itinerary_items", "activity");
   const update = useUpdateRow("itinerary_items", "activity");
   const remove = useDeleteRow("itinerary_items", "activity");
   const [keepAdding, setKeepAdding] = useState(false);
-  const { register, handleSubmit, reset, formState, control, getValues, setFocus } = useForm<In, unknown, Out>({
+  const { register, handleSubmit, reset, formState, control, getValues, setValue, setFocus } = useForm<In, unknown, Out>({
     resolver: zodResolver(Schema),
   });
   const errors = formState.errors;
+  const [day, duration, lenCustom] = useWatch({ control, name: ["day", "duration_min", "lenCustom"] });
 
   // Every day of the trip, and any day an item already uses (the trip may have been shortened).
   const len = tripLength(trip.start_date, trip.end_date) ?? 0;
@@ -61,6 +92,9 @@ export function ItinerarySheet({
   for (let d = 1; d <= len; d++) days.add(d);
   for (const i of all) if (i.day !== null) days.add(i.day);
   const dayList = [...days].sort((a, b) => a - b);
+  const dayDate = (d: number) => dateForDay(trip.start_date, d);
+  const dayNumber = day === undefined || day === "" ? null : Number(day);
+  const picked = dayNumber === null ? null : dayDate(dayNumber);
 
   useEffect(() => {
     if (!sheet.open) return;
@@ -72,37 +106,70 @@ export function ItinerarySheet({
       activity: r?.activity ?? "",
       type: r?.type ?? "",
       duration_min: str(r?.duration_min),
+      lenCustom: !!r?.duration_min && !LENGTHS.some(([, m]) => m === String(r.duration_min)),
       note: str(r?.note),
       done: r?.done ?? false,
     });
   }, [sheet.open, sheet.row, reset, defaults]);
 
+  // The spot only applies while the day is still the one it was tapped on, and only to the first activity.
+  const spot = !sheet.row && defaults?.plan && defaults.plan !== usedPlan && (day ?? "") === (defaults.day ?? "") ? defaults.plan : null;
+
   const onSubmit = handleSubmit((v) => {
-    const { day: dayStr, ...fields } = v;
-    const day = dayStr === "" ? null : Number(dayStr);
+    const { day: dayStr, lenCustom: _custom, ...fields } = v;
+    void _custom;
+    const toDay = dayStr === "" ? null : Number(dayStr);
     if (sheet.row) {
-      const moved = day !== sheet.row.day;
+      const moved = toDay !== sheet.row.day;
       // Changing the day sends it to the end of the new day; otherwise its place in the day is kept.
       const patch = moved
-        ? { ...fields, ...placeAtEndOfDay(all.filter((i) => i.id !== sheet.row!.id), day, trip.start_date) }
-        : { ...fields, on_date: dateForDay(trip.start_date, day) ?? sheet.row.on_date };
+        ? { ...fields, ...placeAtEndOfDay(all.filter((i) => i.id !== sheet.row!.id), toDay, trip.start_date) }
+        : { ...fields, on_date: dateForDay(trip.start_date, toDay) ?? sheet.row.on_date };
       update.mutate({ id: sheet.row.id, patch });
       sheet.close();
       return;
     }
-    insert.mutate([{ id: newId(), ...fields, ...placeAtEndOfDay(all, day, trip.start_date) }]);
+    if (spot?.renumber.length) move.mutate(spot.renumber);
+    insert.mutate([
+      {
+        id: newId(),
+        ...fields,
+        ...(source ? { source_table: source.table, source_id: source.id, tentative: source.tentative } : {}),
+        ...(spot ? { day: toDay, on_date: dateForDay(trip.start_date, toDay), position: spot.position } : placeAtEndOfDay(all, toDay, trip.start_date)),
+      },
+    ]);
+    if (spot) setUsedPlan(spot);
+    setSource(null);
+    setPicking(false);
     if (keepAdding) {
       const keep = getValues();
-      reset({ ...keep, activity: "", at_time: "", duration_min: "", note: "", done: false });
+      reset({ ...keep, activity: "", at_time: "", duration_min: "", lenCustom: false, note: "", done: false });
       setFocus("activity");
     } else sheet.close();
   });
+
+  const pickIdea = (i: Idea) => {
+    setValue("activity", i.name, { shouldValidate: true });
+    setValue("city", i.city ?? "");
+    setValue("type", TYPE_OF_KIND[i.kind]);
+    setSource({ table: i.table, id: i.id, tentative: i.decision === "draft" });
+    setPicking(false);
+    setSearch("");
+  };
+  const matches = ideas
+    .filter((i) => i.decision !== "dropped" && i.name.toLowerCase().includes(search.trim().toLowerCase()))
+    .slice(0, 8);
+
+  const lengthChip = lenCustom || (!!duration && !LENGTHS.some(([, m]) => m === duration)) ? "Custom" : (LENGTHS.find(([, m]) => m === duration)?.[0] ?? "");
+  const chosenDay = (d: string) => (day ?? "") === d;
 
   return (
     <RowSheet
       open={sheet.open}
       onOpenChange={sheet.setOpen}
+      side
       title={sheet.row ? "Edit activity" : "Add activity"}
+      description={sheet.row ? undefined : dayNumber === null ? "No day yet" : `Day ${dayNumber}${picked ? ` · ${formatDay(picked)}` : ""}`}
       mode={sheet.mode}
       onSubmit={onSubmit}
       keepAdding={{ value: keepAdding, onChange: setKeepAdding }}
@@ -115,47 +182,124 @@ export function ItinerarySheet({
           : undefined
       }
     >
+      {spot && defaults?.between && (
+        <p className="flex items-start gap-2.5 rounded-2xl bg-surface-2 px-3.5 py-3 text-[13px] text-fg-muted">
+          <MapPin className="mt-0.5 size-4 shrink-0" strokeWidth={2.4} aria-hidden />
+          <span>
+            {defaults.between.after ? "Goes between " : "Goes after "}
+            <b className="text-fg">{defaults.between.before}</b>
+            {defaults.between.after && (
+              <>
+                {" and "}
+                <b className="text-fg">{defaults.between.after}</b>
+              </>
+            )}
+            {" on "}
+            <b className="text-fg">{`Day ${dayNumber}${picked ? ` · ${formatDay(picked)}` : ""}`}</b>
+          </span>
+        </p>
+      )}
       <Field label="Activity" error={errors.activity?.message}>
         {(p) => <Input {...p} {...register("activity")} autoComplete="off" placeholder="e.g. Train Street coffee" />}
       </Field>
-      <div className="grid grid-cols-2 gap-3">
-        <Field label="Day" hint={trip.start_date ? "The date follows from the trip start." : undefined}>
-          {(p) => (
-            <Select {...p} {...register("day")}>
-              <option value="">Unscheduled</option>
-              {dayList.map((d) => {
-                const date = dateForDay(trip.start_date, d);
-                return (
-                  <option key={d} value={d}>
-                    {`Day ${d}${date ? ` · ${formatDay(date)}` : ""}`}
-                  </option>
-                );
-              })}
-            </Select>
+      {!sheet.row && (
+        <div>
+          <button
+            type="button"
+            aria-expanded={picking}
+            onClick={() => setPicking((v) => !v)}
+            className="flex min-h-14 w-full items-center gap-3 rounded-2xl border-2 border-dashed border-line-strong px-3.5 text-left"
+          >
+            <Lightbulb className="size-5 shrink-0 text-fg-muted" strokeWidth={2.4} aria-hidden />
+            <span className="min-w-0 flex-1 font-bold">
+              Pick from your Places
+              <small className="block text-[13px] font-medium text-fg-muted">
+                {source ? "Linked to a place on your board" : "Fills in the name, area and price"}
+              </small>
+            </span>
+            <ChevronRight className={cn("size-5 shrink-0 text-fg-muted transition-transform motion-reduce:transition-none", picking && "rotate-90")} aria-hidden />
+          </button>
+          {picking && (
+            <div className="mt-2 space-y-2 rounded-2xl bg-surface-2 p-2.5">
+              <Input aria-label="Search your places" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search your places" autoComplete="off" />
+              {matches.length === 0 ? (
+                <p className="px-1.5 py-2 text-sm text-fg-muted">Nothing on your board matches.</p>
+              ) : (
+                <ul>
+                  {matches.map((i) => (
+                    <li key={i.key}>
+                      <button type="button" onClick={() => pickIdea(i)} className="flex min-h-12 w-full items-center gap-2 rounded-xl px-2 text-left hover:bg-surface">
+                        <span className="min-w-0 flex-1 truncate font-bold">{i.name}</span>
+                        <span className="shrink-0 text-xs font-bold text-fg-muted">
+                          {KIND_LABEL[i.kind]}
+                          {i.decision === "draft" ? " · Draft" : ""}
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           )}
-        </Field>
-        <Field label="Time (optional)" error={errors.at_time?.message}>
-          {(p) => <Input {...p} type="time" {...register("at_time")} />}
-        </Field>
+        </div>
+      )}
+      <div className="space-y-2">
+        <span className="block text-[13px] font-bold text-fg-muted">Day</span>
+        <div role="group" aria-label="Day" className="-mx-5 flex gap-2 overflow-x-auto px-5 pb-1 [scrollbar-width:none]">
+          {dayList.map((d) => {
+            const date = dayDate(d);
+            const on = chosenDay(String(d));
+            return (
+              <button
+                key={d}
+                type="button"
+                aria-pressed={on}
+                onClick={() => setValue("day", String(d), { shouldDirty: true })}
+                className={cn("min-h-14 shrink-0 rounded-2xl px-3.5 text-left transition-colors", on ? "bg-teal-tint text-teal ring-2 ring-teal" : "bg-surface-2 text-fg")}
+              >
+                <b className="block text-[15px]">Day {d}</b>
+                {date && <span className="block text-xs font-medium opacity-80">{formatDay(date)}</span>}
+              </button>
+            );
+          })}
+          <button
+            type="button"
+            aria-pressed={chosenDay("")}
+            onClick={() => setValue("day", "", { shouldDirty: true })}
+            className={cn("min-h-14 shrink-0 rounded-2xl px-3.5 text-left transition-colors", chosenDay("") ? "bg-teal-tint text-teal ring-2 ring-teal" : "bg-surface-2 text-fg")}
+          >
+            <b className="block text-[15px]">Later</b>
+            <span className="block text-xs font-medium opacity-80">No day yet</span>
+          </button>
+        </div>
+        {picked && <p className="text-sm text-fg-muted">The date follows from the trip start: {formatDay(picked)}.</p>}
       </div>
-      <div className="grid grid-cols-2 gap-3">
-        <Field label="Duration (min)" error={errors.duration_min?.message}>
-          {(p) => <Input {...p} {...register("duration_min")} type="number" inputMode="numeric" min={0} step={5} />}
+      <Field label="Time" hint="Optional" error={errors.at_time?.message}>
+        {(p) => <Input {...p} type="time" {...register("at_time")} />}
+      </Field>
+      <ChipGroup
+        label="Length"
+        options={[...LENGTHS.map(([l]) => l), "Custom"]}
+        value={lengthChip}
+        display={(o) => o}
+        onChange={(next) => {
+          const n = Array.isArray(next) ? (next[0] ?? "") : next;
+          if (n === "Custom") return setValue("lenCustom", true);
+          setValue("lenCustom", false);
+          setValue("duration_min", LENGTHS.find(([l]) => l === n)?.[1] ?? "");
+        }}
+      />
+      {lengthChip === "Custom" && (
+        <Field label="Length in minutes" error={errors.duration_min?.message}>
+          {(p) => <Input {...p} {...register("duration_min")} inputMode="numeric" placeholder="90" />}
         </Field>
-        <Field label="Type">
-          {(p) => (
-            <Select {...p} {...register("type")}>
-              <option value="">None</option>
-              {ITINERARY_TYPES.map((t) => (
-                <option key={t} value={t}>
-                  {t}
-                </option>
-              ))}
-            </Select>
-          )}
-        </Field>
-      </div>
-      <Field label="City" error={errors.city?.message}>
+      )}
+      <Controller
+        control={control}
+        name="type"
+        render={({ field }) => <ChipGroup label="Type" options={TYPES} value={field.value ?? ""} display={(o) => o} onChange={(v) => field.onChange(Array.isArray(v) ? (v[0] ?? "") : v)} />}
+      />
+      <Field label="City or area" error={errors.city?.message}>
         {(p) => <Input {...p} {...register("city")} list="itin-cities" autoComplete="off" />}
       </Field>
       <datalist id="itin-cities">
@@ -163,24 +307,16 @@ export function ItinerarySheet({
           <option key={c} value={c} />
         ))}
       </datalist>
-      <Field label="Note" error={errors.note?.message}>
+      <Field label="Notes" error={errors.note?.message}>
         {(p) => <Textarea {...p} {...register("note")} rows={2} />}
       </Field>
-      <Controller
-        control={control}
-        name="done"
-        render={({ field }) => (
-          <label className="flex min-h-11 items-center gap-3 font-medium">
-            <input
-              type="checkbox"
-              checked={field.value}
-              onChange={(e) => field.onChange(e.target.checked)}
-              className="size-5 accent-[var(--teal)]"
-            />
-            Done
-          </label>
-        )}
-      />
+      {sheet.row && (
+        <Controller
+          control={control}
+          name="done"
+          render={({ field }) => <ToggleRow label="Done" hint="Counts toward “done” on Home" checked={field.value} onChange={field.onChange} />}
+        />
+      )}
     </RowSheet>
   );
 }

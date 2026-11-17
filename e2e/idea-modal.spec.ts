@@ -11,10 +11,13 @@ test("owner: add a stay with its details; the card shows the key facts", async (
   await page.goto("/places?cat=stay");
 
   await page.getByRole("button", { name: "Add", exact: true }).click();
-  const modal = page.getByRole("dialog", { name: "Add stay" });
+  const modal = page.getByRole("dialog", { name: "Add place" });
   await modal.getByLabel("Name", { exact: true }).fill("Canal view hostel");
   await modal.getByLabel("Location or area").fill("Hoan Kiem");
   await modal.getByLabel("Price per night").fill("3800");
+  // The category details are folded away until asked for.
+  await expect(modal.getByLabel("Check-in day")).toHaveCount(0);
+  await modal.getByRole("button", { name: /^Stay details/ }).click();
   await modal.getByLabel("Check-in day").fill("2");
   await modal.getByLabel("Check-out day").fill("5");
   await expect(modal.getByText("3 nights × PHP 3,800.00")).toBeVisible();
@@ -24,7 +27,8 @@ test("owner: add a stay with its details; the card shows the key facts", async (
   await modal.getByLabel("Free until day").fill("1");
   await modal.getByRole("button", { name: "Wifi" }).click();
   await modal.getByRole("switch", { name: /Breakfast included/ }).click();
-  await modal.getByRole("button", { name: "Save draft" }).click();
+  await modal.getByRole("checkbox", { name: "Keep adding" }).uncheck();
+  await modal.getByRole("button", { name: "Add", exact: true }).click();
 
   await expect.poll(() => fake.tables.get("hotel_ideas")?.find((h) => h.hotel === "Canal view hostel")).toBeTruthy();
   const row = fake.tables.get("hotel_ideas")!.find((h) => h.hotel === "Canal view hostel")!;
@@ -55,18 +59,20 @@ test("owner: add a food place; switching category keeps the name; the must-do fl
   await page.goto("/places");
 
   await page.getByRole("button", { name: "Add", exact: true }).click();
-  await expect(page.getByRole("dialog", { name: "Add stay" })).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "Add place" })).toBeVisible();
   const modal = page.getByRole("dialog");
   await modal.getByLabel("Name", { exact: true }).fill("Pho Gia Truyen");
   await modal.getByRole("radio", { name: "Food" }).click();
-  await expect(page.getByRole("dialog", { name: "Add food" })).toBeVisible();
+  await expect(modal.getByRole("radio", { name: "Food" })).toBeChecked();
   await expect(modal.getByLabel("Name", { exact: true })).toHaveValue("Pho Gia Truyen");
   await modal.getByLabel("Price per person").fill("120");
+  await modal.getByRole("button", { name: /^Food details/ }).click();
   await modal.getByRole("button", { name: "Breakfast" }).click();
   await modal.getByRole("switch", { name: /Queue-prone/ }).click();
   await modal.getByRole("switch", { name: /Reservation needed/ }).click();
   await modal.getByRole("switch", { name: /Deal-breaker/ }).click();
-  await modal.getByRole("button", { name: "Save draft" }).click();
+  await modal.getByRole("checkbox", { name: "Keep adding" }).uncheck();
+  await modal.getByRole("button", { name: "Add", exact: true }).click();
 
   await expect.poll(() => fake.tables.get("food_places")?.find((f) => f.name === "Pho Gia Truyen")).toBeTruthy();
   const row = fake.tables.get("food_places")!.find((f) => f.name === "Pho Gia Truyen")!;
@@ -83,16 +89,17 @@ test("a name is required, and a bad number is refused", async ({ page }) => {
   await createFakeSupabase({ withSeed: true }).install(page);
   await page.goto("/places?cat=sight");
   await page.getByRole("button", { name: "Add", exact: true }).click();
-  const modal = page.getByRole("dialog", { name: "Add sight" });
-  await modal.getByRole("button", { name: "Save draft" }).click();
+  const modal = page.getByRole("dialog", { name: "Add place" });
+  await modal.getByRole("button", { name: "Add", exact: true }).click();
   await expect(modal.getByText("Name is required")).toBeVisible();
   await modal.getByLabel("Name", { exact: true }).fill("Cave");
   await modal.getByLabel("Entrance fee per person").fill("abc");
-  await modal.getByRole("button", { name: "Save draft" }).click();
+  await modal.getByRole("button", { name: "Add", exact: true }).click();
   await expect(modal.getByText("Enter a number")).toBeVisible();
   await modal.getByLabel("Entrance fee per person").fill("0"); // free is allowed
-  await modal.getByRole("button", { name: "Save draft" }).click();
-  await expect(page.getByRole("dialog", { name: "Add sight" })).toHaveCount(0);
+  await modal.getByRole("checkbox", { name: "Keep adding" }).uncheck();
+  await modal.getByRole("button", { name: "Add", exact: true }).click();
+  await expect(page.getByRole("dialog", { name: "Add place" })).toHaveCount(0);
 });
 
 test("viewer: sees the facts, the must-do flag and the details, with no way to add or edit", async ({ page }) => {

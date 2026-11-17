@@ -5,27 +5,29 @@ import {
   BedDouble,
   Bike,
   Bus,
-  CalendarPlus,
+  CalendarDays,
   Car,
-  ChevronRight,
+  CircleCheck,
   Coffee,
   Footprints,
   Hourglass,
   Landmark,
+  EllipsisVertical,
   LogIn,
+  Pencil,
   Plane,
   Timer,
+  Trash2,
   TriangleAlert,
   Train,
   Utensils,
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
+import { DropdownMenu } from "radix-ui";
 import type { ReactNode } from "react";
 import { CHIP_ICONS, MustFlag } from "@/components/ideas/idea-chips";
 import { PhotoImg } from "@/components/photos/photo-img";
-import { Button } from "@/components/ui/button";
-import { CheckButton } from "@/components/ui/check";
 import { formatDay, formatDuration, formatMoney } from "@/lib/format";
 import { KIND_LABEL, type Idea } from "@/lib/drafts";
 import { connectorDetails, connectorLabel, formatTotal, kindOf, type DayGroup, type DayTotals, type StayMark } from "@/lib/itinerary";
@@ -70,7 +72,7 @@ function Thumb({ item, idea, images, urlOf, small }: { item: Item; idea?: Idea; 
   );
   return (
     <div
-      className={cn("relative shrink-0 self-stretch overflow-hidden rounded-[14px] bg-surface-2", small ? "size-16 self-center" : "min-h-28 w-[88px] lg:w-36")}
+      className={cn("relative shrink-0 self-stretch overflow-hidden rounded-[14px] bg-surface-2", small ? "size-16 self-center" : "min-h-36 w-[112px] lg:w-48")}
       title={cover ? (creditText(cover) ?? undefined) : undefined}
     >
       {cover ? (
@@ -93,6 +95,7 @@ export function StopCard({
   compact,
   onOpen,
   onDone,
+  onRemove,
   handle,
   children,
 }: {
@@ -107,6 +110,7 @@ export function StopCard({
   compact: boolean;
   onOpen: () => void;
   onDone: (done: boolean) => void;
+  onRemove: () => void;
   handle?: ReactNode;
   children?: ReactNode;
 }) {
@@ -130,30 +134,21 @@ export function StopCard({
             </h3>
             {!compact && sub && <p className="mt-1 line-clamp-1 text-sm text-fg-muted">{sub}</p>}
           </div>
-          {canEdit && !compact && !item.tentative && (
-            <CheckButton checked={item.done} onChange={onDone} label={`Done: ${item.activity}`} className="-mt-1" />
-          )}
-          {handle ??
-            (canEdit ? (
-              <button
-                type="button"
-                onClick={onOpen}
-                aria-label={`${item.tentative ? "Tentative: " : ""}${item.activity}. Edit`}
-                className="-mt-1 -mr-1.5 grid size-11 shrink-0 place-items-center rounded-full bg-surface text-fg shadow-[inset_0_0_0_1.5px_var(--line)]"
-              >
-                <ChevronRight className="size-[22px]" strokeWidth={2.4} aria-hidden />
-              </button>
-            ) : null)}
         </div>
         <div
           className={cn(
-            "mt-3 grid items-center gap-3 rounded-[22px] bg-surface p-2.5 shadow-card",
-            compact ? "grid-cols-[64px_1fr]" : "grid-cols-[88px_1fr] lg:grid-cols-[9rem_1fr] lg:p-3",
+            "relative mt-3 grid items-center gap-3 rounded-[22px] bg-surface p-2.5 shadow-card",
+            compact ? "grid-cols-[64px_1fr]" : "grid-cols-[112px_1fr] lg:grid-cols-[12rem_1fr] lg:p-3",
             item.tentative && "border-2 border-dashed border-line-strong bg-transparent shadow-none",
           )}
         >
+          {/* The whole card opens it: an editor gets the form, a viewer the read-only view. Not while dragging, where the handle shows. */}
+          {!handle && (
+            <button type="button" onClick={onOpen} aria-label={`Open ${item.activity}`} className="absolute inset-0 rounded-[22px] focus-visible:outline-3 focus-visible:outline-[var(--focus)]" />
+          )}
+          <div className="absolute top-1 right-1 z-[1]">{handle ?? (canEdit ? <CardMenu item={item} onEdit={onOpen} onDone={onDone} onRemove={onRemove} /> : null)}</div>
           <Thumb item={item} idea={idea} images={images} urlOf={urlOf} small={compact} />
-          <ul className="min-w-0">
+          <ul className={cn("pointer-events-none min-w-0", (handle || canEdit) && "pr-9")}>
             {shown.map((r, n) => {
               const Icon = CHIP_ICONS[r.icon] ?? Timer;
               return (
@@ -168,15 +163,50 @@ export function StopCard({
             })}
           </ul>
         </div>
-        {item.tentative && item.source_id && !compact && (
-          <Link href={`/places?idea=${item.source_table}:${item.source_id}`} className="mt-1 inline-flex min-h-11 items-center gap-1 text-sm font-bold text-teal">
-            <ArrowUpRight className="size-4" strokeWidth={2.6} aria-hidden />
-            On the board
-          </Link>
-        )}
         {children}
       </div>
     </div>
+  );
+}
+
+/** The card's one menu, at its upper right: edit it, mark it done, open its place on the board (drafts), or take it out of the itinerary. */
+function CardMenu({ item, onEdit, onDone, onRemove }: { item: Item; onEdit: () => void; onDone: (done: boolean) => void; onRemove: () => void }) {
+  const row = "flex min-h-11 cursor-pointer items-center gap-2.5 rounded-xl px-3 text-sm font-medium outline-none data-[highlighted]:bg-surface-2";
+  return (
+    <DropdownMenu.Root>
+      <DropdownMenu.Trigger
+        aria-label={`${item.tentative ? "Tentative: " : ""}${item.activity}. Menu`}
+        className="grid size-11 shrink-0 place-items-center rounded-full text-fg-muted hover:bg-surface-2 hover:text-fg"
+      >
+        <EllipsisVertical className="size-[22px]" strokeWidth={2.4} aria-hidden />
+      </DropdownMenu.Trigger>
+      <DropdownMenu.Portal>
+        <DropdownMenu.Content align="end" sideOffset={4} className="z-50 min-w-52 rounded-2xl border border-border bg-surface p-1.5 shadow-card">
+          <DropdownMenu.Item onSelect={onEdit} className={row}>
+            <Pencil className="size-4 text-fg-muted" aria-hidden />
+            Edit
+          </DropdownMenu.Item>
+          {!item.tentative && (
+            <DropdownMenu.Item onSelect={() => onDone(!item.done)} className={row}>
+              <CircleCheck className="size-4 text-fg-muted" aria-hidden />
+              {item.done ? "Mark incomplete" : "Mark complete"}
+            </DropdownMenu.Item>
+          )}
+          {item.tentative && item.source_id && (
+            <DropdownMenu.Item asChild className={row}>
+              <Link href={`/places?idea=${item.source_table}:${item.source_id}`}>
+                <ArrowUpRight className="size-4 text-fg-muted" aria-hidden />
+                Open on the board
+              </Link>
+            </DropdownMenu.Item>
+          )}
+          <DropdownMenu.Item onSelect={onRemove} className={cn(row, "text-danger")}>
+            <Trash2 className="size-4" aria-hidden />
+            Remove from itinerary
+          </DropdownMenu.Item>
+        </DropdownMenu.Content>
+      </DropdownMenu.Portal>
+    </DropdownMenu.Root>
   );
 }
 
@@ -245,34 +275,26 @@ export function StayRow({ mark, status }: { mark: StayMark; status: string }) {
 }
 
 /** The quiet divider between days: the day, its date (worked out from the trip start), the total and a soft warning. */
-export function DaySplit({
-  group,
-  totals,
-  stops,
-  onAdd,
-}: {
-  group: DayGroup;
-  totals: DayTotals;
-  stops: number;
-  onAdd?: () => void;
-}) {
+/** The day divider, as in the mockup: a centred label with a quiet line either side. No add button here. */
+export function DaySplit({ group, totals, stops }: { group: DayGroup; totals: DayTotals; stops: number }) {
   const title = group.day === null ? "Unscheduled" : `Day ${group.day}${group.date ? ` · ${formatDay(group.date)}` : ""}`;
+  const summary = stops === 0 ? null : `${stops} ${stops === 1 ? "place" : "places"}${totals.total ? ` · ${formatTotal(totals.total)}` : ""}`;
   return (
-    <div role="separator" aria-label={title} className="mb-4 flex min-h-11 flex-wrap items-center gap-x-3 gap-y-1 pl-[54px]">
-      <span className="inline-flex min-h-8 items-center rounded-full bg-surface px-3 text-xs font-bold text-fg-muted shadow-[inset_0_0_0_1.5px_var(--line)]">{title}</span>
-      <span className="text-xs font-bold text-fg-muted">
-        {stops === 0 ? "Nothing planned" : `${stops} ${stops === 1 ? "place" : "places"}${totals.total ? ` · ${formatTotal(totals.total)}` : ""}`}
-      </span>
+    <div role="separator" aria-label={title} className="mb-6 ml-[54px] flex flex-col items-center gap-2">
+      <div className="flex w-full items-center gap-3">
+        <span aria-hidden className="h-px flex-1 bg-line" />
+        <span className="inline-flex min-h-8 shrink-0 items-center gap-1.5 rounded-full bg-surface px-3 text-xs font-bold text-fg-muted shadow-[inset_0_0_0_1.5px_var(--line)]">
+          <CalendarDays className="size-3.5" strokeWidth={2.4} aria-hidden />
+          {title}
+          {summary && <span className="font-mono font-medium">{summary}</span>}
+        </span>
+        <span aria-hidden className="h-px flex-1 bg-line" />
+      </div>
       {totals.long && (
         <span className="inline-flex min-h-6 items-center gap-1 rounded-full bg-warn-tint px-2.5 text-xs font-bold text-warn-text">
           <TriangleAlert className="size-3.5" strokeWidth={2.6} aria-hidden />
           Long day
         </span>
-      )}
-      {onAdd && (
-        <Button variant="ghost" size="icon" className="ml-auto" onClick={onAdd} aria-label={`Add to ${title}`}>
-          <CalendarPlus className="size-5" aria-hidden />
-        </Button>
       )}
     </div>
   );

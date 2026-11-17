@@ -45,7 +45,7 @@ test("owner: a commute goes between two places, with its length and cost, and co
   await page.goto("/itinerary");
 
   await expect(page.getByRole("separator", { name: /^Day 1 ·/ })).toBeVisible();
-  await page.getByRole("button", { name: "Add a commute or buffer after Lake walk" }).click();
+  await page.getByRole("button", { name: "Add after Lake walk" }).click();
   await page.getByRole("button", { name: "Commute", exact: true }).click();
   const sheet = page.getByRole("dialog", { name: "Add commute" });
   await sheet.getByRole("button", { name: "Taxi / Grab" }).click();
@@ -66,7 +66,59 @@ test("owner: a commute goes between two places, with its length and cost, and co
   await expect(page.getByText("0 of 4 done")).toBeVisible();
 });
 
-test("a commute can't sit next to another commute, so the + only appears between two places", async ({ page }) => {
+test("owner: the + under a place opens into Commute, Rest and Activity, and an activity lands right after it", async ({ page }) => {
+  const fake = createFakeSupabase({ withSeed: true });
+  plan(fake);
+  await fake.install(page);
+  await page.goto("/itinerary");
+
+  await page.getByRole("button", { name: "Add after Lake walk" }).click();
+  const options = page.getByRole("group", { name: "After Lake walk" });
+  await expect(options.getByRole("button", { name: "Commute" })).toBeVisible();
+  await expect(options.getByRole("button", { name: "Rest" })).toBeVisible();
+  await options.getByRole("button", { name: "Activity" }).click();
+
+  const sheet = page.getByRole("dialog", { name: "Add activity" });
+  await expect(sheet.getByRole("button", { name: /^Day 1(?!\d)/ })).toHaveAttribute("aria-pressed", "true");
+  await expect(sheet.getByText(/Goes between/)).toContainText("Lake walk and Bun cha lunch on Day 1 · Tue 16 Jun");
+  await sheet.getByLabel("Activity", { exact: true }).fill("Egg coffee stop");
+  await sheet.getByRole("button", { name: "Add", exact: true }).click();
+
+  await expect.poll(() => fake.tables.get("itinerary_items")?.find((i) => i.activity === "Egg coffee stop")).toBeTruthy();
+  const added = fake.tables.get("itinerary_items")!.find((i) => i.activity === "Egg coffee stop")!;
+  expect(added).toMatchObject({ day: 1, position: 1500 }); // between Lake walk (1000) and the next place (2000)
+});
+
+test("the + opens from the keyboard", async ({ page }) => {
+  const fake = createFakeSupabase({ withSeed: true });
+  plan(fake);
+  await fake.install(page);
+  await page.goto("/itinerary");
+
+  await page.getByRole("button", { name: "Add after Lake walk" }).focus();
+  const options = page.getByRole("group", { name: "After Lake walk" });
+  await expect(options.getByRole("button", { name: "Activity" })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(options.getByRole("button", { name: "Activity" })).toHaveCount(0);
+});
+
+test("owner: Rest from the + adds a rest between two places", async ({ page }) => {
+  const fake = createFakeSupabase({ withSeed: true });
+  plan(fake);
+  await fake.install(page);
+  await page.goto("/itinerary");
+
+  await page.getByRole("button", { name: "Add after Lake walk" }).click();
+  await page.getByRole("group", { name: "After Lake walk" }).getByRole("button", { name: "Rest" }).click();
+  const sheet = page.getByRole("dialog", { name: "Add rest" });
+  await sheet.getByLabel("Or any number of minutes").fill("20");
+  await sheet.getByRole("button", { name: "Add", exact: true }).click();
+
+  await expect.poll(() => fake.tables.get("itinerary_items")?.find((i) => i.kind === "buffer")).toBeTruthy();
+  expect(fake.tables.get("itinerary_items")!.find((i) => i.kind === "buffer")).toMatchObject({ duration_min: 20, day: 1, position: 1500 });
+});
+
+test("a commute can't sit next to another commute, so the + is not offered next to one", async ({ page }) => {
   const fake = createFakeSupabase({ withSeed: true });
   plan(fake);
   const items = fake.tables.get("itinerary_items")!;
@@ -75,8 +127,8 @@ test("a commute can't sit next to another commute, so the + only appears between
   await page.goto("/itinerary");
 
   // Lake walk is followed by a commute, so there is no + after it; Bun cha lunch -> Temple visit still has one.
-  await expect(page.getByRole("button", { name: "Add a commute or buffer after Lake walk" })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Add a commute or buffer after Bun cha lunch" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Add after Lake walk" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Add after Bun cha lunch" })).toBeAttached();
   await expect(page.getByRole("button", { name: /^Walk, 12m\. Edit/ })).toBeVisible();
 });
 
@@ -151,16 +203,143 @@ test("viewer: a static list with no reorder, no add and no handles", async ({ pa
   await expect(page.getByRole("button", { name: "Reorder" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Add", exact: true })).toHaveCount(0);
   await expect(page.getByRole("button", { name: /^Drag / })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: /Add a commute or buffer/ })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /^Add after / })).toHaveCount(0);
   await expect(page.getByRole("checkbox")).toHaveCount(0);
 });
 
-test("the map only loads when asked for", async ({ page }) => {
+test("the route map is the hero, behind the title, and there is no side column or Map pill", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
   await createFakeSupabase({ withSeed: true }).install(page);
   await page.goto("/itinerary");
-  const map = page.getByRole("button", { name: "Map", exact: true });
-  await expect(map).toHaveAttribute("aria-pressed", "false");
-  await expect(page.getByRole("heading", { name: "Stops" })).toHaveCount(0);
-  await map.click();
-  await expect(map).toHaveAttribute("aria-pressed", "true");
+  const hero = page.locator("header").filter({ has: page.getByRole("group", { name: "Show days" }) });
+  await expect(hero.getByText("Map unavailable here.")).toBeVisible(); // the stand-in when the e2e run has no Google key
+  await expect(page.getByRole("complementary", { name: "Route" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Map", exact: true })).toHaveCount(0);
 });
+
+test("Enlarge map makes the hero taller, and Reduce map puts it back", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await createFakeSupabase({ withSeed: true }).install(page);
+  await page.goto("/itinerary");
+  const hero = page.locator("header").filter({ has: page.getByRole("group", { name: "Show days" }) });
+  const height = async () => Math.round((await hero.boundingBox())!.height);
+  const small = await height();
+  await page.getByRole("button", { name: "Enlarge map" }).click();
+  await expect(page.getByRole("button", { name: "Reduce map" })).toHaveAttribute("aria-pressed", "true");
+  await expect.poll(height).toBeGreaterThan(small + 100);
+  await page.getByRole("button", { name: "Reduce map" }).click();
+  await expect.poll(height).toBe(small);
+});
+
+test("the days are pills low in the hero: All days, each day that has something, then Drafts; they filter the list", async ({ page }) => {
+  const fake = createFakeSupabase({ withSeed: true });
+  plan(fake);
+  await fake.install(page);
+  await page.goto("/itinerary");
+  const days = page.getByRole("group", { name: "Show days" });
+  await expect(days.getByRole("button", { name: "Day 1", exact: true })).toBeVisible();
+  await expect(days.getByRole("button", { name: "Day 2", exact: true })).toBeVisible();
+  await expect(days.getByRole("link", { name: /^Drafts/ })).toBeVisible();
+  // Day 3 has no activity (and no stay check-in or check-out): no divider and no pill.
+  await expect(days.getByRole("button", { name: "Day 3", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("separator", { name: /^Day 3/ })).toHaveCount(0);
+  await days.getByRole("button", { name: "Day 2", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Boat tour" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Lake walk" })).toHaveCount(0);
+  await days.getByRole("button", { name: "All days" }).click();
+  await expect(page.getByRole("heading", { name: "Lake walk" })).toBeVisible();
+});
+
+test("a viewer can open a card to read it (no form)", async ({ page }) => {
+  const fake = createFakeSupabase({ withSeed: true, role: "viewer" });
+  plan(fake);
+  await fake.install(page);
+  await page.goto("/itinerary");
+  await page.getByRole("button", { name: "Open Lake walk" }).click();
+  const view = page.getByRole("dialog", { name: "Lake walk" });
+  await expect(view).toBeVisible();
+  await expect(view.getByRole("button", { name: "Save" })).toHaveCount(0);
+});
+
+test("clicking a card opens it for editing (owner)", async ({ page }) => {
+  const fake = createFakeSupabase({ withSeed: true });
+  plan(fake);
+  await fake.install(page);
+  await page.goto("/itinerary");
+  await page.getByRole("button", { name: "Open Lake walk" }).click();
+  await expect(page.getByRole("dialog", { name: "Edit activity" })).toBeVisible();
+});
+
+test("each card has one menu: edit, mark complete, remove (with undo)", async ({ page }) => {
+  const fake = createFakeSupabase({ withSeed: true });
+  plan(fake);
+  await fake.install(page);
+  await page.goto("/itinerary");
+  // The Done circle and the edit chevron are folded into the menu.
+  await expect(page.getByRole("checkbox")).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Lake walk. Menu" }).click();
+  await page.getByRole("menuitem", { name: "Mark complete" }).click();
+  await expect.poll(() => fake.tables.get("itinerary_items")!.find((i) => i.activity === "Lake walk")?.done).toBe(true);
+  await page.getByRole("button", { name: "Lake walk. Menu" }).click();
+  await expect(page.getByRole("menuitem", { name: "Mark incomplete" })).toBeVisible();
+  await page.keyboard.press("Escape");
+
+  await page.getByRole("button", { name: "Lake walk. Menu" }).click();
+  await page.getByRole("menuitem", { name: "Edit" }).click();
+  await expect(page.getByRole("dialog", { name: "Edit activity" })).toBeVisible();
+  await page.getByRole("dialog", { name: "Edit activity" }).getByRole("button", { name: "Cancel" }).click();
+
+  await page.getByRole("button", { name: "Temple visit. Menu" }).click();
+  await page.getByRole("menuitem", { name: "Remove from itinerary" }).click();
+  await expect.poll(() => fake.tables.get("itinerary_items")!.some((i) => i.activity === "Temple visit")).toBe(false);
+});
+
+test("viewer: no card menu", async ({ page }) => {
+  const fake = createFakeSupabase({ withSeed: true, role: "viewer" });
+  plan(fake);
+  await fake.install(page);
+  await page.goto("/itinerary");
+  await expect(page.getByRole("heading", { name: "Lake walk" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /\. Menu$/ })).toHaveCount(0);
+});
+
+test("the route links to directions through the stops in order (no map position, no link)", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  const fake = createFakeSupabase({ withSeed: true });
+  plan(fake);
+  await fake.install(page);
+  await page.goto("/itinerary");
+  // The seeded stops have no saved place coordinates, so none is drawn and the panel says so instead of inventing a route.
+  await expect(page.getByText(/stops? (has|have) no map position yet/)).toBeVisible();
+  await expect(page.getByRole("link", { name: /^Directions/ })).toHaveCount(0);
+});
+
+test("the + sits centred under its place and opens into one 340 by 44 line", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  const fake = createFakeSupabase({ withSeed: true });
+  plan(fake);
+  await fake.install(page);
+  await page.goto("/itinerary");
+
+  const row = page.getByRole("heading", { name: "Lake walk" });
+  const card = row.locator("xpath=ancestor::li[1]");
+  const zone = card.locator("xpath=following-sibling::li[1]");
+  await zone.hover();
+  const trigger = page.getByRole("button", { name: "Add after Lake walk" });
+  const pill = page.getByRole("group", { name: "After Lake walk" });
+  // The whole control stays centred on the cards (the list minus the 54px dotted-line column on the left), whether it is
+  // a circle or the open line.
+  await expect
+    .poll(async () => {
+      const [t, list] = [await pill.boundingBox(), await pill.locator("xpath=ancestor::ol[1]").boundingBox()];
+      return Math.abs(t!.x + t!.width / 2 - (list!.x + 54 + (list!.width - 54) / 2));
+    })
+    .toBeLessThan(2);
+  // Opened, it is one 340 by 44 line.
+  await trigger.hover();
+  await expect(pill.getByRole("button", { name: "Activity" })).toBeVisible();
+  await expect.poll(async () => Math.round((await pill.boundingBox())!.width)).toBe(340);
+  expect(Math.round((await pill.boundingBox())!.height)).toBe(44);
+});
+

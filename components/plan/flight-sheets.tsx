@@ -133,6 +133,7 @@ export function FlightSheet({ sheet }: { sheet: ReturnType<typeof useSheet<Fligh
     <RowSheet
       open={sheet.open}
       onOpenChange={sheet.setOpen}
+      side
       title={sheet.row ? "Edit flight" : "Add flight"}
       mode={sheet.mode}
       onSubmit={onSubmit}
@@ -272,6 +273,7 @@ export function TransferSheet({ sheet }: { sheet: ReturnType<typeof useSheet<Tra
     <RowSheet
       open={sheet.open}
       onOpenChange={sheet.setOpen}
+      side
       title={sheet.row ? "Edit transfer" : "Add transfer"}
       mode={sheet.mode}
       onSubmit={onSubmit}

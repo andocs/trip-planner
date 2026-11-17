@@ -14,21 +14,20 @@ import {
 } from "@dnd-kit/core";
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { ArrowUpDown, Check, CalendarPlus, Ellipsis, GripVertical, Plus } from "lucide-react";
+import { ArrowUpDown, ArrowUpRight, Check, CalendarPlus, Ellipsis, GripVertical, Maximize2, Minimize2 } from "lucide-react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useState, type ReactNode } from "react";
 import { toast } from "sonner";
-import { RouteMap, StopsCard } from "@/components/home/dashboard";
 import { EditOnly, useCanEdit, useTrip } from "@/components/trip-gate";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyText } from "@/components/view-only-banner";
 import { itineraryProgress, tripLength } from "@/lib/calc";
 import { formatDateRange } from "@/lib/format";
 import {
   dayTotals,
+  directionsUrl,
   groupDays,
   insertProblem,
   isStop,
@@ -40,25 +39,30 @@ import {
   type StayMark,
 } from "@/lib/itinerary";
 import { useIdeas } from "@/lib/queries/ideas";
+import { MapView, type MapStop } from "@/components/map/map-view";
 import { useImages, usePhotoUrls } from "@/lib/queries/images";
+import { freshCoords, usePlaceRefs } from "@/lib/queries/places";
 import { useMoveItems } from "@/lib/queries/itinerary";
-import { useRows, useUpdateRow } from "@/lib/queries/table";
+import { useDeleteRow, useRows, useUpdateRow } from "@/lib/queries/table";
+import { useMedia } from "@/lib/use-media";
 import { useSheet } from "@/lib/use-sheet";
 import { cn } from "@/lib/utils";
+import { AddHere } from "./add-here";
 import type { ConnectorTarget } from "./connector-sheet";
 import { ConnectorRow, DaySplit, StayRow, StopCard } from "./itinerary-entries";
-import type { ItineraryItem } from "./itinerary-sheet";
+import type { ActivityDefaults, ItineraryItem } from "./itinerary-sheet";
+import { StopView } from "./stop-view";
 
 const ItinerarySheet = dynamic(() => import("./itinerary-sheet").then((m) => m.ItinerarySheet), { ssr: false });
 const ConnectorSheet = dynamic(() => import("./connector-sheet").then((m) => m.ConnectorSheet), { ssr: false });
 
 type Entry =
-  | { kind: "day"; id: string; group: DayGroup }
-  | { kind: "mark"; id: string; mark: StayMark }
-  | { kind: "item"; id: string; item: ItineraryItem };
+  | { kind: "day"; id: string; day: number | null; group: DayGroup }
+  | { kind: "mark"; id: string; day: number | null; mark: StayMark }
+  | { kind: "item"; id: string; day: number | null; item: ItineraryItem };
 
 /** One row of the list that can be dragged (an item), or can only be dropped next to (a day divider, a stay). */
-function SortableRow({ id, locked, label, children }: { id: string; locked: boolean; label: string; children: (handle: ReactNode) => ReactNode }) {
+function SortableRow({ id, locked, label, cover, children }: { id: string; locked: boolean; label: string; /** Hides the dotted line behind this row: the day header at the very top has no line beside it. */ cover?: boolean; children: (handle: ReactNode) => ReactNode }) {
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
     id,
     // Dividers and stays can't be picked up, but an item can be dropped past them (that is how it changes day).
@@ -77,7 +81,7 @@ function SortableRow({ id, locked, label, children }: { id: string; locked: bool
     </button>
   );
   return (
-    <li ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }} className={cn(isDragging && "z-10 opacity-50")}>
+    <li ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }} className={cn(isDragging && "z-10 opacity-50", cover && "relative z-[2] flow-root bg-ground pb-4 after:absolute after:top-full after:left-0 after:h-4 after:w-10 after:bg-ground after:content-['']")}>
       {children(handle)}
     </li>
   );
@@ -90,15 +94,19 @@ export function Itinerary() {
   const stays = useRows("stays");
   const { ideas } = useIdeas();
   const { byIdea: imagesBy } = useImages();
+  const refs = usePlaceRefs();
+  const removeRow = useDeleteRow("itinerary_items", "activity");
   const urlOf = usePhotoUrls();
   const update = useUpdateRow("itinerary_items", "activity");
   const move = useMoveItems();
   const sheet = useSheet<ItineraryItem>();
-  const [defaults, setDefaults] = useState<{ day?: string }>();
+  const [defaults, setDefaults] = useState<ActivityDefaults>();
   const [connector, setConnector] = useState<ConnectorTarget | null>(null);
-  const [chooser, setChooser] = useState<string | null>(null);
   const [reorder, setReorder] = useState(false);
-  const [showMap, setShowMap] = useState(false);
+  const [big, setBig] = useState(false);
+  const [pick, setPick] = useState<"all" | number>("all");
+  const [viewing, setViewing] = useState<ItineraryItem | null>(null);
+  const wide = useMedia("(min-width: 1024px)");
   const [dragging, setDragging] = useState<string | null>(null);
 
   const sensors = useSensors(
@@ -120,19 +128,38 @@ export function Itinerary() {
   const editing = canEdit && reorder;
 
   // One flat list: day dividers, stays and items in order. Dragging an item past a divider is how it changes day.
+  // A day with nothing planned (no activity, no stay check-in or check-out) is not shown; it appears once it has something.
   const entries: Entry[] = [];
   const number = new Map<string, number>();
+  const planned: number[] = [];
   let n = 0;
   for (const g of groups) {
-    entries.push({ kind: "day", id: `day:${g.day ?? "none"}`, group: g });
-    for (const m of marks.filter((x) => x.day === g.day && x.kind === "out")) entries.push({ kind: "mark", id: m.id, mark: m });
+    if (g.items.length === 0 && !marks.some((x) => x.day === g.day)) continue;
+    if (g.day !== null) planned.push(g.day);
+    entries.push({ kind: "day", id: `day:${g.day ?? "none"}`, day: g.day, group: g });
+    for (const m of marks.filter((x) => x.day === g.day && x.kind === "out")) entries.push({ kind: "mark", id: m.id, day: g.day, mark: m });
     for (const it of g.items) {
       if (isStop(it)) number.set(it.id, ++n);
-      entries.push({ kind: "item", id: it.id, item: it });
+      entries.push({ kind: "item", id: it.id, day: g.day, item: it });
     }
-    for (const m of marks.filter((x) => x.day === g.day && x.kind === "in")) entries.push({ kind: "mark", id: m.id, mark: m });
+    for (const m of marks.filter((x) => x.day === g.day && x.kind === "in")) entries.push({ kind: "mark", id: m.id, day: g.day, mark: m });
   }
   const nothing = items.length === 0 && marks.length === 0;
+  // The day pills filter the list and the map. Stops keep their numbers from the whole trip.
+  const view = typeof pick === "number" && planned.includes(pick) ? pick : "all";
+  const shown = view === "all" ? entries : entries.filter((e) => e.day === view);
+
+  // The route: solid stops only (a tentative stop is a draft placeholder), in the order of the list, numbered as in the list.
+  // A stop's position is its saved place's coordinates while they are fresh (30 days); a stop without one is counted, not drawn.
+  const routeStops: MapStop[] = [];
+  let missing = 0;
+  for (const e of shown) {
+    if (e.kind !== "item" || !isStop(e.item) || e.item.tentative) continue;
+    const coords = e.item.source_table && e.item.source_id ? freshCoords(refs.byIdea.get(`${e.item.source_table}:${e.item.source_id}`)) : null;
+    if (coords) routeStops.push({ id: e.item.id, name: e.item.activity, label: number.get(e.item.id), ...coords });
+    else missing++;
+  }
+  const directions = directionsUrl(routeStops);
 
   const addToDay = (day: number | null) => {
     setDefaults({ day: day === null ? "" : String(day) });
@@ -143,15 +170,15 @@ export function Itinerary() {
     setDragging(null);
     const { active, over } = e;
     if (!over || active.id === over.id) return;
-    const ids = entries.map((x) => x.id);
+    const ids = shown.map((x) => x.id);
     const from = ids.indexOf(String(active.id));
     const to = ids.indexOf(String(over.id));
     const moved = items.find((i) => i.id === active.id);
     if (from < 0 || to < 0 || !moved) return;
     // The day is the nearest divider above the dropped item; the index counts the items between it and the divider.
-    const order = arrayMove(entries, from, to);
+    const order = arrayMove(shown, from, to);
     const at = order.findIndex((x) => x.id === active.id);
-    let toDay: number | null = groups[0]?.day ?? null;
+    let toDay: number | null = shown.find((x) => x.kind === "day")?.day ?? null;
     let index = 0;
     for (let k = 0; k < at; k++) {
       const x = order[k];
@@ -165,21 +192,33 @@ export function Itinerary() {
     move.mutate(result.updates);
   };
 
+  /** Add a commute or a rest right after `item`; refused where the connector rules don't allow it. */
   const openChooser = (item: ItineraryItem, kind: "commute" | "buffer") => {
     const day = groups.find((g) => g.items.some((i) => i.id === item.id));
     if (!day) return;
     const index = day.items.findIndex((i) => i.id === item.id) + 1;
     const problem = insertProblem(day.items, index, kind);
-    setChooser(null);
     if (problem) return void toast.error(problem);
     setConnector({ kind, day: day.day, plan: planInsert(day.items, index, day.day, start) });
   };
 
-  const renderItem = (item: ItineraryItem, handle: ReactNode, next: ItineraryItem | undefined) => {
+  /** Add an activity right after `item`, on the same day. */
+  const openActivity = (item: ItineraryItem) => {
+    const day = groups.find((g) => g.items.some((i) => i.id === item.id));
+    if (!day) return;
+    const index = day.items.findIndex((i) => i.id === item.id) + 1;
+    setDefaults({
+      day: day.day === null ? "" : String(day.day),
+      plan: planInsert(day.items, index, day.day, start),
+      between: { before: item.activity, after: day.items[index]?.activity },
+    });
+    sheet.openAdd();
+  };
+
+  const renderItem = (item: ItineraryItem, handle: ReactNode) => {
     if (!isStop(item))
       return <ConnectorRow item={item} currency={trip.home_currency} canEdit={canEdit && !editing} onOpen={() => setConnector({ kind: kindOf(item) as "commute" | "buffer", day: item.day, existing: item })} handle={handle} />;
     const idea = item.source_table && item.source_id ? ideaOf.get(`${item.source_table}:${item.source_id}`) : undefined;
-    const addBetween = canEdit && !editing && next && isStop(next);
     return (
       <StopCard
         item={item}
@@ -190,47 +229,24 @@ export function Itinerary() {
         currency={trip.home_currency}
         canEdit={canEdit}
         compact={editing}
-        onOpen={() => sheet.openEdit(item)}
+        onOpen={() => (canEdit ? sheet.openEdit(item) : setViewing(item))}
         onDone={(done) => update.mutate({ id: item.id, patch: { done } })}
+        onRemove={() => removeRow(item, `“${item.activity}”`)}
         handle={handle}
-      >
-        {addBetween && (
-          <div className="mt-3 flex min-h-11 items-center gap-2">
-            {chooser === item.id ? (
-              <span className="inline-flex gap-2 rounded-[18px] bg-surface p-1.5 shadow-float ring-1 ring-border">
-                <Button size="sm" variant="secondary" onClick={() => openChooser(item, "commute")}>
-                  Commute
-                </Button>
-                <Button size="sm" variant="secondary" onClick={() => openChooser(item, "buffer")}>
-                  Buffer
-                </Button>
-              </span>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setChooser(item.id)}
-                aria-label={`Add a commute or buffer after ${item.activity}`}
-                className="grid size-9 place-items-center rounded-full bg-surface text-fg-muted shadow-[inset_0_0_0_2px_var(--line-strong)]"
-              >
-                <Plus className="size-4" strokeWidth={3} aria-hidden />
-              </button>
-            )}
-          </div>
-        )}
-      </StopCard>
+      />
     );
   };
 
-  const list = entries.map((e, k) => {
+  const list = shown.map((e, k) => {
     if (e.kind === "day") {
       const totals = dayTotals(e.group.items);
       const stops = e.group.items.filter((i) => isStop(i) && !i.tentative).length;
       const tentative = e.group.items.filter((i) => isStop(i) && i.tentative).length;
       return (
-        <SortableRow key={e.id} id={e.id} locked label="day">
+        <SortableRow key={e.id} id={e.id} locked label="day" cover={k === 0}>
           {() => (
             <>
-              <DaySplit group={e.group} totals={totals} stops={stops + tentative} onAdd={canEdit && !editing ? () => addToDay(e.group.day) : undefined} />
+              <DaySplit group={e.group} totals={totals} stops={stops + tentative} />
               {tentative > 0 && !editing && (
                 <p className="mb-4 ml-[54px] text-[13px] text-fg-muted">
                   {tentative} tentative {tentative === 1 ? "stop isn’t" : "stops aren’t"} in this day’s count or the export until confirmed on the board.
@@ -249,43 +265,112 @@ export function Itinerary() {
         </SortableRow>
       );
     }
-    const nextItem = entries.slice(k + 1).find((x) => x.kind === "item" || x.kind === "day");
+    const nextItem = shown.slice(k + 1).find((x) => x.kind === "item" || x.kind === "day");
     const next = nextItem?.kind === "item" ? nextItem.item : undefined;
-    return (
+    // The "+" belongs to this activity. Never next to an existing commute or rest, while reordering, or for viewers.
+    const addAfter = canEdit && !editing && isStop(e.item) && !(next && !isStop(next));
+    return [
       <SortableRow key={e.id} id={e.id} locked={!editing} label={e.item.activity}>
-        {(handle) => renderItem(e.item, editing ? handle : null, next)}
-      </SortableRow>
-    );
+        {(handle) => renderItem(e.item, editing ? handle : null)}
+      </SortableRow>,
+      addAfter && (
+        <AddHere
+          key={`add-${e.id}`}
+          label={e.item.activity}
+          onCommute={() => openChooser(e.item, "commute")}
+          onRest={() => openChooser(e.item, "buffer")}
+          onActivity={() => openActivity(e.item)}
+        />
+      ),
+    ];
   });
 
   const dragged = dragging ? items.find((i) => i.id === dragging) : undefined;
 
   return (
     <div className="-mx-4 -mt-4 lg:mx-0 lg:mt-0 lg:overflow-hidden lg:rounded-[28px] lg:bg-ground lg:shadow-card">
-      <header className="relative overflow-hidden bg-[#12392f] px-4 pt-5 pb-14 text-white dark:bg-[#0f2a24] dark:text-[#e8f0ec] lg:px-8 lg:pt-8 lg:pb-16">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(120%_90%_at_85%_0%,color-mix(in_srgb,var(--teal)_38%,transparent),transparent_60%)]" aria-hidden />
-        <div className="relative flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <h1 className="sr-only">Itinerary</h1>
-            <p className="font-display text-[32px] leading-[1.05] font-extrabold tracking-tight text-balance lg:text-[40px]" aria-hidden>
-              {trip.name}
-            </p>
-            <p className="mt-1.5 text-sm text-[#b9d6cc]">{[len ? `${len} days` : null, formatDateRange(trip.start_date, trip.end_date)].filter(Boolean).join(" · ")}</p>
-          </div>
+      <header
+        className={cn(
+          "relative flex flex-col overflow-hidden bg-[#12392f] px-4 pt-5 pb-14 text-white transition-[min-height] duration-300 ease-out motion-reduce:transition-none dark:bg-[#0f2a24] dark:text-[#e8f0ec] lg:px-8 lg:pt-8 lg:pb-16",
+          big ? "min-h-[480px] lg:min-h-[560px]" : "min-h-[300px] lg:min-h-[340px]",
+        )}
+      >
+        {/* The route map is the hero: stops numbered as in the list, an arrow on each leg. Ctrl + scroll zooms it; the page still scrolls. */}
+        <div className="absolute inset-0">
+          <MapView
+            stops={routeStops}
+            arrows
+            interactive
+            cooperative
+            label="Route through the stops"
+            insets={wide ? { top: 40, right: 40, bottom: 70, left: 360 } : { top: 130, right: 24, bottom: 90, left: 24 }}
+          />
         </div>
-        <div className="relative mt-5 flex gap-2 overflow-x-auto [scrollbar-width:none]" role="group" aria-label="Itinerary view">
-          <span aria-current="page" className="inline-flex min-h-11 items-center rounded-full bg-[#ffb400] px-[18px] text-[15px] font-bold text-[#1a1100]">
-            Itinerary
-          </span>
+        {/* The shading under the title fades out when the map is enlarged, and back in when it is reduced. */}
+        <div className={cn("pointer-events-none absolute inset-0 transition-opacity duration-300 motion-reduce:transition-none", big ? "opacity-0" : "opacity-100")} aria-hidden>
+          <div className="absolute inset-0 bg-gradient-to-b from-[#12392f] via-[#12392f]/55 to-transparent dark:from-[#0f2a24] dark:via-[#0f2a24]/55 lg:bg-gradient-to-r lg:from-[#12392f] lg:via-[#12392f]/70 lg:to-transparent lg:dark:from-[#0f2a24] lg:dark:via-[#0f2a24]/70" />
+          <div className="absolute inset-0 bg-[radial-gradient(120%_90%_at_85%_0%,color-mix(in_srgb,var(--teal)_38%,transparent),transparent_60%)]" />
+        </div>
+        <div className="pointer-events-none relative min-w-0 pr-28">
+          <h1 className="sr-only">Itinerary</h1>
+          <p
+            className={cn(
+              "font-display leading-[1.05] font-extrabold tracking-tight text-balance transition-[font-size] duration-300 motion-reduce:transition-none",
+              big ? "text-[22px] [text-shadow:0_1px_10px_rgb(0_0_0/0.65)] lg:text-[26px]" : "text-[32px] lg:text-[40px]",
+            )}
+            aria-hidden
+          >
+            {trip.name}
+          </p>
+          <p className={cn("mt-1.5 text-sm text-[#b9d6cc]", big && "[text-shadow:0_1px_8px_rgb(0_0_0/0.65)]")}>
+            {[len ? `${len} days` : null, formatDateRange(trip.start_date, trip.end_date)].filter(Boolean).join(" · ")}
+          </p>
+        </div>
+        {/* Upper right of the map: enlarge or reduce it, and the road route in Google Maps (a link, so no API call and no quota). */}
+        <div className="absolute right-4 z-[2] flex gap-2 lg:right-8">
+          {directions && (
+            <a
+              href={directions}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Directions"
+              className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-full bg-[#12392f]/80 px-3 text-[15px] font-bold backdrop-blur-sm lg:px-4"
+            >
+              <ArrowUpRight className="size-[18px]" strokeWidth={2.6} aria-hidden />
+              <span className="hidden lg:inline">Directions</span>
+            </a>
+          )}
           <button
             type="button"
-            aria-pressed={showMap}
-            onClick={() => setShowMap((v) => !v)}
-            className={cn("inline-flex min-h-11 items-center rounded-full px-[18px] text-[15px] font-bold", showMap ? "bg-[#ffb400] text-[#1a1100]" : "bg-white/15 text-inherit")}
+            aria-pressed={big}
+            aria-label={big ? "Reduce map" : "Enlarge map"}
+            onClick={() => setBig((v) => !v)}
+            className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-full bg-[#12392f]/80 px-3 text-[15px] font-bold backdrop-blur-sm lg:px-4"
           >
-            Map
+            {big ? <Minimize2 className="size-[18px]" strokeWidth={2.6} aria-hidden /> : <Maximize2 className="size-[18px]" strokeWidth={2.6} aria-hidden />}
+            <span className="hidden lg:inline">{big ? "Reduce map" : "Enlarge map"}</span>
           </button>
-          <Link href="/places" className="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-white/15 px-[18px] text-[15px] font-bold">
+        </div>
+        {/* The days, low in the hero. They filter the list and the map; days with nothing planned aren't listed. */}
+        <div className="pointer-events-none relative mt-auto flex gap-2 overflow-x-auto pt-5 [scrollbar-width:none]" role="group" aria-label="Show days">
+          {[{ key: "all" as const, label: "All days" }, ...planned.map((d) => ({ key: d, label: `Day ${d}` }))].map((p) => {
+            const on = view === p.key;
+            return (
+              <button
+                key={p.key}
+                type="button"
+                aria-pressed={on}
+                onClick={() => setPick(p.key)}
+                className={cn(
+                  "pointer-events-auto inline-flex min-h-11 shrink-0 items-center rounded-full px-[18px] text-[15px] font-bold transition-colors motion-reduce:transition-none",
+                  on ? "bg-[#ffb400] text-[#1a1100]" : big ? "bg-[#12392f]/80 text-inherit backdrop-blur-sm" : "bg-white/15 text-inherit",
+                )}
+              >
+                {p.label}
+              </button>
+            );
+          })}
+          <Link href="/places" className={cn("pointer-events-auto inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full px-[18px] text-[15px] font-bold", big ? "bg-[#12392f]/80 backdrop-blur-sm" : "bg-white/15")}>
             Drafts
             {draftCount > 0 && <span className="font-mono text-xs opacity-85">{draftCount}</span>}
           </Link>
@@ -293,20 +378,15 @@ export function Itinerary() {
       </header>
 
       <div className="relative z-[1] -mt-8 rounded-t-[28px] bg-ground px-4 pt-5 pb-8 lg:mt-0 lg:rounded-none lg:px-8">
-        {showMap && (
-          // The map (and the one Google map load it costs) only appears when asked for.
-          <div className="mb-5 space-y-3">
-            <Card className="p-3">
-              <div className="relative h-[220px] overflow-hidden rounded-2xl bg-[var(--sea)]">
-                <RouteMap bottomInset={40} />
-              </div>
-            </Card>
-            <StopsCard />
-          </div>
-        )}
-
         <div className="mb-4 flex min-h-11 items-center justify-between gap-3">
-          <p className="text-sm font-bold text-fg-muted">{progress.total ? `${progress.done} of ${progress.total} done` : "Nothing planned yet"}</p>
+          <div className="min-w-0">
+            <p className="text-sm font-bold text-fg-muted">{progress.total ? `${progress.done} of ${progress.total} done` : "Nothing planned yet"}</p>
+            {missing > 0 && (
+              <p className="text-[13px] text-fg-muted">
+                {missing} {missing === 1 ? "stop has" : "stops have"} no map position yet.
+              </p>
+            )}
+          </div>
           <EditOnly>
             <div className="flex items-center gap-2">
               {!nothing && (
@@ -346,7 +426,7 @@ export function Itinerary() {
           </div>
         ) : (
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={(e: DragStartEvent) => setDragging(String(e.active.id))} onDragCancel={() => setDragging(null)} onDragEnd={onDragEnd}>
-            <SortableContext items={entries.map((x) => x.id)} strategy={verticalListSortingStrategy}>
+            <SortableContext items={shown.map((x) => x.id)} strategy={verticalListSortingStrategy}>
               <ol className="relative before:absolute before:top-6 before:bottom-6 before:left-[19px] before:border-l-[3px] before:border-dotted before:border-line-strong">{list}</ol>
             </SortableContext>
             <DragOverlay>
@@ -364,6 +444,14 @@ export function Itinerary() {
       </div>
 
       {sheet.mounted && <ItinerarySheet sheet={sheet} cities={cities} defaults={defaults} />}
+      {viewing && (
+        <StopView
+          item={viewing}
+          idea={viewing.source_table && viewing.source_id ? ideaOf.get(`${viewing.source_table}:${viewing.source_id}`) : undefined}
+          currency={trip.home_currency}
+          onClose={() => setViewing(null)}
+        />
+      )}
       {connector && <ConnectorSheet target={connector} onClose={() => setConnector(null)} />}
     </div>
   );

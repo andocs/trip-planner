@@ -1,11 +1,10 @@
 "use client";
 
-import { Trash2 } from "lucide-react";
 import { useState } from "react";
 import { ChipGroup } from "@/components/ideas/chips";
 import { useTrip } from "@/components/trip-gate";
-import { Button } from "@/components/ui/button";
 import { Field, Input, Textarea } from "@/components/ui/field";
+import { FormFooter } from "@/components/ui/form-footer";
 import { Segmented } from "@/components/ui/segmented";
 import { Sheet } from "@/components/ui/sheet";
 import { dateForDay, BUFFER_KINDS, BUFFER_LABEL, COMMUTE_LABEL, COMMUTE_MODES, connectorDetails, DURATION_PRESETS, type ConnectorDetails, type InsertPlan } from "@/lib/itinerary";
@@ -81,34 +80,29 @@ export function ConnectorSheet({ target, onClose }: { target: ConnectorTarget; o
     <Sheet
       open
       onOpenChange={(o) => !o && onClose()}
-      title={`${editing ? "Edit" : "Add"} ${kind === "commute" ? "commute" : "break"}`}
+      title={`${editing ? "Edit" : "Add"} ${kind === "commute" ? "commute" : "rest"}`}
       description="Between two places. Lengths are typed in; nothing here looks up routes."
       footer={
-        <div className="flex items-center gap-3">
-          {editing && (
-            <Button
-              type="button"
-              variant="secondary"
-              size="icon"
-              aria-label="Delete"
-              onClick={() => {
-                remove(target.existing!, label(kind, mode, labels));
-                onClose();
-              }}
-            >
-              <Trash2 className="size-5 text-danger" aria-hidden />
-            </Button>
-          )}
-          <Button type="button" variant="outline" size="lg" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button type="button" size="lg" className="flex-1" onClick={save}>
-            {editing ? "Save" : "Add"}
-          </Button>
-        </div>
+        <FormFooter
+          mode={editing ? "edit" : "add"}
+          formId="connector-form"
+          onCancel={onClose}
+          onDelete={() => {
+            remove(target.existing!, label(kind, mode, labels));
+            onClose();
+          }}
+        />
       }
     >
-      <div className="space-y-4 pt-1">
+      <form
+        id="connector-form"
+        noValidate
+        className="space-y-4 pt-1"
+        onSubmit={(e) => {
+          e.preventDefault();
+          save();
+        }}
+      >
         {!editing && (
           <Segmented<"commute" | "buffer">
             label="Type"
@@ -120,7 +114,7 @@ export function ConnectorSheet({ target, onClose }: { target: ConnectorTarget; o
             className="flex w-full"
             options={[
               { value: "commute", label: "Commute" },
-              { value: "buffer", label: "Buffer" },
+              { value: "buffer", label: "Rest" },
             ]}
           />
         )}
@@ -149,7 +143,7 @@ export function ConnectorSheet({ target, onClose }: { target: ConnectorTarget; o
         <Field label="Note (optional)">
           {(p) => <Textarea {...p} value={note} onChange={(e) => setNote(e.target.value)} rows={2} maxLength={200} placeholder="Grab from the lake to the hotel" />}
         </Field>
-      </div>
+      </form>
     </Sheet>
   );
 }

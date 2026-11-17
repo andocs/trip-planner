@@ -167,11 +167,11 @@ test("owner: save keeps only the place id, the owner's own label and the license
   await expect(lake.getByText(/Wikimedia Commons/)).toBeVisible();
   await lake.getByRole("button", { name: "Save to board" }).click();
   // The same add form as the Places board, opened with the result's name and area filled in.
-  const sheet = page.getByRole("dialog", { name: "Add sight" });
+  const sheet = page.getByRole("dialog", { name: "Add place" });
   await expect(sheet.getByLabel("Name", { exact: true })).toHaveValue("Hoan Kiem Lake");
   await expect(sheet.getByLabel("Location or area")).toHaveValue("Hanoi");
   await sheet.getByLabel("Name", { exact: true }).fill("Lake walk at dusk");
-  await sheet.getByRole("button", { name: "Add draft" }).click();
+  await sheet.getByRole("button", { name: "Add", exact: true }).click();
 
   await expect.poll(() => fake.tables.get("attractions")!.length).toBe(before + 1);
   const idea = fake.tables.get("attractions")!.find((a) => a.name === "Lake walk at dusk")!;
@@ -222,7 +222,7 @@ test("owner: a reached monthly limit shows a calm notice and a way forward, not 
   await expect(page.getByRole("article")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Try again" })).toHaveCount(0); // retrying cannot help
   await page.getByRole("button", { name: "Add an idea by hand" }).click();
-  await expect(page.getByRole("dialog", { name: "Add ideas" })).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "Add place" })).toBeVisible();
   expect(calls.search).toBe(1);
 });
 

@@ -18,16 +18,17 @@ test("owner: paste several ideas and get one draft per line", async ({ page }) =
 
   const before = fake.tables.get("hotel_ideas")!.length;
   await page.getByRole("button", { name: "Add idea" }).click();
-  const sheet = page.getByRole("dialog", { name: "Add ideas" });
+  await page.getByRole("radio", { name: "Paste a list" }).click();
+  const sheet = page.getByRole("dialog", { name: "Add place" });
   await sheet
     .getByRole("textbox")
     .first()
     .fill("Old Quarter boutique hotel - 3800\nHmong homestay in Ta Van - 1900\nTrain Street cafe");
-  await sheet.getByLabel("City").fill("Hanoi");
-  await expect(sheet.getByText("3 drafts will be created")).toBeVisible();
+  await sheet.getByLabel("Location or area (for all)").fill("Hanoi");
+  await expect(sheet.getByText("3 places, added as drafts.")).toBeVisible();
   await expect(sheet.getByText(/PHP 3,800/)).toBeVisible();
   await sheet.getByRole("button", { name: "Remove Train Street cafe" }).click();
-  await sheet.getByRole("button", { name: "Add 2 drafts" }).click();
+  await sheet.getByRole("button", { name: "Add 2 places", exact: true }).click();
 
   await expect.poll(() => fake.tables.get("hotel_ideas")!.length).toBe(before + 2);
   const added = fake.tables
@@ -66,11 +67,11 @@ test("owner: a tentative stop is dashed and uncounted; confirming makes it solid
   await expect(page.getByText("0 of 140 done")).toBeVisible(); // not counted
   const stop = page.getByRole("button", { name: new RegExp(`Tentative: ${CARD}`) });
   await expect(stop).toBeVisible();
-  await expect(page.getByRole("link", { name: "On the board" })).toBeVisible();
   await expect(page.getByText(/1 tentative stop isn.t in this day.s count/)).toBeVisible();
 
-  // Confirm the source on the board: the stop becomes a normal, counted stop.
-  await page.getByRole("link", { name: "On the board" }).click();
+  // Confirm the source on the board (the card's menu links to it): the stop becomes a normal, counted stop.
+  await stop.click();
+  await page.getByRole("menuitem", { name: /on the board/ }).click();
   await expect(page.getByRole("dialog", { name: CARD })).toBeVisible();
   await page
     .getByRole("dialog")
@@ -79,7 +80,9 @@ test("owner: a tentative stop is dashed and uncounted; confirming makes it solid
   await expect.poll(() => fake.tables.get("itinerary_items")!.find((i) => i.activity === CARD)?.tentative).toBe(false);
   await page.goto("/itinerary");
   await expect(page.getByText("0 of 141 done")).toBeVisible();
-  await expect(page.getByRole("link", { name: "On the board" })).toHaveCount(0);
+  // No longer tentative: its menu has no "Open on the board".
+  await page.getByRole("button", { name: new RegExp(`${CARD}\\. Menu`) }).click();
+  await expect(page.getByRole("menuitem", { name: /on the board/ })).toHaveCount(0);
 });
 
 test("owner: dropping an idea removes its tentative stop and lists it under Dropped", async ({ page }) => {
@@ -198,9 +201,9 @@ test("N opens quick add from any screen for the owner, and does nothing for a vi
   await expect(page.getByText("0 of 140 done")).toBeVisible();
   await page.waitForLoadState("networkidle");
   await page.keyboard.press("n");
-  await expect(page.getByRole("dialog", { name: "Add ideas" })).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "Add place" })).toBeVisible();
   await page.keyboard.press("Escape");
-  await expect(page.getByRole("dialog", { name: "Add ideas" })).toHaveCount(0);
+  await expect(page.getByRole("dialog", { name: "Add place" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Add idea" })).toBeVisible(); // the floating button works on every screen
 });
 
@@ -212,4 +215,13 @@ test("viewer: N and the quick-add button do not exist", async ({ page }) => {
   await page.keyboard.press("n");
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Add idea" })).toHaveCount(0);
+});
+
+test("the Places board does not scroll sideways on a laptop screen", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await createFakeSupabase({ withSeed: true }).install(page);
+  await page.goto("/places");
+  await expect(page.getByRole("radio", { name: "Board" })).toBeChecked();
+  const widths = await page.evaluate(() => ({ doc: document.documentElement.scrollWidth, view: window.innerWidth }));
+  expect(widths.doc).toBeLessThanOrEqual(widths.view);
 });

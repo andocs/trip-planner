@@ -7,7 +7,7 @@ import { MapFallback } from "@/components/map/map-fallback";
 import { useIsDark } from "@/lib/use-dark";
 import { cn } from "@/lib/utils";
 
-export type MapStop = { id: string | number; name: string; lat: number; lng: number };
+export type MapStop = { id: string | number; name: string; lat: number; lng: number; /** The number shown on the disc (defaults to its place in the list). */ label?: number };
 /** A suggested or saved place drawn on the map (Discover). `n` is its number in the list beside it. */
 export type MapPlace = {
   id: string;
@@ -40,6 +40,8 @@ export function MapView({
   insets = { top: 80, right: 24, bottom: 24, left: 24 },
   label = "Trip map",
   interactive = true,
+  cooperative = false,
+  arrows = false,
   className,
 }: {
   stops: MapStop[];
@@ -52,6 +54,10 @@ export function MapView({
   label?: string;
   /** false for a picture-only map (Home): no dragging or zooming, so the page scrolls normally. */
   interactive?: boolean;
+  /** A map inside a scrolling page (a hero): Ctrl + scroll zooms and two fingers move it, so the page still scrolls over it. */
+  cooperative?: boolean;
+  /** Solid lines with an arrow on each leg, in the order of the stops (the order of travel). Otherwise a dashed line. */
+  arrows?: boolean;
   className?: string;
 }) {
   const dark = useIsDark();
@@ -78,7 +84,7 @@ export function MapView({
             colorScheme={dark ? "DARK" : "LIGHT"}
             defaultCenter={{ lat: 20, lng: 105 }}
             defaultZoom={3}
-            gestureHandling={interactive ? "greedy" : "none"}
+            gestureHandling={interactive ? (cooperative ? "cooperative" : "greedy") : "none"}
             disableDefaultUI
             zoomControl={interactive}
             keyboardShortcuts={interactive}
@@ -90,11 +96,11 @@ export function MapView({
             style={{ width: "100%", height: "100%" }}
           >
             <Framing stops={stops} pin={pin ?? null} places={places} insets={insets} />
-            <Route stops={stops} />
+            <Route stops={stops} arrows={arrows} />
             {stops.map((s, i) => (
               <AdvancedMarker key={s.id} position={{ lat: s.lat, lng: s.lng }} title={s.name} clickable={false}>
                 <div className="map-disc" aria-hidden="true">
-                  <span className="map-disc-n">{i + 1}</span>
+                  <span className="map-disc-n">{s.label ?? i + 1}</span>
                   <span className="map-disc-l">{s.name}</span>
                 </div>
               </AdvancedMarker>
@@ -195,12 +201,36 @@ function Framing({
 }
 
 /** The dashed route through the stops, in the same colour as the rest of the app. */
-function Route({ stops }: { stops: MapStop[] }) {
+function Route({ stops, arrows }: { stops: MapStop[]; arrows: boolean }) {
   const map = useMap();
-  const key = stops.map((s) => `${s.lat},${s.lng}`).join("|");
+  const key = `${arrows}|` + stops.map((s) => `${s.lat},${s.lng}`).join("|");
   useEffect(() => {
     if (!map || stops.length < 2) return;
     const color = getComputedStyle(document.documentElement).getPropertyValue("--route").trim() || "#c93f1b";
+    if (arrows) {
+      // One solid leg per pair of consecutive stops, each with an arrow at its middle: the direction of travel.
+      const legs = stops.slice(1).map((to, i) => {
+        const from = stops[i];
+        return new google.maps.Polyline({
+          map,
+          path: [
+            { lat: from.lat, lng: from.lng },
+            { lat: to.lat, lng: to.lng },
+          ],
+          strokeColor: color,
+          strokeOpacity: 0.9,
+          strokeWeight: 4,
+          geodesic: false,
+          icons: [
+            {
+              icon: { path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW, scale: 3, strokeColor: color, fillColor: color, fillOpacity: 1 },
+              offset: "50%",
+            },
+          ],
+        });
+      });
+      return () => legs.forEach((l) => l.setMap(null));
+    }
     const line = new google.maps.Polyline({
       map,
       path: stops.map((s) => ({ lat: s.lat, lng: s.lng })),

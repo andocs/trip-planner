@@ -1,12 +1,12 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { BedDouble, Flag, Landmark, Link2, Trash2, Utensils } from "lucide-react";
+import { BedDouble, ChevronDown, ClipboardPaste, Flag, Landmark, Link2, Plus, Utensils } from "lucide-react";
 import { useState } from "react";
 import { Controller, useForm, useWatch, type Control, type Resolver, type UseFormRegister } from "react-hook-form";
 import { toast } from "sonner";
 import { useTrip } from "@/components/trip-gate";
-import { Button } from "@/components/ui/button";
+import { FormFooter } from "@/components/ui/form-footer";
 import { Field, Input, Select, Textarea } from "@/components/ui/field";
 import { Segmented } from "@/components/ui/segmented";
 import { Sheet } from "@/components/ui/sheet";
@@ -34,8 +34,10 @@ import {
 } from "@/lib/idea-details";
 import { blankForm, FORM_SCHEMA, formFromIdea, toPayload, type IdeaFormValues, type IdeaPayload } from "@/lib/idea-form";
 import { newId, useDeleteRow, useInsertRow, useRows, useUpdateRow } from "@/lib/queries/table";
+import { cn } from "@/lib/utils";
 import { COMMON_CURRENCIES } from "@/lib/schemas";
-import { ChipGroup, SectionLabel, ToggleRow } from "./chips";
+import { ChipGroup, ToggleRow } from "./chips";
+import { PasteList, type PasteSummary } from "./paste-list";
 
 const KINDS: { value: IdeaKind; icon: typeof BedDouble }[] = [
   { value: "stay", icon: BedDouble },
@@ -43,6 +45,12 @@ const KINDS: { value: IdeaKind; icon: typeof BedDouble }[] = [
   { value: "sight", icon: Landmark },
 ];
 const FORM_ID = "idea-modal-form";
+/** The collapsible category details: a title and what is inside. */
+const FOLD: Record<IdeaKind, [string, string]> = {
+  stay: ["Stay details", "Type, days, cancellation, amenities"],
+  food: ["Food details", "Cuisine, meal, hours, reservation"],
+  sight: ["Sight details", "Type, tickets, duration, best time, effort"],
+};
 const menuKey = (s: string) => s.trim().toLowerCase();
 
 export type IdeaModalProps = {
@@ -60,6 +68,8 @@ export type IdeaModalProps = {
   submitLabel?: string;
   /** Shown above the fields (e.g. what is kept from Google). */
   note?: string;
+  /** Add mode only: open on "Paste a list" instead of "One place". */
+  startMode?: "one" | "paste";
 };
 
 /**
@@ -67,11 +77,28 @@ export type IdeaModalProps = {
  * sights. Everything is short inputs, chips and switches. It never calls Google: a name or area that came from a
  * saved Google result is only prefilled. Used from the Places board (add and edit) and from Discover.
  */
-export function IdeaModal({ kind: startKind, idea, prefill, cities, onClose, onCreate, pending, submitLabel, note }: IdeaModalProps) {
+export function IdeaModal({ kind: startKind, idea, prefill, cities, onClose, onCreate, pending, submitLabel, note, startMode }: IdeaModalProps) {
   const [kind, setKind] = useState<IdeaKind>(idea?.kind ?? startKind);
   // Switching category (add mode) keeps what was typed in the shared fields.
   const [carry, setCarry] = useState<Partial<IdeaFormValues>>({ name: prefill?.name ?? "", city: prefill?.city ?? "" });
   const editing = !!idea;
+  // Keep adding (on by default for places): after a save the name clears and the area and category stay.
+  // A save from Discover is for one Google place, so it always closes.
+  const canPaste = !editing && !onCreate;
+  const [mode, setMode] = useState<"one" | "paste">(canPaste && startMode === "paste" ? "paste" : "one");
+  const pasting = canPaste && mode === "paste";
+  const [paste, setPaste] = useState<PasteSummary>({ count: 0, pending: false });
+  const canKeep = canPaste && !pasting;
+  const [keep, setKeep] = useState(true);
+  const [round, setRound] = useState(0);
+  const finish = (city: string) => {
+    if (canKeep && keep) {
+      setCarry({ name: "", city });
+      setRound((r) => r + 1);
+      return;
+    }
+    onClose();
+  };
   const remove = {
     hotel_ideas: useDeleteRow("hotel_ideas", "hotel idea"),
     food_places: useDeleteRow("food_places", "food place"),
@@ -92,21 +119,17 @@ export function IdeaModal({ kind: startKind, idea, prefill, cities, onClose, onC
       open
       side
       onOpenChange={(o) => !o && onClose()}
-      title={`${editing ? "Edit" : "Add"} ${KIND_LABEL[kind].toLowerCase()}`}
+      title={editing ? `Edit ${KIND_LABEL[kind].toLowerCase()}` : "Add place"}
       footer={
-        <div className="flex items-center gap-3">
-          {editing && (
-            <Button type="button" variant="secondary" size="icon" onClick={onDelete} aria-label="Delete">
-              <Trash2 className="size-5 text-danger" aria-hidden />
-            </Button>
-          )}
-          <Button type="button" variant="outline" size="lg" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button type="submit" form={FORM_ID} size="lg" className="flex-1" disabled={pending}>
-            {submitLabel ?? (editing ? "Save" : "Save draft")}
-          </Button>
-        </div>
+        <FormFooter
+          mode={editing ? "edit" : "add"}
+          formId={FORM_ID}
+          submitLabel={pasting ? (paste.count > 1 ? `Add ${paste.count} places` : "Add") : submitLabel}
+          pending={pasting ? pending || paste.pending || paste.count === 0 : pending}
+          onCancel={onClose}
+          onDelete={onDelete}
+          keepAdding={canKeep ? { value: keep, onChange: setKeep } : undefined}
+        />
       }
     >
       {!editing && (
@@ -118,18 +141,34 @@ export function IdeaModal({ kind: startKind, idea, prefill, cities, onClose, onC
           options={KINDS.map((k) => ({ value: k.value, label: KIND_LABEL[k.value] }))}
         />
       )}
-      <IdeaForm
-        key={kind}
-        kind={kind}
-        idea={idea}
-        carry={carry}
-        onCarry={setCarry}
-        cities={cities}
-        onClose={onClose}
-        onCreate={onCreate}
-        note={note}
-        fromGoogle={!!prefill?.name}
-      />
+      {canPaste && (
+        <Segmented<"one" | "paste">
+          label="How many"
+          value={mode}
+          onChange={setMode}
+          className="mb-3 flex w-full"
+          options={[
+            { value: "one", label: "One place", icon: <Plus className="size-4" strokeWidth={2.6} aria-hidden /> },
+            { value: "paste", label: "Paste a list", icon: <ClipboardPaste className="size-4" strokeWidth={2.4} aria-hidden /> },
+          ]}
+        />
+      )}
+      {pasting ? (
+        <PasteList formId={FORM_ID} kind={kind} cities={cities} onDone={onClose} onSummary={setPaste} />
+      ) : (
+        <IdeaForm
+          key={`${kind}-${round}`}
+          kind={kind}
+          idea={idea}
+          carry={carry}
+          onCarry={setCarry}
+          cities={cities}
+          onDone={finish}
+          onCreate={onCreate}
+          note={note}
+          fromGoogle={!!prefill?.name}
+        />
+      )}
     </Sheet>
   );
 }
@@ -140,7 +179,7 @@ function IdeaForm({
   carry,
   onCarry,
   cities,
-  onClose,
+  onDone,
   onCreate,
   note,
   fromGoogle,
@@ -150,7 +189,8 @@ function IdeaForm({
   carry: Partial<IdeaFormValues>;
   onCarry: (c: Partial<IdeaFormValues>) => void;
   cities: string[];
-  onClose: () => void;
+  /** Called after a save with the area that was saved (keep adding reuses it). */
+  onDone: (city: string) => void;
   onCreate?: (payload: IdeaPayload, done: () => void) => void;
   note?: string;
   fromGoogle: boolean;
@@ -176,6 +216,8 @@ function IdeaForm({
     defaultValues: defaults,
   });
   const errors = formState.errors;
+  // Category details are folded away when adding; editing opens them.
+  const [detailsOpen, setDetailsOpen] = useState(!!idea);
   const [name, city] = useWatch({ control, name: ["name", "city"] });
 
   // Remember the shared fields so a category switch (add mode) does not lose them.
@@ -189,13 +231,16 @@ function IdeaForm({
         // Menu items are linked by restaurant name, so carry them over on rename.
         for (const m of menu.filter((x) => menuKey(x.restaurant) === menuKey(idea.name)))
           updateMenu.mutate({ id: m.id, patch: { restaurant: payload.name } });
-      onClose();
+      onDone(out.city);
       return;
     }
-    if (onCreate) return onCreate(payload, onClose);
+    if (onCreate) return onCreate(payload, () => onDone(out.city));
     (insert[payload.table].mutate as (v: unknown) => void)([{ id: newId(), ...payload.columns, ...payload.insertOnly }]);
     toast.success(payload.columns.decision === "confirmed" ? "Added." : "Added as a draft.");
-    onClose();
+    onDone(out.city);
+  }, (errs) => {
+    // An error inside the folded details must not be hidden.
+    if (Object.keys(errs).some((k) => !["name", "city", "cost", "currency", "unit", "notes"].includes(k))) setDetailsOpen(true);
   });
 
   const listId = "idea-areas";
@@ -230,9 +275,20 @@ function IdeaForm({
         ))}
       </datalist>
 
-      <div className="grid grid-cols-[1fr_6.5rem] gap-3">
+      <div className="grid grid-cols-[minmax(0,1.5fr)_minmax(0,1.25fr)_minmax(0,1fr)] items-end gap-3">
         <Field label={COST_LABEL[kind]} error={errors.cost?.message}>
           {(p) => <Input {...p} {...register("cost")} inputMode="decimal" placeholder="0" />}
+        </Field>
+        <Field label="Per">
+          {(p) => (
+            <Select {...p} {...register("unit")}>
+              {UNITS.map((u) => (
+                <option key={u} value={u}>
+                  {UNIT_LABEL[u].replace(/^per /, "")}
+                </option>
+              ))}
+            </Select>
+          )}
         </Field>
         <Field label="Currency" error={errors.currency?.message}>
           {(p) => (
@@ -244,19 +300,29 @@ function IdeaForm({
           )}
         </Field>
       </div>
-      <Controller
-        control={control}
-        name="unit"
-        render={({ field }) => (
-          <ChipGroup label="Priced" options={UNITS} value={field.value} onChange={(v) => field.onChange(v || field.value)} display={(u) => UNIT_LABEL[u as keyof typeof UNIT_LABEL]} />
+
+      <div>
+        <button
+          type="button"
+          aria-expanded={detailsOpen}
+          onClick={() => setDetailsOpen((v) => !v)}
+          className="flex min-h-13 w-full items-center justify-between gap-3 rounded-2xl bg-surface-2 px-3.5 text-left font-bold"
+        >
+          <span>
+            {FOLD[kind][0]}
+            <small className="block text-[13px] font-medium text-fg-muted">{FOLD[kind][1]}</small>
+          </span>
+          <ChevronDown className={cn("size-5 shrink-0 transition-transform motion-reduce:transition-none", detailsOpen && "rotate-180")} aria-hidden />
+        </button>
+        {detailsOpen && (
+          <div className="mt-4 space-y-4">
+            {kind === "stay" && <StaySection control={control} register={register} errors={errors} currency={home} />}
+            {kind === "food" && <FoodSection control={control} register={register} errors={errors} />}
+            {kind === "sight" && <SightSection control={control} register={register} errors={errors} />}
+          </div>
         )}
-      />
+      </div>
 
-      {kind === "stay" && <StaySection control={control} register={register} errors={errors} currency={home} />}
-      {kind === "food" && <FoodSection control={control} register={register} errors={errors} />}
-      {kind === "sight" && <SightSection control={control} register={register} errors={errors} />}
-
-      <SectionLabel>Everyone</SectionLabel>
       <Field label="Notes" error={errors.notes?.message} hint="Photos and links are added from the idea itself.">
         {(p) => <Textarea {...p} {...register("notes")} rows={2} placeholder="Anything the group should know" />}
       </Field>
@@ -347,7 +413,6 @@ function StaySection({ control, register, errors, currency }: SectionProps & { c
   const total = price === undefined ? undefined : unit === "night" ? (nights ? price * nights : undefined) : price;
   return (
     <>
-      <SectionLabel>Stay</SectionLabel>
       <Chips control={control} name="stayType" label="Stay type" options={STAY_TYPES} />
       <div className="grid grid-cols-2 gap-3">
         <Field label="Check-in day" error={errors.checkInDay?.message} hint="A trip day number. The date is worked out from the trip start.">
@@ -399,7 +464,6 @@ function FoodSection({ control, register, errors }: SectionProps) {
   const reservationNeeded = useWatch({ control, name: "reservationNeeded" });
   return (
     <>
-      <SectionLabel>Food place</SectionLabel>
       <Chips control={control} name="cuisines" label="Cuisine" options={CUISINES} multi display={(c) => c} />
       <Field label="Must-try dish" error={errors.mustTry?.message}>
         {(p) => <Input {...p} {...register("mustTry")} placeholder="Bún chả with nem cua bể" />}
@@ -422,7 +486,6 @@ function SightSection({ control, register, errors }: SectionProps) {
   const ticketsNeeded = useWatch({ control, name: "ticketsNeeded" });
   return (
     <>
-      <SectionLabel>Sight</SectionLabel>
       <Chips control={control} name="sightType" label="Type" options={SIGHT_TYPES} />
       <Switch control={control} name="ticketsNeeded" label="Tickets needed in advance" />
       {ticketsNeeded && <Switch control={control} name="ticketsBooked" label="Tickets booked" />}

@@ -33,7 +33,7 @@ export function SavePlaceModal({
       cities={cities}
       onClose={onClose}
       pending={save.isPending}
-      submitLabel="Add draft"
+      submitLabel="Add"
       note="Your own label: edit the name however you like. Saved as a draft linked to the Google place. Ratings, hours and photos stay with Google and load live, so they are never copied into your plan."
       onCreate={(payload, done) => {
         const photo = qc.getQueryData<WikiPhoto | null>(["places", "wiki", card.id]) ?? null;

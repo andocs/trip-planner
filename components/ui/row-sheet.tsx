@@ -1,19 +1,19 @@
 "use client";
 
-import { Trash2 } from "lucide-react";
 import type { FormEvent, ReactNode } from "react";
-import { Button } from "./button";
+import { FormFooter } from "./form-footer";
 import { Sheet } from "./sheet";
 
 /**
- * Standard add/edit bottom sheet: fields in the body, the primary action pinned at the
- * bottom, and Delete when editing. `keepAdding` (add mode only) renders the
- * "keep adding" toggle used for rapid entry.
+ * Standard add/edit bottom sheet: fields in the body, and the shared footer pinned at the bottom
+ * ([Delete] [Cancel] [Add or Save]). `keepAdding` (add mode only) renders the "keep adding" toggle above the buttons.
  */
 export function RowSheet({
   open,
   onOpenChange,
   title,
+  description,
+  side,
   mode,
   onSubmit,
   onDelete,
@@ -25,6 +25,10 @@ export function RowSheet({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title: string;
+  /** A short line under the title (e.g. the day an activity is being added to). */
+  description?: string;
+  /** From 768px up, a right-hand panel instead of a centred dialog (the standard for the larger forms). */
+  side?: boolean;
   mode: "add" | "edit";
   onSubmit: (e: FormEvent<HTMLFormElement>) => void;
   onDelete?: () => void;
@@ -39,28 +43,18 @@ export function RowSheet({
       open={open}
       onOpenChange={onOpenChange}
       title={title}
+      description={description}
+      side={side}
       footer={
-        <div className="flex items-center gap-3">
-          {mode === "edit" && onDelete && (
-            <Button type="button" variant="secondary" size="icon" onClick={onDelete} aria-label="Delete">
-              <Trash2 className="size-5 text-danger" aria-hidden />
-            </Button>
-          )}
-          {mode === "add" && keepAdding && (
-            <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm font-medium select-none">
-              <input
-                type="checkbox"
-                className="size-5 accent-[var(--teal)]"
-                checked={keepAdding.value}
-                onChange={(e) => keepAdding.onChange(e.target.checked)}
-              />
-              Keep adding
-            </label>
-          )}
-          <Button type="submit" form={formId} size="lg" className="flex-1" disabled={pending}>
-            {submitLabel ?? (mode === "add" ? "Add" : "Save")}
-          </Button>
-        </div>
+        <FormFooter
+          mode={mode}
+          formId={formId}
+          submitLabel={submitLabel}
+          pending={pending}
+          onCancel={() => onOpenChange(false)}
+          onDelete={onDelete}
+          keepAdding={keepAdding}
+        />
       }
     >
       <form id={formId} onSubmit={onSubmit} className="space-y-4 pt-1" noValidate>

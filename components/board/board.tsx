@@ -112,7 +112,7 @@ export function Board() {
             { value: "dropped", label: `Dropped ${counts.dropped}` },
           ]}
         />
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 lg:flex-nowrap">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 lg:flex-1 lg:flex-nowrap">
           <div
             role="group"
             aria-label="Type"

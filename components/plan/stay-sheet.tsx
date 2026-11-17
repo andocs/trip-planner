@@ -89,6 +89,7 @@ export function StaySheet({ sheet }: { sheet: ReturnType<typeof useSheet<Stay>> 
     <RowSheet
       open={sheet.open}
       onOpenChange={sheet.setOpen}
+      side
       title={sheet.row ? "Edit stay" : "Add stay"}
       mode={sheet.mode}
       onSubmit={onSubmit}

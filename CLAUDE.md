@@ -43,13 +43,22 @@ Mockups live in `design/mockups/revision.html` (variants A to J; J is the chosen
   Both applied to local Docker. Production: 15 and 16 need the user to run them (no CLI link or login from here).
 - **Shared modal:** `components/ideas/idea-modal.tsx`; pure logic in `lib/idea-details.ts` and `lib/idea-form.ts`.
   No booking-reference field on ideas (viewers can read them); flights use `flight_refs`.
+- **Add/edit anatomy:** every form uses `components/ui/form-footer.tsx` ([Delete] [Cancel] [Add or Save], "Keep adding" above the buttons;
+  `RowSheet` and the idea modal both use it). The primary label is "Add" (adding) or "Save" (editing); draft or confirmed is the Status field.
+  "Keep adding" is on by default for places and expenses. The add sheet (button, N, Discover's "add by hand") is the idea modal with
+  **One place | Paste a list**, titled "Add place" (the category's own details fold away under "Stay/Food/Sight details" and open on edit; price is Price | Per | Currency)
+  (`components/ideas/paste-list.tsx`; opened from anywhere by `components/board/add-place.tsx`).
+  A save from Discover always closes. The old separate "Add ideas" sheet is gone.
 - **Itinerary:** pure rules in `lib/itinerary.ts` (order, connector rules, `planMove`, `planInsert`, day totals, stay marks, `LONG_DAY_MINUTES`)
   and `lib/itinerary-rows.ts`. UI in `components/plan/itinerary*.tsx`, `connector-sheet.tsx`. @dnd-kit does the dragging (Reorder mode, owner/editor only).
   **The day number is the source of truth:** a day's date is derived from the trip start and written to `on_date` on save; there is no date input.
   Connectors are rows with `kind <> 'stop'`; `solidStops` (calc.ts) excludes them from every counter and the export.
-  Stays appear on their check-in / check-out days from the Stays page (not stored). The map only mounts when the Map pill is pressed (one Google map load).
+  Stays appear on their check-in / check-out days from the Stays page (not stored). The route map is the page hero: the header's background (`MapView` with `cooperative` gestures: Ctrl + scroll or two fingers zoom, the page still scrolls), with the title and pills on a dark gradient in the existing colours. The "Enlarge map" / "Reduce map" pill makes the header taller. It draws the solid, non-tentative stops that have a fresh saved place position (`place_refs`, 30 days), numbered as in the list, with an arrow on each leg in travel order. Stops without a position are counted ("N stops have no map position yet"), not drawn. The "Directions" pill opens the road route through those stops in Google Maps (`directionsUrl` in `lib/itinerary.ts`; a browser link, so no Google API call or quota). One Google map load per Itinerary visit, on every screen size.
+  Each stop card has one hamburger menu at its upper right (Radix DropdownMenu, `CardMenu` in `itinerary-entries.tsx`): Edit, Mark complete / Mark incomplete, Open on the board (drafts), Remove from itinerary (with the usual undo toast). It replaces the old Done circle, edit chevron and board link. In Reorder mode the drag handle takes its place; viewers get no menu.
+  Under each activity, `components/plan/add-here.tsx` is a 44px circle (shown on hover of the card's bottom edge, always on touch) that opens into
+  **Commute | Rest | Activity**; Activity inserts at that spot (`planInsert`). Not offered next to a commute or rest, in Reorder mode, or to viewers.
 - **Home reminders:** `lib/reminders.ts` + `components/home/reminders-card.tsx`; dismissals live in localStorage.
-- Checks at last run: live RLS 107, SQL suite 267, unit 258, e2e 93 passed / 8 skipped.
+- Checks at last run: live RLS 107, SQL suite 267, unit 258, e2e 96 passed / 8 skipped (RLS numbers unchanged: no database changes since).
 
 ## Architecture Overview
 
@@ -218,6 +227,33 @@ APP_URL=http://localhost:3000 (local only)
 4. Test in accessibility inspector (Windows + Shift + F10 → Ease of Access)
 
 ---
+
+## Phase 7: Itinerary map hero + card menu (branch revision/itinerary-map-hero) — MINIMAL VERSION BUILT AND PUSHED; TODO LIST BELOW
+
+Map becomes the page hero (pan/zoom, enlarge, stop chips, day filter); per-card upper-right menu (Edit / Mark complete / Remove from
+itinerary) replaces the Reorder and Add buttons at the top (grip handle on hover replaces Reorder mode); add control redone as one
+outlined shape that fills and stretches; days with no items are hidden, with a "Plan Day N" button after the last one.
+Mockups: **`design/mockups/itinerary-hero-redo.html`** (gitignored folder; one interactive file with Light/Night, Desktop/Phone, Map hero/enlarged,
+Days only-with-items vs all-11, card-menu and add-control state toggles, a Guides overlay for the spacing, and the proposal and open decisions
+under the frame). It replaces `phase7-map-hero.html`, `-v2` and `-v3`, which the user told us to disregard.
+The parts of it that were not asked for again (below) stay unbuilt until the user says so. Open decisions are listed at the bottom of the mockup page.
+
+**Built so far, as a deliberately minimal version (user: "make minimal changes to the existing UI, follow the colors, layout and fonts")**:
+the map is the hero background (Enlarge map pill, Directions pill), each card has the hamburger menu, and the "+" is centred on the card column
+and stays white (it does NOT follow the mockup's teal fill). **Not built:** removing the Reorder and Add buttons at the top, the hover grip,
+hiding days with no items and "Plan Day N", the teal-filling add control, stop chips and day filter on the map.
+
+**Next session TODO (user's list, 2026-11-17; details in memory `project-phase7-map-hero.md`):**
+1. Move the enlarge/shrink map button to the upper right of the hero map.
+2. Replace the header pills with the days: All days, Day N, then Drafts; place them lower in the hero; they filter the list.
+3. Animate enlarge/shrink.
+4. Smaller hero title font and no gradient when the map is enlarged; the reverse when shrunk; animate both.
+5. Hamburger becomes a kebab (vertical dots), placed inside the card; same menu items.
+6. Enlarge the photo on the left of the card (the right-hand map column is gone).
+7. Make sure a card can be viewed on click (viewers too, read-only).
+8. Do not show days that have no activity yet (dividers and day pills).
+9. Add control hover: highlight the outline's own shape (Commute rounded left only, Activity rounded right only, Rest square), not a generic squircle; keep it white.
+Keep colours, layout and fonts as they are; screenshot before and after each change.
 
 ## Next Phase (Planned but Not Started)
 
