@@ -11,7 +11,7 @@ test("a flight is a boarding pass, and the next-day landing shows +1", async ({ 
   await page.goto("/flights");
   const pass = page.getByRole("article", { name: /^MNL to HAN/ });
   await expect(pass).toBeVisible();
-  await expect(pass).toContainText("22:20");
+  await expect(pass).toContainText("10:20 PM");
   await expect(pass).toContainText("+1");
   await expect(pass.getByText("Terminal")).toBeVisible();
   await expect(pass.getByText("Gate")).toBeVisible();

@@ -5,6 +5,7 @@ import { CHIP_ICONS } from "@/components/ideas/idea-chips";
 import { PhotoImg } from "@/components/photos/photo-img";
 import { PlaceLinks } from "@/components/ui/place-links";
 import type { Idea } from "@/lib/drafts";
+import { formatTime } from "@/lib/format";
 import { parseDetails } from "@/lib/idea-details";
 import { stopRows } from "@/lib/itinerary-rows";
 import { stopLinks } from "@/lib/itinerary";
@@ -58,7 +59,7 @@ export function MapStopCard({
         <p className="pr-10 font-mono text-xs font-bold text-fg-muted">
           {number}
           {" · "}
-          {item.at_time ? `${item.type ?? "Stop"} · ${item.at_time.slice(0, 5)}` : (item.type ?? "Stop")}
+          {item.at_time ? `${item.type ?? "Stop"} · ${formatTime(item.at_time)}` : (item.type ?? "Stop")}
         </p>
         <h3 className="pr-10 font-display text-lg leading-tight font-extrabold tracking-tight">{item.activity}</h3>
         <ul className="mt-1">

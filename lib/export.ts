@@ -10,6 +10,7 @@ import {
   totalSpent,
 } from "@/lib/calc";
 import type { Tables } from "@/lib/database.types";
+import { formatTime } from "@/lib/format";
 
 /** Everything the export needs, already loaded. */
 export type ExportData = {
@@ -119,7 +120,7 @@ export function buildWorkbook(d: ExportData): Sheet[] {
             i.day,
             i.on_date,
             i.city,
-            i.at_time?.slice(0, 5) ?? null,
+            formatTime(i.at_time) || null,
             i.activity,
             i.type,
             i.duration_min,

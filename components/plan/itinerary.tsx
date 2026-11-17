@@ -24,7 +24,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyText } from "@/components/view-only-banner";
 import { itineraryProgress, tripLength } from "@/lib/calc";
-import { formatDateRange } from "@/lib/format";
+import { formatDateRange, timeRange } from "@/lib/format";
 import {
   dayTotals,
   directionsUrl,
@@ -247,13 +247,12 @@ export function Itinerary() {
   const list = shown.map((e, k) => {
     if (e.kind === "day") {
       const totals = dayTotals(e.group.items);
-      const stops = e.group.items.filter((i) => isStop(i) && !i.tentative).length;
       const tentative = e.group.items.filter((i) => isStop(i) && i.tentative).length;
       return (
         <SortableRow key={e.id} id={e.id} locked label="day" cover={k === 0}>
           {() => (
             <>
-              <DaySplit group={e.group} totals={totals} stops={stops + tentative} />
+              <DaySplit group={e.group} totals={totals} />
               {tentative > 0 && !editing && (
                 <p className="mb-4 ml-[54px] text-[13px] text-fg-muted">
                   {tentative} tentative {tentative === 1 ? "stop isn’t" : "stops aren’t"} in this day’s count or the export until confirmed on the board.
@@ -320,7 +319,7 @@ export function Itinerary() {
               setSelected(id);
               setBig(true);
             }}
-            insets={wide ? { top: 130, right: 40, bottom: 150, left: 40 } : { top: 130, right: 24, bottom: 170, left: 24 }}
+            insets={wide ? { top: 100, right: 40, bottom: 120, left: 40 } : { top: 110, right: 24, bottom: 140, left: 24 }}
           />
         </div>
         {/* The shading under the title fades out when the map is enlarged, and back in when it is reduced. */}
@@ -362,6 +361,8 @@ export function Itinerary() {
             aria-pressed={big}
             aria-label={big ? "Reduce map" : "Enlarge map"}
             onClick={() => {
+              // Reducing the map closes the open stop card.
+              if (big) setSelected(null);
               setBig((v) => !v);
               // Frame the stops again once the hero has finished growing or shrinking.
               window.setTimeout(() => setRefit((r) => r + 1), 360);
@@ -415,13 +416,15 @@ export function Itinerary() {
                     if (!on) setBig(true);
                   }}
                   className={cn(
-                    "pointer-events-auto inline-flex min-h-9 shrink-0 items-center gap-2 rounded-full px-3 text-[13px] font-bold transition-colors motion-reduce:transition-none",
+                    "pointer-events-auto inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full px-3 text-[13px] font-bold transition-colors motion-reduce:transition-none",
                     on ? "bg-[#ffb400] text-[#1a1100]" : big ? "bg-[#12392f]/80 backdrop-blur-sm" : "bg-white/15",
                   )}
                 >
-                  <span className="grid size-5 place-items-center rounded-full bg-white/25 font-mono text-[11px]">{number.get(it.id)}</span>
-                  {it.at_time && <span className="font-mono text-xs opacity-85">{it.at_time.slice(0, 5)}</span>}
-                  <span className="max-w-[16ch] truncate">{it.activity}</span>
+                  <span className="grid size-5 shrink-0 place-items-center rounded-full bg-white/25 font-mono text-[11px]">{number.get(it.id)}</span>
+                  <span className="min-w-0 text-left leading-tight">
+                    <span className="block max-w-[20ch] truncate">{it.activity}</span>
+                    {it.at_time && <span className="block text-[11px] font-medium opacity-85">{timeRange(it.at_time, it.duration_min)}</span>}
+                  </span>
                 </button>
               );
             })}

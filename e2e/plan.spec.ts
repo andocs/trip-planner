@@ -45,8 +45,8 @@ test("flights, stays and hotel ideas (now on Flights, Stays and Places)", async 
   await page.goto("/flights");
   const pass = page.getByRole("article", { name: /^MNL to HAN/ });
   await expect(pass).toBeVisible();
-  await expect(pass).toContainText("22:20");
-  await expect(pass).toContainText("00:45");
+  await expect(pass).toContainText("10:20 PM");
+  await expect(pass).toContainText("12:45 AM");
   await page.getByRole("button", { name: /MNL to HAN: Priced/ }).click();
   await page.getByRole("menuitem", { name: "Booked" }).click();
   await expect(page.getByRole("button", { name: /MNL to HAN: Booked/ })).toBeVisible();

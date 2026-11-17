@@ -4,6 +4,7 @@ import { Timer } from "lucide-react";
 import { CHIP_ICONS } from "@/components/ideas/idea-chips";
 import { IdeaPhotos } from "@/components/photos/idea-photos";
 import { PlaceLinks } from "@/components/ui/place-links";
+import { formatTime } from "@/lib/format";
 import { parseDetails } from "@/lib/idea-details";
 import { stopLinks } from "@/lib/itinerary";
 import type { ImageRow } from "@/lib/queries/images";
@@ -21,7 +22,7 @@ export function StopView({ item, idea, currency, images, urlOf, onClose }: { ite
   const rows = stopRows(item, idea, currency);
   const note = item.note && !/^https?:\/\//i.test(item.note) ? item.note : null;
   return (
-    <Sheet open onOpenChange={(o) => !o && onClose()} title={item.activity} description={[item.type, item.city, item.at_time?.slice(0, 5)].filter(Boolean).join(" · ") || undefined}>
+    <Sheet open onOpenChange={(o) => !o && onClose()} title={item.activity} description={[item.type, item.city, formatTime(item.at_time)].filter(Boolean).join(" · ") || undefined}>
       {images.length > 0 && <IdeaPhotos idea={{ table: "itinerary_items", id: item.id, key: `itinerary_items:${item.id}`, name: item.activity }} images={images} urlOf={urlOf} canEdit={false} />}
       <ul className="pt-2">
         {rows.map((r, n) => {

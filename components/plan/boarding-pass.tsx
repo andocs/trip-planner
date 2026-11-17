@@ -6,14 +6,14 @@ import { useCanEdit, useTrip } from "@/components/trip-gate";
 import { Board } from "@/components/ui/board";
 import { StatusBadge, StatusChip } from "@/components/ui/status-chip";
 import { arrivalDayOffset, formatDuration, isIdeaStatus, MASKED_REF } from "@/lib/flights";
-import { formatDay, formatMoney } from "@/lib/format";
+import { formatDay, formatMoney, formatTime } from "@/lib/format";
 import type { Status } from "@/lib/constants";
 import type { Row } from "@/lib/queries/table";
 import { cn } from "@/lib/utils";
 
 type Flight = Row<"flights">;
 
-const time = (ts: string | null) => (ts && ts.length >= 16 ? ts.slice(11, 16) : "");
+const time = (ts: string | null) => (ts && ts.length >= 16 ? formatTime(ts.slice(11, 16)) : "");
 
 /** Decorative stripes only. It carries no data, is hidden from screen readers and is never meant to be scanned. */
 function Stripes() {

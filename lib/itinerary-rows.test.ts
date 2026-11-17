@@ -26,7 +26,7 @@ describe("stopRows", () => {
   it("reads time, price, then the most important fact", () => {
     const rows = stopRows(at, idea({ price: 650, priceUnit: "person", details: { ticketsNeeded: true, duration: "2h" } }), "PHP");
     expect(rows).toEqual([
-      { icon: "Clock", value: "07:30 · 3h", label: "Time" },
+      { icon: "Clock", value: "7:30 AM · 3h", label: "Time" },
       { icon: "Coins", value: "PHP 650.00 per person", label: "Entrance" },
       { icon: "Ticket", value: "Book ahead", label: "Tickets", tone: "warn" },
     ]);

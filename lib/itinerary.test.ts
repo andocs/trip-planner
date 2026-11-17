@@ -189,7 +189,7 @@ describe("stays on the timeline", () => {
 
 describe("timeLine", () => {
   it("joins time and length", () => {
-    expect(timeLine({ at_time: "08:00:00", duration_min: 60 })).toBe("08:00 · 1h");
+    expect(timeLine({ at_time: "08:00:00", duration_min: 60 })).toBe("8:00 AM · 1h");
     expect(timeLine({ at_time: null, duration_min: 90 })).toBe("1h 30m");
     expect(timeLine({ at_time: null, duration_min: null })).toBe("Any time");
   });

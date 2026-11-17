@@ -62,7 +62,7 @@ test("owner: a commute goes between two places, with its length and cost, and co
   await expect(page.getByRole("button", { name: /Taxi \/ Grab, 25m\. Edit/ })).toBeVisible();
   await expect(page.getByText("Grab from the lake")).toBeVisible();
   // Day 1: three places of an hour plus a 25-minute commute. The commute is not a place and is not counted as one.
-  await expect(page.getByRole("separator", { name: /^Day 1 ·/ }).locator("..").getByText("3 places · 3h 25m")).toBeVisible();
+  await expect(page.getByRole("separator", { name: /^Day 1 ·/ }).locator("..").getByText("3h 25m")).toBeVisible();
   await expect(page.getByText("0 of 4 done")).toBeVisible();
 });
 

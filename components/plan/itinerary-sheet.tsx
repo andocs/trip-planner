@@ -266,7 +266,7 @@ export function ItinerarySheet({
       )}
       <div className="space-y-2">
         <span className="block text-[13px] font-bold text-fg-muted">Day</span>
-        <div role="group" aria-label="Day" className="-mx-5 flex gap-2 overflow-x-auto px-5 pb-1 [scrollbar-width:none]">
+        <div role="group" aria-label="Day" className="-mx-5 -my-1 flex gap-2 overflow-x-auto px-5 py-1.5 [scrollbar-width:none]">
           {dayList.map((d) => {
             const date = dayDate(d);
             const on = chosenDay(String(d));

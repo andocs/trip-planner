@@ -204,8 +204,8 @@ function Framing({
     if (pts.length === 1) {
       // One point: frame a small area around it, so the padding still shifts it clear of the panels.
       const p = pts[0];
-      b.extend({ lat: p.lat + 1.1, lng: p.lng + 1.1 });
-      b.extend({ lat: p.lat - 1.1, lng: p.lng - 1.1 });
+      b.extend({ lat: p.lat + 0.012, lng: p.lng + 0.012 });
+      b.extend({ lat: p.lat - 0.012, lng: p.lng - 0.012 });
     }
     map.fitBounds(b, { top, right, bottom, left });
     const once = google.maps.event.addListenerOnce(map, "idle", () => {
@@ -219,13 +219,15 @@ function Framing({
   return null;
 }
 
-/** When a stop is picked, slide the map so it is in view (zoom stays as it is). */
+/** When a stop is picked, centre the map on its pin and zoom in to street level. */
 function PanToSelected({ stops, selectedId }: { stops: MapStop[]; selectedId: string | null }) {
   const map = useMap();
   useEffect(() => {
     if (!map || !selectedId) return;
     const s = stops.find((x) => String(x.id) === selectedId);
-    if (s) map.panTo({ lat: s.lat, lng: s.lng });
+    if (!s) return;
+    map.panTo({ lat: s.lat, lng: s.lng });
+    if ((map.getZoom() ?? 0) < 16) map.setZoom(16);
     // Only when the pick changes, not on every re-render of the stops.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [map, selectedId]);

@@ -42,8 +42,8 @@ test("a day's activities show as pills with their times; not on All days; pickin
   await page.getByRole("group", { name: "Show days" }).getByRole("button", { name: "Day 1", exact: true }).click();
   const pills = page.getByRole("group", { name: "Activities on day 1" });
   await expect(pills.getByRole("button")).toHaveCount(2);
-  await expect(pills.getByRole("button", { name: /09:00.*Osaka Castle/ })).toBeVisible();
-  await expect(pills.getByRole("button", { name: /18:30.*Dotonbori dinner/ })).toBeVisible();
+  await expect(pills.getByRole("button", { name: /Osaka Castle/ })).toBeVisible();
+  await expect(pills.getByRole("button", { name: /Dotonbori dinner/ })).toBeVisible();
 
   await pills.getByRole("button", { name: /Osaka Castle/ }).click();
   const card = page.getByRole("complementary", { name: /Osaka Castle, selected stop/ });
@@ -103,4 +103,34 @@ test("owner: a place on the board takes a website and a Google Maps link and sho
   await expect.poll(find).toBeTruthy();
   const row = find()!;
   expect(row.details).toMatchObject({ website: "https://example.com/kuromon", mapsUrl: "https://www.google.com/maps/place/Kuromon" });
+});
+
+test("Find photo inside Edit activity keeps the activity sheet open", async ({ page }) => {
+  const fake = createFakeSupabase({ withSeed: true });
+  plan(fake);
+  await fake.install(page);
+  await page.goto("/itinerary");
+  await page.getByRole("button", { name: "Open Osaka Castle" }).click();
+  const edit = page.getByRole("dialog", { name: "Edit activity" });
+  await edit.getByRole("button", { name: "Add a photo" }).click();
+  const add = page.getByRole("dialog", { name: "Add a photo" });
+  await add.getByLabel("Page or picture link").fill("https://192.168.1.20/rooms/201");
+  await add.getByRole("button", { name: "Find photo" }).click();
+  await expect(add.getByText(/./).first()).toBeVisible();
+  await page.waitForTimeout(800); // a wrongly submitted activity form would close its sheet about now
+  // While the photo sheet is on top the activity sheet is hidden from the accessibility tree, but it must still be there.
+  await expect(page.getByRole("dialog", { name: "Edit activity", includeHidden: true })).toHaveCount(1);
+  await expect(add).toBeVisible();
+});
+
+test("times read as 1:00 PM, activity pills show a range under the name, day headers have no place count", async ({ page }) => {
+  const fake = createFakeSupabase({ withSeed: true });
+  plan(fake);
+  await fake.install(page);
+  await page.goto("/itinerary");
+  await expect(page.getByRole("separator", { name: /^Day 1 ·/ }).locator("..").getByText(/places?/)).toHaveCount(0);
+  await page.getByRole("group", { name: "Show days" }).getByRole("button", { name: "Day 1", exact: true }).click();
+  const pills = page.getByRole("group", { name: "Activities on day 1" });
+  await expect(pills.getByRole("button", { name: /Osaka Castle/ })).toContainText("9:00 AM - 10:00 AM");
+  await expect(pills.getByRole("button", { name: /Dotonbori dinner/ })).toContainText("6:30 PM - 7:30 PM");
 });

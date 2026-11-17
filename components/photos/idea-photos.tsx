@@ -218,7 +218,13 @@ export function IdeaPhotos({
           </div>
         )
       )}
-      {adding && <AddPhotoSheet idea={idea} onClose={() => setAdding(false)} />}
+      {adding && (
+        // The photo sheet is portalled, but React still bubbles its events to this component's parents. Without this, a submit
+        // inside it ("Find photo") would also submit the activity form this section sits in, and close it.
+        <div onSubmit={(e) => e.stopPropagation()}>
+          <AddPhotoSheet idea={idea} onClose={() => setAdding(false)} />
+        </div>
+      )}
     </section>
   );
 }
