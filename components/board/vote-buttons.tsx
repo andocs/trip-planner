@@ -1,11 +1,11 @@
 "use client";
 
-import { Check, CircleHelp, ThumbsUp, X } from "lucide-react";
+import { CircleHelp, ThumbsDown, ThumbsUp } from "lucide-react";
 import { DropdownMenu } from "radix-ui";
 import { VOTE_LABEL, type VoteValue } from "@/lib/drafts";
 import { cn } from "@/lib/utils";
 
-const ICON = { in: Check, maybe: CircleHelp, pass: X } as const;
+const ICON = { in: ThumbsUp, maybe: CircleHelp, pass: ThumbsDown } as const;
 const ON: Record<VoteValue, string> = {
   in: "bg-teal text-teal-ink",
   maybe: "bg-warn-tint text-warn-text ring-[1.5px] ring-warn",

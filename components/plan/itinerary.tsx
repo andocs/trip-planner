@@ -332,6 +332,7 @@ export function Itinerary() {
           <MapView
             stops={routeStops}
             arrows
+            requireContent
             interactive
             cooperative
             label="Route through the stops"

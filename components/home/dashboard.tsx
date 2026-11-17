@@ -87,6 +87,7 @@ export function RouteMap({ bottomInset }: { bottomInset: number }) {
     <MapView
       stops={stops}
       interactive={false}
+      requireContent
       className="map-lift"
       label="Route map"
       insets={

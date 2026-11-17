@@ -2,7 +2,7 @@
 
 import { APIProvider, AdvancedMarker, Map as GoogleMap, useMap } from "@vis.gl/react-google-maps";
 import { Check } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { MapFallback } from "@/components/map/map-fallback";
 import { useIsDark } from "@/lib/use-dark";
 import { cn } from "@/lib/utils";
@@ -45,6 +45,7 @@ export function MapView({
   interactive = true,
   cooperative = false,
   arrows = false,
+  requireContent = false,
   className,
 }: {
   stops: MapStop[];
@@ -66,10 +67,34 @@ export function MapView({
   cooperative?: boolean;
   /** Solid lines with an arrow on each leg, in the order of the stops (the order of travel). Otherwise a dashed line. */
   arrows?: boolean;
+  /** Draw the stand-in (no Google load) while there is nothing to show: no stops, places or pin. */
+  requireContent?: boolean;
   className?: string;
 }) {
   const dark = useIsDark();
   const [failed, setFailed] = useState(false);
+  // Every map that Google draws is a billed load. So it is created only once the map is on screen and the tab is in
+  // front (a page opened in the background, or a map scrolled far below, costs nothing), and then kept.
+  const box = useRef<HTMLDivElement>(null);
+  const [armed, setArmed] = useState(false);
+  useEffect(() => {
+    const el = box.current;
+    if (armed || !el) return;
+    let seen = false;
+    const check = () => {
+      if (seen && document.visibilityState === "visible") setArmed(true);
+    };
+    const io = new IntersectionObserver((entries) => {
+      seen = entries.some((e) => e.isIntersecting);
+      check();
+    });
+    io.observe(el);
+    document.addEventListener("visibilitychange", check);
+    return () => {
+      io.disconnect();
+      document.removeEventListener("visibilitychange", check);
+    };
+  }, [armed, failed]);
 
   // Google calls this global when the key or referrer is refused after the script has loaded.
   useEffect(() => {
@@ -80,10 +105,11 @@ export function MapView({
     };
   }, []);
 
-  if (!KEY || failed) return <MapFallback className={className} />;
+  const empty = requireContent && stops.length === 0 && places.length === 0 && !pin;
+  if (!KEY || failed || empty) return <MapFallback className={className} />;
   return (
-    <div className={cn("absolute inset-0 bg-[var(--sea)]", className)}>
-      <APIProvider apiKey={KEY} language="en" onError={() => setFailed(true)}>
+    <div ref={box} className={cn("absolute inset-0 bg-[var(--sea)]", className)}>
+      {armed && <APIProvider apiKey={KEY} language="en" onError={() => setFailed(true)}>
         <div className="size-full" role="application" aria-label={`${label}. A list of stops is always available.`}>
           <GoogleMap
             // The colour scheme can only be chosen when the map is created, so Light/Night remounts it.
@@ -147,7 +173,7 @@ export function MapView({
             ))}
           </GoogleMap>
         </div>
-      </APIProvider>
+      </APIProvider>}
     </div>
   );
 }

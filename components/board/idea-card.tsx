@@ -7,6 +7,8 @@ import {
   CircleCheck,
   CircleHelp,
   Plus,
+  ThumbsDown,
+  ThumbsUp,
   Landmark,
   ExternalLink,
   MapPin,
@@ -142,22 +144,28 @@ export function Tally({
   );
 }
 
-/** In, maybe and pass as colour-coded icons with their numbers, then the comments, each set off by a thin vertical rule. */
+/** The votes as one tight group (thumbs up, maybe, thumbs down, each with its number in its colour), the comments apart at the right. */
 export function VoteCounts({ votes, commentCount }: { votes: Vote[]; commentCount: number }) {
   const t = tally(votes);
-  const item = (Icon: typeof Check, n: number, tone: string, word: string, key: string) => (
-    <span key={key} className={cn("inline-flex min-h-5 flex-1 items-center justify-center gap-1.5", n === 0 ? "text-fg-muted opacity-60" : tone)}>
-      <Icon className="size-4" strokeWidth={2.8} aria-hidden />
+  const item = (Icon: typeof Check, n: number, tone: string, word: string) => (
+    <span className={cn("inline-flex min-h-5 items-center gap-1 px-2.5 first:pl-0", n === 0 ? "text-fg-muted opacity-60" : tone)}>
+      <Icon className="size-4" strokeWidth={2.6} aria-hidden />
       <span className="sr-only">{word}: </span>
       {n}
     </span>
   );
   return (
-    <div className="flex items-center text-[13px] font-extrabold tabular-nums [&>*+*]:border-l [&>*+*]:border-line-strong">
-      {item(Check, t.in, "text-teal", "In", "in")}
-      {item(CircleHelp, t.maybe, "text-warn-text", "Maybe", "maybe")}
-      {item(X, t.pass, "text-danger", "Pass", "pass")}
-      {item(MessageCircle, commentCount, "text-fg-muted", "Comments", "comments")}
+    <div className="flex items-center justify-between gap-3 text-[13px] font-extrabold tabular-nums">
+      <div className="flex items-center [&>*+*]:border-l [&>*+*]:border-line-strong">
+        {item(ThumbsUp, t.in, "text-teal", "In")}
+        {item(CircleHelp, t.maybe, "text-warn-text", "Maybe")}
+        {item(ThumbsDown, t.pass, "text-danger", "Pass")}
+      </div>
+      <span className="inline-flex min-h-5 items-center gap-1.5 text-fg-muted">
+        <MessageCircle className="size-4" strokeWidth={2.4} aria-hidden />
+        <span className="sr-only">Comments: </span>
+        {commentCount}
+      </span>
     </div>
   );
 }
@@ -206,9 +214,20 @@ export function IdeaCard({
       aria-label={idea.name}
       className="press-card flex h-full flex-col overflow-hidden rounded-[20px] bg-surface shadow-card"
     >
-      <button type="button" data-card-open onClick={onOpen} className="block text-left" aria-label={`Open ${idea.name}`}>
-        <Hero idea={idea} images={images} urlOf={urlOf} className={cn(dropped && "opacity-80")} />
-      </button>
+      <div className="relative">
+        <button type="button" data-card-open onClick={onOpen} className="block w-full text-left" aria-label={`Open ${idea.name}`}>
+          <Hero idea={idea} images={images} urlOf={urlOf} className={cn(dropped && "opacity-80")} />
+        </button>
+        {inItinerary && (
+          <span
+            title={`Already in the itinerary: ${inItinerary}`}
+            className="pointer-events-none absolute top-2.5 right-2.5 z-[2] inline-flex min-h-7 items-center gap-1.5 rounded-full bg-teal px-2.5 text-[13px] font-bold text-teal-ink shadow-float"
+          >
+            <Check className="size-3.5" strokeWidth={3} aria-hidden />
+            In itinerary
+          </span>
+        )}
+      </div>
       <div className="flex flex-1 flex-col gap-3 p-4 pt-3.5">
         <button
           type="button"
@@ -230,12 +249,6 @@ export function IdeaCard({
               </>
             )}
             {idea.dealBreaker && <MustFlag />}
-            {inItinerary && (
-              <span title={`Already in the itinerary: ${inItinerary}`} className="inline-flex min-h-6 items-center gap-1 rounded-full bg-teal-tint px-2.5 text-xs font-bold text-teal">
-                <Check className="size-3" strokeWidth={3} aria-hidden />
-                In itinerary
-              </span>
-            )}
             {idea.decision === "confirmed" && (
               <span className="inline-flex min-h-6 items-center rounded-full bg-teal-tint px-2.5 text-xs font-bold text-teal">
                 Confirmed
