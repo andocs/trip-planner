@@ -93,6 +93,20 @@ test.describe("owner", () => {
     await expect(page.getByRole("status").filter({ hasText: "View only" })).toHaveCount(0);
   });
 
+  test("a viewer can be added as a traveler from Settings, once", async ({ page }) => {
+    const fake = createFakeSupabase({ withSeed: true, role: "owner" });
+    fake.tables.set("trip_members", [
+      { id: "m-viewer", user_id: "u-viewer", role: "viewer", label: "Tita Rose", email: "rose@example.com", joined_at: "2026-06-01T00:00:00Z" },
+    ]);
+    await fake.install(page);
+    await page.goto("/settings");
+    await page.getByRole("button", { name: "Add Tita Rose as a traveler" }).click();
+    await expect.poll(() => fake.tables.get("travelers")?.some((t) => t.name === "Tita Rose" && t.user_id === "u-viewer")).toBe(true);
+    // Now marked, with no second button.
+    await expect(page.getByRole("button", { name: "Add Tita Rose as a traveler" })).toHaveCount(0);
+    await expect(page.getByText("Traveler", { exact: true }).first()).toBeVisible();
+  });
+
   test("claims a trip that was created before owners existed", async ({ page }) => {
     const fake = createFakeSupabase({ withSeed: true, role: "owner" });
     fake.claimable.push(fake.trip);

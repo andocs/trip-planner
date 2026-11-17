@@ -354,7 +354,7 @@ export function createFakeSupabase(
       if (canWrite()) trip = { ...trip, ...(req.body as object) }; // a viewer's update matches zero rows
       return { status: 204 };
     }
-    if (table === "trip_members") return json([]);
+    if (table === "trip_members") return json(tables.get("trip_members") ?? []);
     const rows = tables.get(table) ?? [];
     // Booking references are owner-only: a viewer gets no rows (row-level security), never an error.
     if (table === "flight_refs" && !isOwner())

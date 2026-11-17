@@ -209,6 +209,11 @@ begin
   perform public.join_trip(tok);
   perform public.join_trip(tok);  -- idempotent
 
+  -- joining with the link also makes the viewer a traveler, once
+  checks := checks + 1;
+  select count(*) into n from public.travelers where trip_id = trip_a and user_id is not null;
+  if n <> 1 then failures := failures || format('joining should create exactly one linked traveler, found %s', n); end if;
+
   checks := checks + 1;
   select public.trip_role(trip_a) into r;
   if r is distinct from 'viewer' then failures := failures || format('token holder should be viewer, is %s', r); end if;
@@ -274,6 +279,9 @@ begin
   checks := checks + 1;
   select public.trip_role(trip_a) into r;
   if r is distinct from 'owner' then failures := failures || 'join_trip changed the owner role'::text; end if;
+  checks := checks + 1;
+  select count(*) into n from public.travelers where trip_id = trip_a and user_id is not null;
+  if n <> 1 then failures := failures || format('the owner joining their own link must not add a traveler, found %s', n); end if;
   checks := checks + 1;
   select count(*) into n from public.trip_members where trip_id = trip_a;
   if n <> 2 then failures := failures || format('owner should see both members, saw %s', n); end if;
