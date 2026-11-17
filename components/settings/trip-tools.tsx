@@ -11,7 +11,8 @@ import { Card, CardTitle } from "@/components/ui/card";
 import { fetchExportData, useLoadExample, useStartNewTrip } from "@/lib/queries/trip-actions";
 import { errorMessage } from "@/lib/utils";
 
-export function TripTools() {
+/** `owner` shows the admin-only "Start a new trip"; editors get export and the example only. */
+export function TripTools({ owner = false }: { owner?: boolean }) {
   const trip = useTrip();
   const router = useRouter();
   const loadExample = useLoadExample();
@@ -58,6 +59,7 @@ export function TripTools() {
       </Button>
       <p className="-mt-1 text-xs text-fg-muted">The example only loads into a trip with no data yet.</p>
 
+      {owner && (
       <AlertDialog.Root>
         <AlertDialog.Trigger asChild>
           <Button variant="secondary" className="w-full justify-start text-danger" disabled={startNew.isPending}>
@@ -98,6 +100,7 @@ export function TripTools() {
           </AlertDialog.Content>
         </AlertDialog.Portal>
       </AlertDialog.Root>
+      )}
     </Card>
   );
 }

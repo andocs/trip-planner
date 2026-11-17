@@ -1043,6 +1043,7 @@ export type Database = {
       is_admin: { Args: never; Returns: boolean }
       regenerate_invite: { Args: { p_trip: string }; Returns: string }
       revoke_viewer: { Args: { p_trip: string; p_user: string }; Returns: undefined }
+      set_member_role: { Args: { p_trip: string; p_user: string; p_role: string }; Returns: undefined }
       sync_my_membership: { Args: never; Returns: undefined }
       trip_role: { Args: { t: string }; Returns: string }
       trip_bootstrap: { Args: never; Returns: Json }

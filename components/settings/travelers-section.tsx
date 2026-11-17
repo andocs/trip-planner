@@ -25,6 +25,8 @@ export function TravelersSection() {
     const g = byUser.get(t.user_id);
     if (!g)
       return <span className="inline-flex min-h-6 items-center rounded-full bg-surface-2 px-2.5 text-xs font-bold text-fg-muted">No access</span>;
+    if (g.role === "editor")
+      return <span className="inline-flex min-h-6 items-center rounded-full bg-teal px-2.5 text-xs font-bold text-white">Editor</span>;
     return g.email ? (
       <span title={g.email} className="inline-flex min-h-6 items-center gap-1 rounded-full bg-teal-tint px-2.5 text-xs font-bold text-teal">
         <Check className="size-3" strokeWidth={3} aria-hidden />
