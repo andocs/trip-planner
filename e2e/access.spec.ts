@@ -97,6 +97,30 @@ test.describe("owner", () => {
     await expect(page.getByRole("status").filter({ hasText: "View only" })).toHaveCount(0);
   });
 
+  test("Travelers show who joined with the link (Google or guest), and the owner can remove their access", async ({ page }) => {
+    const fake = createFakeSupabase({ withSeed: true, role: "owner" });
+    const tripId = fake.trip.id as string;
+    fake.tables.set("trip_members", [
+      { id: "m1", user_id: "u-google", role: "viewer", label: "Tita Rose", email: "rose@example.com", joined_at: "2026-06-01T00:00:00Z" },
+      { id: "m2", user_id: "u-guest", role: "viewer", label: null, email: null, joined_at: "2026-06-02T00:00:00Z" },
+    ]);
+    fake.tables.set("travelers", [
+      { id: "t1", trip_id: tripId, name: "Tita Rose", sort: 0, user_id: "u-google", created_at: "2026-06-01T00:00:00Z" },
+      { id: "t2", trip_id: tripId, name: "Guest", sort: 1, user_id: "u-guest", created_at: "2026-06-02T00:00:00Z" },
+    ]);
+    await fake.install(page);
+    await page.goto("/settings");
+    await expect(page.getByRole("heading", { name: "Viewers" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Edit Tita Rose" })).toContainText("Google");
+    await expect(page.getByRole("button", { name: "Edit Guest" })).toContainText("Guest");
+
+    await page.getByRole("button", { name: "Edit Guest" }).click();
+    await page.getByRole("dialog", { name: "Edit traveler" }).getByRole("button", { name: "Remove access" }).click();
+    await expect.poll(() => fake.tables.get("trip_members")?.some((m) => m.user_id === "u-guest")).toBe(false);
+    // The traveler stays; only the access went.
+    expect(fake.tables.get("travelers")?.some((t) => t.id === "t2")).toBe(true);
+  });
+
   test("claims a trip that was created before owners existed", async ({ page }) => {
     const fake = createFakeSupabase({ withSeed: true, role: "owner" });
     fake.claimable.push(fake.trip);
