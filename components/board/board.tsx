@@ -226,6 +226,7 @@ export function Board() {
               onRestore={() => setDecision(idea, "draft")}
               onAddStop={() => askAddStop(idea)}
               inItinerary={usageLabel(usage.get(idea.key))}
+              visits={usage.get(idea.key)?.length}
             />
           ))}
         </div>

@@ -61,11 +61,11 @@ export function VoteMenu({ value, onVote, label }: { value: VoteValue | null; on
       <DropdownMenu.Trigger
         aria-label={label}
         className={cn(
-          "inline-flex min-h-9 items-center gap-1.5 rounded-full px-3 text-[13px] font-bold transition-colors",
+          "inline-flex min-h-10 items-center gap-2 rounded-full px-4 text-sm font-bold transition-colors",
           value ? MENU_FILL[value] : "bg-surface-2 text-fg hover:bg-line",
         )}
       >
-        <Current className="size-4" strokeWidth={2.6} aria-hidden />
+        <Current className="size-[18px]" strokeWidth={2.6} aria-hidden />
         {value ? `Voted · ${VOTE_LABEL[value]}` : "Vote"}
       </DropdownMenu.Trigger>
       <DropdownMenu.Portal>
