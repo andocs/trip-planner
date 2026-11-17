@@ -12,8 +12,8 @@ import {
   Footprints,
   Hourglass,
   Landmark,
+  EllipsisVertical,
   LogIn,
-  Menu,
   Pencil,
   Plane,
   Timer,
@@ -72,7 +72,7 @@ function Thumb({ item, idea, images, urlOf, small }: { item: Item; idea?: Idea; 
   );
   return (
     <div
-      className={cn("relative shrink-0 self-stretch overflow-hidden rounded-[14px] bg-surface-2", small ? "size-16 self-center" : "min-h-28 w-[88px] lg:w-36")}
+      className={cn("relative shrink-0 self-stretch overflow-hidden rounded-[14px] bg-surface-2", small ? "size-16 self-center" : "min-h-36 w-[112px] lg:w-48")}
       title={cover ? (creditText(cover) ?? undefined) : undefined}
     >
       {cover ? (
@@ -134,17 +134,21 @@ export function StopCard({
             </h3>
             {!compact && sub && <p className="mt-1 line-clamp-1 text-sm text-fg-muted">{sub}</p>}
           </div>
-          {handle ?? (canEdit ? <CardMenu item={item} onEdit={onOpen} onDone={onDone} onRemove={onRemove} /> : null)}
         </div>
         <div
           className={cn(
-            "mt-3 grid items-center gap-3 rounded-[22px] bg-surface p-2.5 shadow-card",
-            compact ? "grid-cols-[64px_1fr]" : "grid-cols-[88px_1fr] lg:grid-cols-[9rem_1fr] lg:p-3",
+            "relative mt-3 grid items-center gap-3 rounded-[22px] bg-surface p-2.5 shadow-card",
+            compact ? "grid-cols-[64px_1fr]" : "grid-cols-[112px_1fr] lg:grid-cols-[12rem_1fr] lg:p-3",
             item.tentative && "border-2 border-dashed border-line-strong bg-transparent shadow-none",
           )}
         >
+          {/* The whole card opens it: an editor gets the form, a viewer the read-only view. Not while dragging, where the handle shows. */}
+          {!handle && (
+            <button type="button" onClick={onOpen} aria-label={`Open ${item.activity}`} className="absolute inset-0 rounded-[22px] focus-visible:outline-3 focus-visible:outline-[var(--focus)]" />
+          )}
+          <div className="absolute top-1 right-1 z-[1]">{handle ?? (canEdit ? <CardMenu item={item} onEdit={onOpen} onDone={onDone} onRemove={onRemove} /> : null)}</div>
           <Thumb item={item} idea={idea} images={images} urlOf={urlOf} small={compact} />
-          <ul className="min-w-0">
+          <ul className={cn("pointer-events-none min-w-0", (handle || canEdit) && "pr-9")}>
             {shown.map((r, n) => {
               const Icon = CHIP_ICONS[r.icon] ?? Timer;
               return (
@@ -172,9 +176,9 @@ function CardMenu({ item, onEdit, onDone, onRemove }: { item: Item; onEdit: () =
     <DropdownMenu.Root>
       <DropdownMenu.Trigger
         aria-label={`${item.tentative ? "Tentative: " : ""}${item.activity}. Menu`}
-        className="mt-1 -mr-1.5 grid size-11 shrink-0 place-items-center rounded-full bg-surface text-fg shadow-[inset_0_0_0_1.5px_var(--line)]"
+        className="grid size-11 shrink-0 place-items-center rounded-full text-fg-muted hover:bg-surface-2 hover:text-fg"
       >
-        <Menu className="size-[22px]" strokeWidth={2.4} aria-hidden />
+        <EllipsisVertical className="size-[22px]" strokeWidth={2.4} aria-hidden />
       </DropdownMenu.Trigger>
       <DropdownMenu.Portal>
         <DropdownMenu.Content align="end" sideOffset={4} className="z-50 min-w-52 rounded-2xl border border-border bg-surface p-1.5 shadow-card">

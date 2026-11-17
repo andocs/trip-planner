@@ -228,20 +228,32 @@ APP_URL=http://localhost:3000 (local only)
 
 ---
 
-## Phase 7: Itinerary map hero + card menu (branch revision/itinerary-map-hero) — MOCKUPS ONLY, AWAITING APPROVAL
+## Phase 7: Itinerary map hero + card menu (branch revision/itinerary-map-hero) — MINIMAL VERSION BUILT AND PUSHED; TODO LIST BELOW
 
 Map becomes the page hero (pan/zoom, enlarge, stop chips, day filter); per-card upper-right menu (Edit / Mark complete / Remove from
 itinerary) replaces the Reorder and Add buttons at the top (grip handle on hover replaces Reorder mode); add control redone as one
 outlined shape that fills and stretches; days with no items are hidden, with a "Plan Day N" button after the last one.
 Mockups: **`design/mockups/itinerary-hero-redo.html`** (gitignored folder; one interactive file with Light/Night, Desktop/Phone, Map hero/enlarged,
 Days only-with-items vs all-11, card-menu and add-control state toggles, a Guides overlay for the spacing, and the proposal and open decisions
-under the frame). It replaces `phase7-map-hero.html`, `-v2` and `-v3`, which the user told us to disregard. No app code written yet.
-Do not build the rest of it until the user approves it; build to the file's CSS and sizes. Open decisions are listed at the bottom of the mockup page.
+under the frame). It replaces `phase7-map-hero.html`, `-v2` and `-v3`, which the user told us to disregard.
+The parts of it that were not asked for again (below) stay unbuilt until the user says so. Open decisions are listed at the bottom of the mockup page.
 
 **Built so far, as a deliberately minimal version (user: "make minimal changes to the existing UI, follow the colors, layout and fonts")**:
 the map is the hero background (Enlarge map pill, Directions pill), each card has the hamburger menu, and the "+" is centred on the card column
 and stays white (it does NOT follow the mockup's teal fill). **Not built:** removing the Reorder and Add buttons at the top, the hover grip,
 hiding days with no items and "Plan Day N", the teal-filling add control, stop chips and day filter on the map.
+
+**Next session TODO (user's list, 2026-11-17; details in memory `project-phase7-map-hero.md`):**
+1. Move the enlarge/shrink map button to the upper right of the hero map.
+2. Replace the header pills with the days: All days, Day N, then Drafts; place them lower in the hero; they filter the list.
+3. Animate enlarge/shrink.
+4. Smaller hero title font and no gradient when the map is enlarged; the reverse when shrunk; animate both.
+5. Hamburger becomes a kebab (vertical dots), placed inside the card; same menu items.
+6. Enlarge the photo on the left of the card (the right-hand map column is gone).
+7. Make sure a card can be viewed on click (viewers too, read-only).
+8. Do not show days that have no activity yet (dividers and day pills).
+9. Add control hover: highlight the outline's own shape (Commute rounded left only, Activity rounded right only, Rest square), not a generic squircle; keep it white.
+Keep colours, layout and fonts as they are; screenshot before and after each change.
 
 ## Next Phase (Planned but Not Started)
 

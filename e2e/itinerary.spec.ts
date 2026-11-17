@@ -211,7 +211,7 @@ test("the route map is the hero, behind the title, and there is no side column o
   await page.setViewportSize({ width: 1280, height: 900 });
   await createFakeSupabase({ withSeed: true }).install(page);
   await page.goto("/itinerary");
-  const hero = page.locator("header").filter({ has: page.getByRole("group", { name: "Itinerary view" }) });
+  const hero = page.locator("header").filter({ has: page.getByRole("group", { name: "Show days" }) });
   await expect(hero.getByText("Map unavailable here.")).toBeVisible(); // the stand-in when the e2e run has no Google key
   await expect(page.getByRole("complementary", { name: "Route" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Map", exact: true })).toHaveCount(0);
@@ -221,7 +221,7 @@ test("Enlarge map makes the hero taller, and Reduce map puts it back", async ({ 
   await page.setViewportSize({ width: 390, height: 844 });
   await createFakeSupabase({ withSeed: true }).install(page);
   await page.goto("/itinerary");
-  const hero = page.locator("header").filter({ has: page.getByRole("group", { name: "Itinerary view" }) });
+  const hero = page.locator("header").filter({ has: page.getByRole("group", { name: "Show days" }) });
   const height = async () => Math.round((await hero.boundingBox())!.height);
   const small = await height();
   await page.getByRole("button", { name: "Enlarge map" }).click();
@@ -229,6 +229,45 @@ test("Enlarge map makes the hero taller, and Reduce map puts it back", async ({ 
   await expect.poll(height).toBeGreaterThan(small + 100);
   await page.getByRole("button", { name: "Reduce map" }).click();
   await expect.poll(height).toBe(small);
+});
+
+test("the days are pills low in the hero: All days, each day that has something, then Drafts; they filter the list", async ({ page }) => {
+  const fake = createFakeSupabase({ withSeed: true });
+  plan(fake);
+  await fake.install(page);
+  await page.goto("/itinerary");
+  const days = page.getByRole("group", { name: "Show days" });
+  await expect(days.getByRole("button", { name: "Day 1", exact: true })).toBeVisible();
+  await expect(days.getByRole("button", { name: "Day 2", exact: true })).toBeVisible();
+  await expect(days.getByRole("link", { name: /^Drafts/ })).toBeVisible();
+  // Day 3 has no activity (and no stay check-in or check-out): no divider and no pill.
+  await expect(days.getByRole("button", { name: "Day 3", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("separator", { name: /^Day 3/ })).toHaveCount(0);
+  await days.getByRole("button", { name: "Day 2", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Boat tour" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Lake walk" })).toHaveCount(0);
+  await days.getByRole("button", { name: "All days" }).click();
+  await expect(page.getByRole("heading", { name: "Lake walk" })).toBeVisible();
+});
+
+test("a viewer can open a card to read it (no form)", async ({ page }) => {
+  const fake = createFakeSupabase({ withSeed: true, role: "viewer" });
+  plan(fake);
+  await fake.install(page);
+  await page.goto("/itinerary");
+  await page.getByRole("button", { name: "Open Lake walk" }).click();
+  const view = page.getByRole("dialog", { name: "Lake walk" });
+  await expect(view).toBeVisible();
+  await expect(view.getByRole("button", { name: "Save" })).toHaveCount(0);
+});
+
+test("clicking a card opens it for editing (owner)", async ({ page }) => {
+  const fake = createFakeSupabase({ withSeed: true });
+  plan(fake);
+  await fake.install(page);
+  await page.goto("/itinerary");
+  await page.getByRole("button", { name: "Open Lake walk" }).click();
+  await expect(page.getByRole("dialog", { name: "Edit activity" })).toBeVisible();
 });
 
 test("each card has one menu: edit, mark complete, remove (with undo)", async ({ page }) => {

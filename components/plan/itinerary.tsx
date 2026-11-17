@@ -14,7 +14,7 @@ import {
 } from "@dnd-kit/core";
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { ArrowUpDown, ArrowUpRight, Check, CalendarPlus, Ellipsis, GripVertical } from "lucide-react";
+import { ArrowUpDown, ArrowUpRight, Check, CalendarPlus, Ellipsis, GripVertical, Maximize2, Minimize2 } from "lucide-react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useState, type ReactNode } from "react";
@@ -51,14 +51,15 @@ import { AddHere } from "./add-here";
 import type { ConnectorTarget } from "./connector-sheet";
 import { ConnectorRow, DaySplit, StayRow, StopCard } from "./itinerary-entries";
 import type { ActivityDefaults, ItineraryItem } from "./itinerary-sheet";
+import { StopView } from "./stop-view";
 
 const ItinerarySheet = dynamic(() => import("./itinerary-sheet").then((m) => m.ItinerarySheet), { ssr: false });
 const ConnectorSheet = dynamic(() => import("./connector-sheet").then((m) => m.ConnectorSheet), { ssr: false });
 
 type Entry =
-  | { kind: "day"; id: string; group: DayGroup }
-  | { kind: "mark"; id: string; mark: StayMark }
-  | { kind: "item"; id: string; item: ItineraryItem };
+  | { kind: "day"; id: string; day: number | null; group: DayGroup }
+  | { kind: "mark"; id: string; day: number | null; mark: StayMark }
+  | { kind: "item"; id: string; day: number | null; item: ItineraryItem };
 
 /** One row of the list that can be dragged (an item), or can only be dropped next to (a day divider, a stay). */
 function SortableRow({ id, locked, label, cover, children }: { id: string; locked: boolean; label: string; /** Hides the dotted line behind this row: the day header at the very top has no line beside it. */ cover?: boolean; children: (handle: ReactNode) => ReactNode }) {
@@ -103,6 +104,8 @@ export function Itinerary() {
   const [connector, setConnector] = useState<ConnectorTarget | null>(null);
   const [reorder, setReorder] = useState(false);
   const [big, setBig] = useState(false);
+  const [pick, setPick] = useState<"all" | number>("all");
+  const [viewing, setViewing] = useState<ItineraryItem | null>(null);
   const wide = useMedia("(min-width: 1024px)");
   const [dragging, setDragging] = useState<string | null>(null);
 
@@ -125,25 +128,32 @@ export function Itinerary() {
   const editing = canEdit && reorder;
 
   // One flat list: day dividers, stays and items in order. Dragging an item past a divider is how it changes day.
+  // A day with nothing planned (no activity, no stay check-in or check-out) is not shown; it appears once it has something.
   const entries: Entry[] = [];
   const number = new Map<string, number>();
+  const planned: number[] = [];
   let n = 0;
   for (const g of groups) {
-    entries.push({ kind: "day", id: `day:${g.day ?? "none"}`, group: g });
-    for (const m of marks.filter((x) => x.day === g.day && x.kind === "out")) entries.push({ kind: "mark", id: m.id, mark: m });
+    if (g.items.length === 0 && !marks.some((x) => x.day === g.day)) continue;
+    if (g.day !== null) planned.push(g.day);
+    entries.push({ kind: "day", id: `day:${g.day ?? "none"}`, day: g.day, group: g });
+    for (const m of marks.filter((x) => x.day === g.day && x.kind === "out")) entries.push({ kind: "mark", id: m.id, day: g.day, mark: m });
     for (const it of g.items) {
       if (isStop(it)) number.set(it.id, ++n);
-      entries.push({ kind: "item", id: it.id, item: it });
+      entries.push({ kind: "item", id: it.id, day: g.day, item: it });
     }
-    for (const m of marks.filter((x) => x.day === g.day && x.kind === "in")) entries.push({ kind: "mark", id: m.id, mark: m });
+    for (const m of marks.filter((x) => x.day === g.day && x.kind === "in")) entries.push({ kind: "mark", id: m.id, day: g.day, mark: m });
   }
   const nothing = items.length === 0 && marks.length === 0;
+  // The day pills filter the list and the map. Stops keep their numbers from the whole trip.
+  const view = typeof pick === "number" && planned.includes(pick) ? pick : "all";
+  const shown = view === "all" ? entries : entries.filter((e) => e.day === view);
 
   // The route: solid stops only (a tentative stop is a draft placeholder), in the order of the list, numbered as in the list.
   // A stop's position is its saved place's coordinates while they are fresh (30 days); a stop without one is counted, not drawn.
   const routeStops: MapStop[] = [];
   let missing = 0;
-  for (const e of entries) {
+  for (const e of shown) {
     if (e.kind !== "item" || !isStop(e.item) || e.item.tentative) continue;
     const coords = e.item.source_table && e.item.source_id ? freshCoords(refs.byIdea.get(`${e.item.source_table}:${e.item.source_id}`)) : null;
     if (coords) routeStops.push({ id: e.item.id, name: e.item.activity, label: number.get(e.item.id), ...coords });
@@ -160,15 +170,15 @@ export function Itinerary() {
     setDragging(null);
     const { active, over } = e;
     if (!over || active.id === over.id) return;
-    const ids = entries.map((x) => x.id);
+    const ids = shown.map((x) => x.id);
     const from = ids.indexOf(String(active.id));
     const to = ids.indexOf(String(over.id));
     const moved = items.find((i) => i.id === active.id);
     if (from < 0 || to < 0 || !moved) return;
     // The day is the nearest divider above the dropped item; the index counts the items between it and the divider.
-    const order = arrayMove(entries, from, to);
+    const order = arrayMove(shown, from, to);
     const at = order.findIndex((x) => x.id === active.id);
-    let toDay: number | null = groups[0]?.day ?? null;
+    let toDay: number | null = shown.find((x) => x.kind === "day")?.day ?? null;
     let index = 0;
     for (let k = 0; k < at; k++) {
       const x = order[k];
@@ -219,7 +229,7 @@ export function Itinerary() {
         currency={trip.home_currency}
         canEdit={canEdit}
         compact={editing}
-        onOpen={() => sheet.openEdit(item)}
+        onOpen={() => (canEdit ? sheet.openEdit(item) : setViewing(item))}
         onDone={(done) => update.mutate({ id: item.id, patch: { done } })}
         onRemove={() => removeRow(item, `“${item.activity}”`)}
         handle={handle}
@@ -227,7 +237,7 @@ export function Itinerary() {
     );
   };
 
-  const list = entries.map((e, k) => {
+  const list = shown.map((e, k) => {
     if (e.kind === "day") {
       const totals = dayTotals(e.group.items);
       const stops = e.group.items.filter((i) => isStop(i) && !i.tentative).length;
@@ -255,7 +265,7 @@ export function Itinerary() {
         </SortableRow>
       );
     }
-    const nextItem = entries.slice(k + 1).find((x) => x.kind === "item" || x.kind === "day");
+    const nextItem = shown.slice(k + 1).find((x) => x.kind === "item" || x.kind === "day");
     const next = nextItem?.kind === "item" ? nextItem.item : undefined;
     // The "+" belongs to this activity. Never next to an existing commute or rest, while reordering, or for viewers.
     const addAfter = canEdit && !editing && isStop(e.item) && !(next && !isStop(next));
@@ -281,7 +291,7 @@ export function Itinerary() {
     <div className="-mx-4 -mt-4 lg:mx-0 lg:mt-0 lg:overflow-hidden lg:rounded-[28px] lg:bg-ground lg:shadow-card">
       <header
         className={cn(
-          "relative overflow-hidden bg-[#12392f] px-4 pt-5 pb-14 text-white transition-[min-height] duration-300 motion-reduce:transition-none dark:bg-[#0f2a24] dark:text-[#e8f0ec] lg:px-8 lg:pt-8 lg:pb-16",
+          "relative flex flex-col overflow-hidden bg-[#12392f] px-4 pt-5 pb-14 text-white transition-[min-height] duration-300 ease-out motion-reduce:transition-none dark:bg-[#0f2a24] dark:text-[#e8f0ec] lg:px-8 lg:pt-8 lg:pb-16",
           big ? "min-h-[480px] lg:min-h-[560px]" : "min-h-[300px] lg:min-h-[340px]",
         )}
       >
@@ -296,37 +306,71 @@ export function Itinerary() {
             insets={wide ? { top: 40, right: 40, bottom: 70, left: 360 } : { top: 130, right: 24, bottom: 90, left: 24 }}
           />
         </div>
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-[#12392f] via-[#12392f]/55 to-transparent dark:from-[#0f2a24] dark:via-[#0f2a24]/55 lg:bg-gradient-to-r lg:from-[#12392f] lg:via-[#12392f]/70 lg:to-transparent lg:dark:from-[#0f2a24] lg:dark:via-[#0f2a24]/70" aria-hidden />
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(120%_90%_at_85%_0%,color-mix(in_srgb,var(--teal)_38%,transparent),transparent_60%)]" aria-hidden />
-        <div className="pointer-events-none relative flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <h1 className="sr-only">Itinerary</h1>
-            <p className="font-display text-[32px] leading-[1.05] font-extrabold tracking-tight text-balance lg:text-[40px]" aria-hidden>
-              {trip.name}
-            </p>
-            <p className="mt-1.5 text-sm text-[#b9d6cc]">{[len ? `${len} days` : null, formatDateRange(trip.start_date, trip.end_date)].filter(Boolean).join(" · ")}</p>
-          </div>
+        {/* The shading under the title fades out when the map is enlarged, and back in when it is reduced. */}
+        <div className={cn("pointer-events-none absolute inset-0 transition-opacity duration-300 motion-reduce:transition-none", big ? "opacity-0" : "opacity-100")} aria-hidden>
+          <div className="absolute inset-0 bg-gradient-to-b from-[#12392f] via-[#12392f]/55 to-transparent dark:from-[#0f2a24] dark:via-[#0f2a24]/55 lg:bg-gradient-to-r lg:from-[#12392f] lg:via-[#12392f]/70 lg:to-transparent lg:dark:from-[#0f2a24] lg:dark:via-[#0f2a24]/70" />
+          <div className="absolute inset-0 bg-[radial-gradient(120%_90%_at_85%_0%,color-mix(in_srgb,var(--teal)_38%,transparent),transparent_60%)]" />
         </div>
-        <div className="pointer-events-none relative mt-5 flex gap-2 overflow-x-auto [scrollbar-width:none]" role="group" aria-label="Itinerary view">
-          <span aria-current="page" className="pointer-events-auto inline-flex min-h-11 items-center rounded-full bg-[#ffb400] px-[18px] text-[15px] font-bold text-[#1a1100]">
-            Itinerary
-          </span>
+        <div className="pointer-events-none relative min-w-0 pr-28">
+          <h1 className="sr-only">Itinerary</h1>
+          <p
+            className={cn(
+              "font-display leading-[1.05] font-extrabold tracking-tight text-balance transition-[font-size] duration-300 motion-reduce:transition-none",
+              big ? "text-[22px] [text-shadow:0_1px_10px_rgb(0_0_0/0.65)] lg:text-[26px]" : "text-[32px] lg:text-[40px]",
+            )}
+            aria-hidden
+          >
+            {trip.name}
+          </p>
+          <p className={cn("mt-1.5 text-sm text-[#b9d6cc]", big && "[text-shadow:0_1px_8px_rgb(0_0_0/0.65)]")}>
+            {[len ? `${len} days` : null, formatDateRange(trip.start_date, trip.end_date)].filter(Boolean).join(" · ")}
+          </p>
+        </div>
+        {/* Upper right of the map: enlarge or reduce it, and the road route in Google Maps (a link, so no API call and no quota). */}
+        <div className="absolute right-4 z-[2] flex gap-2 lg:right-8">
+          {directions && (
+            <a
+              href={directions}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Directions"
+              className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-full bg-[#12392f]/80 px-3 text-[15px] font-bold backdrop-blur-sm lg:px-4"
+            >
+              <ArrowUpRight className="size-[18px]" strokeWidth={2.6} aria-hidden />
+              <span className="hidden lg:inline">Directions</span>
+            </a>
+          )}
           <button
             type="button"
             aria-pressed={big}
+            aria-label={big ? "Reduce map" : "Enlarge map"}
             onClick={() => setBig((v) => !v)}
-            className={cn("pointer-events-auto inline-flex min-h-11 shrink-0 items-center rounded-full px-[18px] text-[15px] font-bold", big ? "bg-[#ffb400] text-[#1a1100]" : "bg-white/15 text-inherit")}
+            className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-full bg-[#12392f]/80 px-3 text-[15px] font-bold backdrop-blur-sm lg:px-4"
           >
-            {big ? "Reduce map" : "Enlarge map"}
+            {big ? <Minimize2 className="size-[18px]" strokeWidth={2.6} aria-hidden /> : <Maximize2 className="size-[18px]" strokeWidth={2.6} aria-hidden />}
+            <span className="hidden lg:inline">{big ? "Reduce map" : "Enlarge map"}</span>
           </button>
-          {directions && (
-            // The road route through the stops, in Google Maps: a link, so no API call and no quota.
-            <a href={directions} target="_blank" rel="noopener noreferrer" className="pointer-events-auto inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full bg-white/15 px-[18px] text-[15px] font-bold">
-              Directions
-              <ArrowUpRight className="size-4" strokeWidth={2.6} aria-hidden />
-            </a>
-          )}
-          <Link href="/places" className="pointer-events-auto inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full bg-white/15 px-[18px] text-[15px] font-bold">
+        </div>
+        {/* The days, low in the hero. They filter the list and the map; days with nothing planned aren't listed. */}
+        <div className="pointer-events-none relative mt-auto flex gap-2 overflow-x-auto pt-5 [scrollbar-width:none]" role="group" aria-label="Show days">
+          {[{ key: "all" as const, label: "All days" }, ...planned.map((d) => ({ key: d, label: `Day ${d}` }))].map((p) => {
+            const on = view === p.key;
+            return (
+              <button
+                key={p.key}
+                type="button"
+                aria-pressed={on}
+                onClick={() => setPick(p.key)}
+                className={cn(
+                  "pointer-events-auto inline-flex min-h-11 shrink-0 items-center rounded-full px-[18px] text-[15px] font-bold transition-colors motion-reduce:transition-none",
+                  on ? "bg-[#ffb400] text-[#1a1100]" : big ? "bg-[#12392f]/80 text-inherit backdrop-blur-sm" : "bg-white/15 text-inherit",
+                )}
+              >
+                {p.label}
+              </button>
+            );
+          })}
+          <Link href="/places" className={cn("pointer-events-auto inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full px-[18px] text-[15px] font-bold", big ? "bg-[#12392f]/80 backdrop-blur-sm" : "bg-white/15")}>
             Drafts
             {draftCount > 0 && <span className="font-mono text-xs opacity-85">{draftCount}</span>}
           </Link>
@@ -382,7 +426,7 @@ export function Itinerary() {
           </div>
         ) : (
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={(e: DragStartEvent) => setDragging(String(e.active.id))} onDragCancel={() => setDragging(null)} onDragEnd={onDragEnd}>
-            <SortableContext items={entries.map((x) => x.id)} strategy={verticalListSortingStrategy}>
+            <SortableContext items={shown.map((x) => x.id)} strategy={verticalListSortingStrategy}>
               <ol className="relative before:absolute before:top-6 before:bottom-6 before:left-[19px] before:border-l-[3px] before:border-dotted before:border-line-strong">{list}</ol>
             </SortableContext>
             <DragOverlay>
@@ -400,6 +444,14 @@ export function Itinerary() {
       </div>
 
       {sheet.mounted && <ItinerarySheet sheet={sheet} cities={cities} defaults={defaults} />}
+      {viewing && (
+        <StopView
+          item={viewing}
+          idea={viewing.source_table && viewing.source_id ? ideaOf.get(`${viewing.source_table}:${viewing.source_id}`) : undefined}
+          currency={trip.home_currency}
+          onClose={() => setViewing(null)}
+        />
+      )}
       {connector && <ConnectorSheet target={connector} onClose={() => setConnector(null)} />}
     </div>
   );
