@@ -3,6 +3,8 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ChevronRight, Lightbulb, MapPin } from "lucide-react";
 import { useEffect, useState } from "react";
+import { IdeaPhotos } from "@/components/photos/idea-photos";
+import { useImages, usePhotoUrls, useRemovePhoto } from "@/lib/queries/images";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 import { ChipGroup, ToggleRow } from "@/components/ideas/chips";
@@ -12,11 +14,11 @@ import { RowSheet } from "@/components/ui/row-sheet";
 import { tripLength } from "@/lib/calc";
 import { KIND_LABEL, type Idea } from "@/lib/drafts";
 import { formatDay } from "@/lib/format";
-import { dateForDay, type InsertPlan } from "@/lib/itinerary";
+import { dateForDay, stopLinks, withStopLinks, type InsertPlan } from "@/lib/itinerary";
 import { useIdeas } from "@/lib/queries/ideas";
 import { placeAtEndOfDay, useMoveItems } from "@/lib/queries/itinerary";
 import { newId, useDeleteRow, useInsertRow, useRows, useUpdateRow, type Row } from "@/lib/queries/table";
-import { optionalNumber, optionalText, requiredText, str } from "@/lib/schemas";
+import { optionalMapsUrl, optionalNumber, optionalText, optionalUrl, requiredText, str } from "@/lib/schemas";
 import type { useSheet } from "@/lib/use-sheet";
 import { cn } from "@/lib/utils";
 
@@ -34,6 +36,8 @@ const Schema = z.object({
   /** Only the Custom length chip: show the minutes box even while it is empty. Never saved. */
   lenCustom: z.boolean(),
   note: optionalText(500),
+  website: optionalUrl,
+  mapsUrl: optionalMapsUrl,
   done: z.boolean(),
 });
 type In = z.input<typeof Schema>;
@@ -80,11 +84,18 @@ export function ItinerarySheet({
   const update = useUpdateRow("itinerary_items", "activity");
   const remove = useDeleteRow("itinerary_items", "activity");
   const [keepAdding, setKeepAdding] = useState(false);
+  // An activity that is still being added has no row yet, but its photos need an id: made up front, used when it is saved.
+  const [draftId, setDraftId] = useState(() => newId());
+  const { byIdea: imagesBy } = useImages();
+  const urlOf = usePhotoUrls();
+  const discard = useRemovePhoto();
   const { register, handleSubmit, reset, formState, control, getValues, setValue, setFocus } = useForm<In, unknown, Out>({
     resolver: zodResolver(Schema),
   });
   const errors = formState.errors;
-  const [day, duration, lenCustom] = useWatch({ control, name: ["day", "duration_min", "lenCustom"] });
+  const [day, duration, lenCustom, activityName] = useWatch({ control, name: ["day", "duration_min", "lenCustom", "activity"] });
+  const activityId = sheet.row?.id ?? draftId;
+  const photoKey = `itinerary_items:${activityId}`;
 
   // Every day of the trip, and any day an item already uses (the trip may have been shortened).
   const len = tripLength(trip.start_date, trip.end_date) ?? 0;
@@ -108,6 +119,8 @@ export function ItinerarySheet({
       duration_min: str(r?.duration_min),
       lenCustom: !!r?.duration_min && !LENGTHS.some(([, m]) => m === String(r.duration_min)),
       note: str(r?.note),
+      website: stopLinks(r?.details).website ?? "",
+      mapsUrl: stopLinks(r?.details).mapsUrl ?? "",
       done: r?.done ?? false,
     });
   }, [sheet.open, sheet.row, reset, defaults]);
@@ -116,9 +129,11 @@ export function ItinerarySheet({
   const spot = !sheet.row && defaults?.plan && defaults.plan !== usedPlan && (day ?? "") === (defaults.day ?? "") ? defaults.plan : null;
 
   const onSubmit = handleSubmit((v) => {
-    const { day: dayStr, lenCustom: _custom, ...fields } = v;
+    const { day: dayStr, lenCustom: _custom, website, mapsUrl, ...rest } = v;
     void _custom;
+    const links = { website, mapsUrl };
     const toDay = dayStr === "" ? null : Number(dayStr);
+    const fields = { ...rest, details: withStopLinks(sheet.row?.details, links) };
     if (sheet.row) {
       const moved = toDay !== sheet.row.day;
       // Changing the day sends it to the end of the new day; otherwise its place in the day is kept.
@@ -132,18 +147,19 @@ export function ItinerarySheet({
     if (spot?.renumber.length) move.mutate(spot.renumber);
     insert.mutate([
       {
-        id: newId(),
+        id: draftId,
         ...fields,
         ...(source ? { source_table: source.table, source_id: source.id, tentative: source.tentative } : {}),
         ...(spot ? { day: toDay, on_date: dateForDay(trip.start_date, toDay), position: spot.position } : placeAtEndOfDay(all, toDay, trip.start_date)),
       },
     ]);
+    setDraftId(newId());
     if (spot) setUsedPlan(spot);
     setSource(null);
     setPicking(false);
     if (keepAdding) {
       const keep = getValues();
-      reset({ ...keep, activity: "", at_time: "", duration_min: "", lenCustom: false, note: "", done: false });
+      reset({ ...keep, activity: "", at_time: "", duration_min: "", lenCustom: false, note: "", website: "", mapsUrl: "", done: false });
       setFocus("activity");
     } else sheet.close();
   });
@@ -166,7 +182,12 @@ export function ItinerarySheet({
   return (
     <RowSheet
       open={sheet.open}
-      onOpenChange={sheet.setOpen}
+      onOpenChange={(o) => {
+        // Closing an add without saving: its photos have no activity to belong to, so they go too.
+        if (!o && !sheet.row) for (const r of imagesBy.get(`itinerary_items:${draftId}`) ?? []) discard.mutate(r);
+        if (!o && !sheet.row) setDraftId(newId());
+        sheet.setOpen(o);
+      }}
       side
       title={sheet.row ? "Edit activity" : "Add activity"}
       description={sheet.row ? undefined : dayNumber === null ? "No day yet" : `Day ${dayNumber}${picked ? ` · ${formatDay(picked)}` : ""}`}
@@ -310,6 +331,21 @@ export function ItinerarySheet({
       <Field label="Notes" error={errors.note?.message}>
         {(p) => <Textarea {...p} {...register("note")} rows={2} />}
       </Field>
+      <Field label="Website" hint="Optional" error={errors.website?.message}>
+        {(p) => <Input {...p} {...register("website")} type="url" inputMode="url" autoComplete="off" placeholder="https://" />}
+      </Field>
+      <Field label="Google Maps link" hint="Optional. Paste a share link from Google Maps." error={errors.mapsUrl?.message}>
+        {(p) => <Input {...p} {...register("mapsUrl")} type="url" inputMode="url" autoComplete="off" placeholder="https://maps.app.goo.gl/…" />}
+      </Field>
+      <div className="space-y-2">
+        <span className="block text-[13px] font-bold text-fg-muted">Photos</span>
+        <IdeaPhotos
+          idea={{ table: "itinerary_items", id: activityId, key: photoKey, name: activityName?.trim() || "this activity" }}
+          images={imagesBy.get(photoKey) ?? []}
+          urlOf={urlOf}
+          canEdit
+        />
+      </div>
       {sheet.row && (
         <Controller
           control={control}

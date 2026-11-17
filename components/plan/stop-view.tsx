@@ -2,17 +2,27 @@
 
 import { Timer } from "lucide-react";
 import { CHIP_ICONS } from "@/components/ideas/idea-chips";
+import { IdeaPhotos } from "@/components/photos/idea-photos";
+import { PlaceLinks } from "@/components/ui/place-links";
+import { parseDetails } from "@/lib/idea-details";
+import { stopLinks } from "@/lib/itinerary";
+import type { ImageRow } from "@/lib/queries/images";
 import { Sheet } from "@/components/ui/sheet";
 import type { Idea } from "@/lib/drafts";
 import { stopRows } from "@/lib/itinerary-rows";
 import type { Row } from "@/lib/queries/table";
 
 /** A stop, read-only: what a viewer sees when they open a card (editors get the form instead). */
-export function StopView({ item, idea, currency, onClose }: { item: Row<"itinerary_items">; idea?: Idea; currency: string; onClose: () => void }) {
+export function StopView({ item, idea, currency, images, urlOf, onClose }: { item: Row<"itinerary_items">; idea?: Idea; currency: string; images: ImageRow[]; urlOf: (r: ImageRow) => string | null; onClose: () => void }) {
+  const own = stopLinks(item.details);
+  const fromIdea = idea ? parseDetails(idea.kind, idea.details) : {};
+  const website = own.website ?? fromIdea.website;
+  const mapsUrl = own.mapsUrl ?? fromIdea.mapsUrl;
   const rows = stopRows(item, idea, currency);
   const note = item.note && !/^https?:\/\//i.test(item.note) ? item.note : null;
   return (
     <Sheet open onOpenChange={(o) => !o && onClose()} title={item.activity} description={[item.type, item.city, item.at_time?.slice(0, 5)].filter(Boolean).join(" · ") || undefined}>
+      {images.length > 0 && <IdeaPhotos idea={{ table: "itinerary_items", id: item.id, key: `itinerary_items:${item.id}`, name: item.activity }} images={images} urlOf={urlOf} canEdit={false} />}
       <ul className="pt-2">
         {rows.map((r, n) => {
           const Icon = CHIP_ICONS[r.icon] ?? Timer;
@@ -27,6 +37,7 @@ export function StopView({ item, idea, currency, onClose }: { item: Row<"itinera
           );
         })}
       </ul>
+      <PlaceLinks website={website} mapsUrl={mapsUrl} className="mt-2 flex flex-wrap gap-x-5" />
       {note && <p className="mt-3 text-sm whitespace-pre-line text-fg-muted">{note}</p>}
     </Sheet>
   );

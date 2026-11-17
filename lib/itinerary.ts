@@ -1,5 +1,6 @@
 import { addDays, dayNumberFor } from "./calc";
 import { formatDuration, formatTime } from "./format";
+import type { Json } from "./database.types";
 
 /**
  * The itinerary's rules, with no React and no network so they are easy to test:
@@ -273,4 +274,26 @@ export const timeLine = (i: Pick<Item, "at_time" | "duration_min">): string =>
 export function directionsUrl(stops: { lat: number; lng: number }[]): string | null {
   if (stops.length < 2) return null;
   return `https://www.google.com/maps/dir/${stops.map((s) => `${s.lat},${s.lng}`).join("/")}`;
+}
+
+/* ---------- links on a stop (website, Google Maps) ---------- */
+
+export type StopLinks = { website?: string; mapsUrl?: string };
+const isHttp = (v: unknown): v is string => typeof v === "string" && /^https?:\/\/[^\s]+$/i.test(v) && v.length <= 500;
+
+/** The website and Google Maps link saved on a stop. Anything that isn't a plain http(s) link reads as none. */
+export function stopLinks(raw: unknown): StopLinks {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+  const r = raw as Record<string, unknown>;
+  return { website: isHttp(r.website) ? r.website : undefined, mapsUrl: isHttp(r.mapsUrl) ? r.mapsUrl : undefined };
+}
+
+/** A stop's `details` with its links replaced (an empty link removes it). Other keys are kept as they were. */
+export function withStopLinks(raw: unknown, links: { website: string | null; mapsUrl: string | null }): { [key: string]: Json } {
+  const base: { [key: string]: Json } = raw && typeof raw === "object" && !Array.isArray(raw) ? { ...(raw as { [key: string]: Json }) } : {};
+  delete base.website;
+  delete base.mapsUrl;
+  if (links.website) base.website = links.website;
+  if (links.mapsUrl) base.mapsUrl = links.mapsUrl;
+  return base;
 }

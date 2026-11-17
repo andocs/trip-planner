@@ -40,9 +40,13 @@ export const SETTING = ["indoor", "outdoor", "both"] as const;
 
 const text = (n: number) => z.string().trim().min(1).max(n);
 const day = z.number().int().min(-30).max(365);
+const link = z.string().trim().max(500).regex(/^https?:\/\/[^\s]+$/i);
 const shared = {
   unit: z.enum(UNITS).optional(),
   currency: z.string().regex(/^[A-Z]{3}$/).optional(),
+  /** The place's own website and its Google Maps link (a plain browser link, no API call). */
+  website: link.optional(),
+  mapsUrl: link.optional(),
 };
 
 export const stayDetails = z.object({

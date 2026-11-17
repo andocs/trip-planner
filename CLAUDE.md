@@ -313,3 +313,11 @@ supabase db execute -f ...sql  # Run SQL on prod (needs --project-ref)
 - [ ] Run `npm run lint && npm run typecheck && npm test` to verify clean state
 - [ ] If database was touched, run `npm run check:rls` against Docker
 - [ ] Ask: "What's the next step?" (don't assume)
+
+---
+
+## Phase 8: Itinerary map interactions, links and activity photos (branch revision/itinerary-map-interactions, from revision/itinerary-map-hero)
+
+Built: (1) **Links**: ideas and activities take a Website and a Google Maps link (`website`, `mapsUrl` in `details` jsonb, no migration; `optionalUrl` / `optionalMapsUrl` in `lib/schemas.ts`; `stopLinks` / `withStopLinks` in `lib/itinerary.ts`; shown by `components/ui/place-links.tsx` in the idea sheet, the stop view and the map card). Editing keeps other `details` keys. (2) **Photos on activities**: **migration 17** (`20261117000017_activity_photos.sql`, rollback `supabase/rollback/rollback_000017.sql`) widens `item_images.item_table` to include `itinerary_items` and adds the cleanup trigger. The add sheet makes an id up front for its photos; closing without saving removes them. `PhotoOwner` type in `lib/drafts.ts`. (3) **Map**: `MapView` takes `refit` (frames all visible stops again when a day pill or the enlarge button is used), `onStopClick` and `selectedId`; clicking a pin (or an activity pill) opens `components/plan/map-stop-card.tsx` at the right of the map and enlarges the hero. With a day picked, a row of activity pills (time + name, scrolls sideways) sits under the day pills; not shown on All days.
+**Not verified:** migration 17 against Postgres (Docker was not running): run `npm run check:rls` (RLS checks and SQL checks for it were added) and apply 17 to production by hand. The real Google map (pin click, centring) is untested here (no key in e2e).
+**Open question for the user:** mobile "Add idea" (centre of the bottom nav, a nav item, or removed) is only an idea so far; mockup first.

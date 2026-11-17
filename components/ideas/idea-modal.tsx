@@ -323,7 +323,13 @@ function IdeaForm({
         )}
       </div>
 
-      <Field label="Notes" error={errors.notes?.message} hint="Photos and links are added from the idea itself.">
+      <Field label="Website" hint="Optional" error={errors.website?.message}>
+        {(p) => <Input {...p} {...register("website")} type="url" inputMode="url" autoComplete="off" placeholder="https://" />}
+      </Field>
+      <Field label="Google Maps link" hint="Optional. Paste a share link from Google Maps." error={errors.mapsUrl?.message}>
+        {(p) => <Input {...p} {...register("mapsUrl")} type="url" inputMode="url" autoComplete="off" placeholder="https://maps.app.goo.gl/…" />}
+      </Field>
+      <Field label="Notes" error={errors.notes?.message} hint="Photos are added from the idea itself.">
         {(p) => <Textarea {...p} {...register("notes")} rows={2} placeholder="Anything the group should know" />}
       </Field>
       <Controller

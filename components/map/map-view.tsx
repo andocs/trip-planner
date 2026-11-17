@@ -37,6 +37,9 @@ export function MapView({
   places = [],
   onTap,
   onPlaceClick,
+  onStopClick,
+  selectedId,
+  refit = 0,
   insets = { top: 80, right: 24, bottom: 24, left: 24 },
   label = "Trip map",
   interactive = true,
@@ -49,6 +52,11 @@ export function MapView({
   places?: MapPlace[];
   onTap?: (lat: number, lng: number) => void;
   onPlaceClick?: (id: string) => void;
+  /** Itinerary: a stop's disc can be clicked (it is highlighted while `selectedId` names it). */
+  onStopClick?: (id: string) => void;
+  selectedId?: string | null;
+  /** Change this number to frame all the stops again (a day was picked, the map was resized), even if they didn't change. */
+  refit?: number;
   /** Space covered by overlapping panels; the map frames its content in what's left. */
   insets?: Insets;
   label?: string;
@@ -95,11 +103,19 @@ export function MapView({
             }}
             style={{ width: "100%", height: "100%" }}
           >
-            <Framing stops={stops} pin={pin ?? null} places={places} insets={insets} />
+            <Framing stops={stops} pin={pin ?? null} places={places} insets={insets} refit={refit} />
+            <PanToSelected stops={stops} selectedId={selectedId ?? null} />
             <Route stops={stops} arrows={arrows} />
             {stops.map((s, i) => (
-              <AdvancedMarker key={s.id} position={{ lat: s.lat, lng: s.lng }} title={s.name} clickable={false}>
-                <div className="map-disc" aria-hidden="true">
+              <AdvancedMarker
+                key={s.id}
+                position={{ lat: s.lat, lng: s.lng }}
+                title={s.name}
+                clickable={!!onStopClick}
+                zIndex={selectedId === s.id ? 20 : 1}
+                onClick={onStopClick ? () => onStopClick(String(s.id)) : undefined}
+              >
+                <div className={cn("map-disc", onStopClick && "is-clickable", selectedId === s.id && "is-selected")} aria-hidden={onStopClick ? undefined : true}>
                   <span className="map-disc-n">{s.label ?? i + 1}</span>
                   <span className="map-disc-l">{s.name}</span>
                 </div>
@@ -163,14 +179,17 @@ function Framing({
   pin,
   places,
   insets,
+  refit,
 }: {
   stops: MapStop[];
   pin: { lat: number; lng: number } | null;
   places: MapPlace[];
   insets: Insets;
+  refit: number;
 }) {
   const map = useMap();
   const key = [
+    refit,
     pin ? `${pin.lat},${pin.lng}` : "",
     stops.map((s) => `${s.lat},${s.lng}`).join("|"),
     places.map((p) => `${p.id}:${p.lat},${p.lng}`).join("|"),
@@ -197,6 +216,19 @@ function Framing({
     // `key` stands for the content (stops, pin and places) so the effect doesn't re-run on identity changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [map, key, top, right, bottom, left]);
+  return null;
+}
+
+/** When a stop is picked, slide the map so it is in view (zoom stays as it is). */
+function PanToSelected({ stops, selectedId }: { stops: MapStop[]; selectedId: string | null }) {
+  const map = useMap();
+  useEffect(() => {
+    if (!map || !selectedId) return;
+    const s = stops.find((x) => String(x.id) === selectedId);
+    if (s) map.panTo({ lat: s.lat, lng: s.lng });
+    // Only when the pick changes, not on every re-render of the stops.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [map, selectedId]);
   return null;
 }
 

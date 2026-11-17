@@ -30,7 +30,7 @@ test("itinerary groups by day, toggles done, and asks only for the day", async (
   await sheet.getByRole("button", { name: /^Day 5/ }).click();
   await expect(sheet.getByText("The date follows from the trip start: Sat 20 Jun.")).toBeVisible();
   await sheet.getByLabel("Time").fill("15:00");
-  await sheet.getByRole("button", { name: "Add" }).click();
+  await sheet.getByRole("button", { name: "Add", exact: true }).click();
   await expect.poll(() => fake.tables.get("itinerary_items")?.find((i) => i.activity === "Egg coffee")).toBeTruthy();
   const row = fake.tables.get("itinerary_items")!.find((i) => i.activity === "Egg coffee")!;
   expect(row).toMatchObject({ day: 5, on_date: "2026-06-20", at_time: "15:00" });

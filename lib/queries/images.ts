@@ -3,7 +3,7 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useCanEdit, useTrip } from "@/components/trip-gate";
-import { ideaKey, type Idea, type IdeaTable } from "@/lib/drafts";
+import { ideaKey, type IdeaTable, type PhotoOwner } from "@/lib/drafts";
 import { PhotoFileError, PROBLEM_TEXT, resizeForUpload } from "@/lib/photos/resize";
 import { BUCKET, MAX_PER_IDEA, byPosition, closeGaps, coverMoves, nextPosition } from "@/lib/photos/shared";
 import type { WikiPhoto } from "@/lib/places/types";
@@ -110,7 +110,7 @@ export function useAddLinkPhoto() {
   const { byIdea } = useImages();
   const done = useInvalidate();
   return useMutation({
-    mutationFn: async (v: { idea: Pick<Idea, "table" | "id" | "key">; found: FoundPicture; credit: string }) => {
+    mutationFn: async (v: { idea: Omit<PhotoOwner, "name">; found: FoundPicture; credit: string }) => {
       const existing = byIdea.get(v.idea.key) ?? [];
       if (existing.length >= MAX_PER_IDEA) throw new Error(`An idea can have at most ${MAX_PER_IDEA} photos.`);
       const { error } = await getSupabase()
@@ -143,7 +143,7 @@ export function useUploadPhoto() {
   const done = useInvalidate();
   return useMutation({
     mutationFn: async (v: {
-      idea: Pick<Idea, "table" | "id" | "key">;
+      idea: Omit<PhotoOwner, "name">;
       file: File;
       onStage?: (s: "resizing" | "uploading") => void;
     }) => {

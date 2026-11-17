@@ -508,3 +508,16 @@
     transition: none !important;
   }
 }
+
+/* A stop picked on the itinerary map: a larger disc in the accent colour, with its card beside the map. */
+.map-disc.is-selected .map-disc-n {
+  width: 38px;
+  height: 38px;
+  margin: -4px 0 0 -4px;
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 0 0 3px var(--surface);
+}
+.map-disc.is-clickable {
+  cursor: pointer;
+}

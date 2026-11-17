@@ -4,7 +4,7 @@ import { Camera, ImagePlus, Star, Trash2 } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useState } from "react";
 import { creditText, MAX_PER_IDEA, sourceLabel } from "@/lib/photos/shared";
-import type { Idea } from "@/lib/drafts";
+import type { PhotoOwner } from "@/lib/drafts";
 import { useMakeCover, useRemovePhoto, type ImageRow } from "@/lib/queries/images";
 import { cn } from "@/lib/utils";
 import { PhotoImg } from "./photo-img";
@@ -30,7 +30,7 @@ export function IdeaPhotos({
   urlOf,
   canEdit,
 }: {
-  idea: Pick<Idea, "table" | "id" | "key" | "name">;
+  idea: PhotoOwner;
   images: ImageRow[];
   urlOf: (row: ImageRow) => string | null;
   canEdit: boolean;

@@ -23,7 +23,7 @@ import {
   UNITS,
   type Unit,
 } from "./idea-details";
-import { currencyCode, optionalNumber, optionalText, requiredText, str } from "./schemas";
+import { currencyCode, optionalMapsUrl, optionalNumber, optionalText, optionalUrl, requiredText, str } from "./schemas";
 
 /**
  * The shared add/edit modal's form: one set of string-friendly values, one zod schema per category, and the two
@@ -39,6 +39,8 @@ const shared = {
   name: requiredText("Name", 120),
   city: optionalText(80),
   notes: optionalText(500),
+  website: optionalUrl,
+  mapsUrl: optionalMapsUrl,
   cost: optionalNumber({ min: 0 }),
   unit: z.enum(UNITS),
   currency: currencyCode,
@@ -104,6 +106,8 @@ export type IdeaFormValues = {
   name: string;
   city: string;
   notes: string;
+  website: string;
+  mapsUrl: string;
   cost: string;
   unit: Unit;
   currency: string;
@@ -152,6 +156,8 @@ export function blankForm(kind: IdeaKind, currency: string): IdeaFormValues {
     name: "",
     city: "",
     notes: "",
+    website: "",
+    mapsUrl: "",
     cost: "",
     unit: DEFAULT_UNIT[kind],
     currency,
@@ -200,6 +206,8 @@ export function formFromIdea(idea: Idea, currency: string): IdeaFormValues {
   f.name = idea.name;
   f.city = idea.city ?? "";
   f.notes = idea.note ?? "";
+  f.website = d.website ?? "";
+  f.mapsUrl = d.mapsUrl ?? "";
   f.cost = str(d.pricePerNight ?? idea.price);
   f.unit = d.unit ?? idea.priceUnit ?? DEFAULT_UNIT[idea.kind];
   f.dealBreaker = idea.dealBreaker;
@@ -267,7 +275,7 @@ export function toPayload(kind: "food", v: Out<"food">): IdeaPayload;
 export function toPayload(kind: "sight", v: Out<"sight">): IdeaPayload;
 export function toPayload(kind: IdeaKind, raw: Out<"stay"> | Out<"food"> | Out<"sight">): IdeaPayload {
   const base = { city: raw.city, deal_breaker: raw.dealBreaker, decision: raw.decision };
-  const sharedDetails = { unit: raw.unit, currency: raw.currency };
+  const sharedDetails = { unit: raw.unit, currency: raw.currency, website: raw.website ?? undefined, mapsUrl: raw.mapsUrl ?? undefined };
 
   if (kind === "stay") {
     const v = raw as Out<"stay">;

@@ -820,6 +820,18 @@ begin
   select count(*) into n from public.item_images where item_id = item_a;
   if n <> 3 then failures := failures || format('owner should have added 3 photos, found %s', n); end if;
 
+  -- activity photos (migration 17): the owner can add one to an itinerary activity; an unknown table is refused
+  checks := checks + 1;
+  begin
+    insert into public.item_images (trip_id, item_table, item_id, source, url) values (trip_a, 'itinerary_items', gen_random_uuid(), 'link', 'https://cdn.example.com/act.jpg');
+    delete from public.item_images where item_table = 'itinerary_items';
+  exception when check_violation then failures := failures || 'an activity photo was refused'::text; end;
+  checks := checks + 1;
+  begin
+    insert into public.item_images (trip_id, item_table, item_id, source, url) values (trip_a, 'expenses', gen_random_uuid(), 'link', 'https://cdn.example.com/x.jpg');
+    failures := failures || 'a photo on an unknown table was accepted'::text;
+  exception when check_violation then null; end;
+
   -- the shape of each kind is enforced by the database
   checks := checks + 1;
   begin

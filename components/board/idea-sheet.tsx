@@ -23,6 +23,8 @@ import { useUser } from "@/lib/queries/trip";
 import { useDeleteRow } from "@/lib/queries/table";
 import { formatDay } from "@/lib/format";
 import { mapsLinkFor } from "@/lib/places/normalize";
+import { PlaceLinks } from "@/components/ui/place-links";
+import { parseDetails } from "@/lib/idea-details";
 import { IdeaPhotos } from "@/components/photos/idea-photos";
 import { DetailsList, MustFlag } from "@/components/ideas/idea-chips";
 import { MenuSection } from "@/components/places/menu-panel";
@@ -75,6 +77,7 @@ export function IdeaSheet({
   onClose: () => void;
 }) {
   const trip = useTrip();
+  const links = parseDetails(idea.kind, idea.details);
   const canEdit = useCanEdit();
   const isOwner = useRole() === "owner" && canEdit;
   const me = useUser().data?.id;
@@ -160,6 +163,8 @@ export function IdeaSheet({
             Open in Google Maps
           </a>
         )}
+
+        <PlaceLinks website={links.website} mapsUrl={links.mapsUrl} className="-mt-2 flex flex-wrap gap-x-5" />
 
         {canEdit && (
           <Button variant="outline" className="-mt-1 w-full" onClick={onEdit}>

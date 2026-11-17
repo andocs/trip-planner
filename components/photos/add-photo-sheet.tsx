@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/field";
 import { Segmented } from "@/components/ui/segmented";
 import { Sheet } from "@/components/ui/sheet";
-import type { Idea } from "@/lib/drafts";
+import type { PhotoOwner } from "@/lib/drafts";
 import { formatBytes, OK_TYPES } from "@/lib/photos/shared";
 import { findPicture, useAddLinkPhoto, usePhotoStorage, useUploadPhoto, type FoundPicture } from "@/lib/queries/images";
 import { cn } from "@/lib/utils";
@@ -23,7 +23,7 @@ export function AddPhotoSheet({
   idea,
   onClose,
 }: {
-  idea: Pick<Idea, "table" | "id" | "key" | "name">;
+  idea: PhotoOwner;
   onClose: () => void;
 }) {
   const [tab, setTab] = useState<Tab>("link");
@@ -70,7 +70,7 @@ function LinkTab({
   onClose,
   onUpload,
 }: {
-  idea: Pick<Idea, "table" | "id" | "key">;
+  idea: Omit<PhotoOwner, "name">;
   onClose: () => void;
   onUpload: () => void;
 }) {
@@ -207,7 +207,7 @@ function UploadTab({
   full,
   onLink,
 }: {
-  idea: Pick<Idea, "table" | "id" | "key">;
+  idea: Omit<PhotoOwner, "name">;
   onClose: () => void;
   full: boolean;
   onLink: () => void;

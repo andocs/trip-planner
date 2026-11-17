@@ -354,6 +354,13 @@ async function main() {
         })
       ).error,
     );
+    // Activity photos (migration 17): the same table, item_table = itinerary_items. Added and removed here so the counts below hold.
+    const actPic = { trip_id: tripId, item_table: "itinerary_items", item_id: randomUUID(), source: "link", url: "https://cdn.example.com/act.jpg" };
+    const actAdd = await owner.from("item_images").insert(actPic).select("id").single();
+    check("owner can add a photo to an itinerary activity (migration 17)", !actAdd.error);
+    check("viewer cannot add a photo to an activity", !!(await viewer.from("item_images").insert({ ...actPic, item_id: randomUUID() })).error);
+    check("a photo cannot name an unknown table", !!(await owner.from("item_images").insert({ ...actPic, item_table: "expenses" })).error);
+    if (actAdd.data) await owner.from("item_images").delete().eq("id", actAdd.data.id);
     check(
       "a plain http picture link is refused",
       !!(await owner.from("item_images").insert({ ...pic, source: "link", url: "http://cdn.example.com/a.jpg" })).error,

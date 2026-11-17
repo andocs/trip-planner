@@ -60,7 +60,10 @@ export type Idea = {
 };
 
 const decisionOf = (v: string): Decision => (isDecision(v) ? v : "draft");
-export const ideaKey = (table: IdeaTable, id: string) => `${table}:${id}`;
+/** Whatever can hold photos: an idea, or an activity added by hand on the itinerary. */
+export type PhotoTable = IdeaTable | "itinerary_items";
+export type PhotoOwner = { table: PhotoTable; id: string; key: string; name: string };
+export const ideaKey = (table: PhotoTable, id: string) => `${table}:${id}`;
 
 export function ideasFrom(d: {
   hotel_ideas: Tables<"hotel_ideas">[];
