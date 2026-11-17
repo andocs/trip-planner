@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { MapFallback } from "@/components/map/map-fallback";
-import { claimMap, markMapFailed, releaseMap, updateMap, useSharedMap } from "@/components/map/shared-map";
+import { claimMap, markMapFailed, releaseMap, updateMap, useSharedMapField } from "@/components/map/shared-map";
 import { cn } from "@/lib/utils";
 
 export type MapStop = { id: string | number; name: string; lat: number; lng: number; /** The number shown on the disc (defaults to its place in the list). */ label?: number };
@@ -58,12 +58,12 @@ export type MapViewProps = {
 const KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY;
 
 export function MapView({ className, requireContent = false, ...scene }: MapViewProps) {
-  const shared = useSharedMap();
+  const failed = useSharedMapField("failed");
   const [owner] = useState(() => Symbol("map"));
   const box = useRef<HTMLDivElement>(null);
   const [armed, setArmed] = useState(false);
   const empty = requireContent && scene.stops.length === 0 && !scene.places?.length && !scene.pin;
-  const stand = !KEY || shared.failed || empty;
+  const stand = !KEY || failed || empty;
 
   // Google calls this global when the key or referrer is refused after the script has loaded.
   useEffect(() => {

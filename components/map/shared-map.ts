@@ -28,7 +28,14 @@ const set = (patch: Partial<State>) => {
 };
 const SERVER: State = state;
 
-export const useSharedMap = (): State => useSyncExternalStore((cb) => (listeners.add(cb), () => void listeners.delete(cb)), () => state, () => SERVER);
+const subscribe = (cb: () => void) => {
+  listeners.add(cb);
+  return () => void listeners.delete(cb);
+};
+/** The whole state; only the host should use this (it changes whenever a screen publishes new props). */
+export const useSharedMap = (): State => useSyncExternalStore(subscribe, () => state, () => SERVER);
+/** Just one field, so a screen re-renders only when that field changes, never when another screen's props are published. */
+export const useSharedMapField = <K extends keyof State>(key: K): State[K] => useSyncExternalStore(subscribe, () => state[key], () => SERVER[key]);
 
 let host: HTMLDivElement | null = null;
 /** The detached element the Google map is drawn in. Browser only. */
