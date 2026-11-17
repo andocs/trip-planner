@@ -46,6 +46,7 @@ test("invite link joins the trip; a bad link explains itself", async ({ page }) 
   await expect(page.getByRole("heading", { name: "This invite link doesn’t work" })).toBeVisible();
 
   await page.goto(`/join/${fake.trip.join_token}`);
+  // This person is already signed in with Google, so there is nothing to offer: straight in.
   await expect(page).toHaveURL(/\/$/);
   await expect(page.getByRole("heading", { name: "Vietnam '26" })).toBeVisible();
 });

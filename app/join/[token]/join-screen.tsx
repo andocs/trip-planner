@@ -3,11 +3,14 @@
 import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
+import { Link2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 import { GateLayout, gateTitle } from "@/components/gate/gate-layout";
 import { Board } from "@/components/ui/board";
 import { Button } from "@/components/ui/button";
 import { joinTrip } from "@/lib/queries/trip";
+import { getCurrentUser, GuestSignInOff, linkGoogle } from "@/lib/supabase/client";
 import { errorMessage } from "@/lib/utils";
 
 export function Joining() {
@@ -29,6 +32,9 @@ export function JoinScreen() {
   const router = useRouter();
   const qc = useQueryClient();
   const [error, setError] = useState<string | null>(null);
+  const [guestOff, setGuestOff] = useState(false);
+  // Joined as a guest: offer to keep access with Google before going in.
+  const [offer, setOffer] = useState(false);
   const started = useRef(false);
 
   useEffect(() => {
@@ -37,20 +43,56 @@ export function JoinScreen() {
     joinTrip(token)
       .then(async () => {
         await qc.invalidateQueries();
+        const me = await getCurrentUser();
+        if (me?.isAnonymous) return setOffer(true);
         router.replace("/"); // drops the token from the address bar and history
       })
-      .catch((e: unknown) => setError(errorMessage(e)));
+      .catch((e: unknown) => {
+        if (e instanceof GuestSignInOff) setGuestOff(true);
+        setError(errorMessage(e));
+      });
   }, [token, router, qc]);
+
+  if (offer)
+    return (
+      <GateLayout>
+        <div className="flex flex-col gap-3.5">
+          <h1 className={gateTitle}>You&rsquo;re in</h1>
+          <p className="text-fg-muted">
+            Connect your Google account so this trip stays yours on every phone and laptop, and your votes and comments aren&rsquo;t lost if you clear your browser. We only use it to recognise you.
+          </p>
+          <Button
+            size="lg"
+            className="mt-1.5 w-full"
+            onClick={() =>
+              linkGoogle("/").catch((e: unknown) => toast.error(`Couldn't connect Google: ${errorMessage(e)}`))
+            }
+          >
+            <Link2 className="size-5" aria-hidden />
+            Continue with Google
+          </Button>
+          <Button variant="ghost" size="lg" className="w-full" onClick={() => router.replace("/")}>
+            Not now
+          </Button>
+        </div>
+      </GateLayout>
+    );
 
   if (!error) return <Joining />;
 
   return (
     <GateLayout>
       <div role="alert" className="flex flex-col gap-3.5">
-        <h1 className={gateTitle}>This invite link doesn&rsquo;t work</h1>
-        <p className="text-fg-muted">
-          {error}. The owner may have replaced the link or removed your access. Ask for a new one.
-        </p>
+        <h1 className={gateTitle}>{guestOff ? "Guest links aren’t switched on yet" : "This invite link doesn’t work"}</h1>
+        {guestOff ? (
+          <p className="text-fg-muted">
+            The link is fine, but the app isn&rsquo;t accepting guests yet. Tell the trip owner: guest (anonymous) sign-in needs to be turned on in the app&rsquo;s Supabase settings.
+          </p>
+        ) : (
+          <p className="text-fg-muted">
+            {error}. The owner may have replaced the link or removed your access. Ask for a new one.
+          </p>
+        )}
         <Button asChild variant="secondary" size="lg" className="mt-1.5 w-full">
           <Link href="/">Back to start</Link>
         </Button>

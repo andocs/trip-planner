@@ -204,6 +204,11 @@ export function createFakeSupabase(
       return { status: 204 };
     }
     if (path === "/rest/v1/rpc/regenerate_invite") return json("e2e-new-token");
+    if (path === "/rest/v1/rpc/revoke_viewer") {
+      const who = (req.body as { p_user?: string } | null)?.p_user;
+      tables.set("trip_members", (tables.get("trip_members") ?? []).filter((m) => m.user_id !== who));
+      return { status: 204 };
+    }
 
     if (path === "/rest/v1/rpc/create_trip") {
       if (!canWrite())
