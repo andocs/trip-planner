@@ -142,23 +142,14 @@ export function Tally({
   );
 }
 
-/** The tally as colour-coded icons with numbers: in (teal), maybe (amber), pass (red), and the comments. */
+/** "12 votes", whatever the votes are, and the comment count at the right. */
 export function VoteCounts({ votes, commentCount }: { votes: Vote[]; commentCount: number }) {
-  const t = tally(votes);
-  const item = (Icon: typeof Check, n: number, tone: string, word: string) => (
-    <span className={cn("inline-flex items-center gap-1.5", n === 0 ? "text-fg-muted opacity-60" : tone)}>
-      <Icon className="size-[18px]" strokeWidth={2.8} aria-hidden />
-      <span className="sr-only">{word}: </span>
-      {n}
-    </span>
-  );
+  const n = votes.length;
   return (
-    <span className="flex min-w-0 flex-1 items-center gap-3.5 text-[15px] font-extrabold tabular-nums">
-      {item(Check, t.in, "text-teal", "In")}
-      {item(CircleHelp, t.maybe, "text-warn-text", "Maybe")}
-      {item(X, t.pass, "text-danger", "Pass")}
+    <span className="flex min-w-0 flex-1 items-center gap-3 text-[13px] font-medium tabular-nums">
+      <span className="text-fg-muted">{n === 1 ? "1 vote" : `${n} votes`}</span>
       <span className="ml-auto inline-flex items-center gap-1.5 text-fg-muted">
-        <MessageCircle className="size-[18px]" strokeWidth={2.4} aria-hidden />
+        <MessageCircle className="size-4" strokeWidth={2.4} aria-hidden />
         <span className="sr-only">Comments: </span>
         {commentCount}
       </span>
@@ -216,7 +207,7 @@ export function IdeaCard({
       <button type="button" data-card-open onClick={onOpen} className="block text-left" aria-label={`Open ${idea.name}`}>
         <Hero idea={idea} images={images} urlOf={urlOf} className={cn(dropped && "opacity-80")} />
       </button>
-      <div className="flex flex-1 flex-col gap-3.5 p-5 pt-4">
+      <div className="flex flex-1 flex-col gap-3 p-4 pt-3.5">
         <button
           type="button"
           data-card-open
@@ -250,10 +241,9 @@ export function IdeaCard({
           </span>
           <IdeaChips idea={idea} currency={currency} />
         </button>
-        <div className="flex min-h-10 items-center gap-3.5">
+        <div className="flex min-h-9 items-center gap-3">
           <VoteMenu value={myVote} onVote={onVote} label={`Your vote on ${idea.name}`} />
-          <span className="h-6 w-px shrink-0 bg-line-strong" aria-hidden />
-          <VoteCounts votes={votes} commentCount={comments.length} />
+                    <VoteCounts votes={votes} commentCount={comments.length} />
         </div>
         {place && (
           <a
@@ -283,39 +273,33 @@ export function IdeaCard({
             )
           ) : canEdit && idea.decision === "draft" ? (
             inItinerary ? (
-              <div className="space-y-3 border-t border-border pt-4">
-                <p className="text-xs font-bold tracking-[0.08em] text-fg-muted uppercase">Itinerary</p>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="flex min-h-14 flex-col items-center justify-center rounded-full bg-teal-tint px-3 text-center text-teal" title={`Already in the itinerary: ${inItinerary}`}>
-                    <span className="flex items-center gap-1.5 text-[15px] leading-tight font-extrabold">
-                      <CircleCheck className="size-[18px] shrink-0" strokeWidth={2.4} aria-hidden />
-                      In itinerary
+              <div className="space-y-2.5 border-t border-border pt-3.5">
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div className="flex min-h-12 items-center gap-2.5 rounded-full bg-teal-tint px-3.5 text-teal" title={`Already in the itinerary: ${inItinerary}`}>
+                    <Check className="size-4 shrink-0" strokeWidth={3} aria-hidden />
+                    <span className="min-w-0 leading-tight">
+                      <b className="block truncate text-[13px]">Added · {visits}</b>
+                      <small className="block truncate text-xs font-medium">In your itinerary</small>
                     </span>
-                    <small className="text-xs font-medium">
-                      {visits} scheduled {visits === 1 ? "visit" : "visits"}
-                    </small>
                   </div>
-                  <Button variant="outline" className="min-h-14 min-w-0 flex-col gap-0 px-3" aria-label={`Already in the itinerary (${inItinerary}). Add again`} onClick={onAddStop}>
-                    <span className="flex items-center gap-1.5 text-[15px] leading-tight">
-                      <Plus className="size-[18px]" strokeWidth={2.6} aria-hidden />
-                      Add again
-                    </span>
-                    <small className="text-xs font-medium text-fg-muted">Another visit</small>
+                  <Button variant="outline" size="sm" className="min-h-12 min-w-0 px-3 text-[13px]" aria-label={`Already in the itinerary (${inItinerary}). Add again`} onClick={onAddStop}>
+                    <Plus className="size-4" strokeWidth={2.6} aria-hidden />
+                    Add again
                   </Button>
                 </div>
-                <Button variant="secondary" className="min-h-12 w-full text-[15px]" onClick={onConfirm}>
-                  <CircleCheck className="size-5" aria-hidden />
+                <Button variant="secondary" size="sm" className="min-h-12 w-full text-[13px]" onClick={onConfirm}>
+                  <CircleCheck className="size-4" aria-hidden />
                   Confirm place
                 </Button>
               </div>
             ) : (
-              <div className="grid grid-cols-2 gap-3 border-t border-border pt-4">
-                <Button variant="outline" className="min-h-12 min-w-0 px-3 text-[15px]" onClick={onAddStop}>
-                  <CalendarPlus className="size-[18px]" aria-hidden />
+              <div className="grid grid-cols-2 gap-2.5 border-t border-border pt-3.5">
+                <Button variant="outline" size="sm" className="min-h-12 min-w-0 px-3 text-[13px]" onClick={onAddStop}>
+                  <CalendarPlus className="size-4" aria-hidden />
                   Add to itinerary
                 </Button>
-                <Button variant="secondary" className="min-h-12 min-w-0 px-3 text-[15px]" onClick={onConfirm}>
-                  <CircleCheck className="size-[18px]" aria-hidden />
+                <Button variant="secondary" size="sm" className="min-h-12 min-w-0 px-3 text-[13px]" onClick={onConfirm}>
+                  <CircleCheck className="size-4" aria-hidden />
                   Confirm place
                 </Button>
               </div>
