@@ -27,15 +27,17 @@ export function CategoryMenu({
   current,
   align = "start",
   heading,
+  onOpenChange,
 }: {
   children: ReactNode;
   onPick: (label: string) => void;
   current?: string | null;
   align?: "start" | "center" | "end";
   heading?: string;
+  onOpenChange?: (open: boolean) => void;
 }) {
   return (
-    <DropdownMenu.Root>
+    <DropdownMenu.Root onOpenChange={onOpenChange}>
       <DropdownMenu.Trigger asChild>{children}</DropdownMenu.Trigger>
       <DropdownMenu.Portal>
         <DropdownMenu.Content align={align} sideOffset={6} className="z-[70] min-w-60 rounded-2xl border border-border bg-surface p-1.5 shadow-card">

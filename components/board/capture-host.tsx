@@ -67,7 +67,7 @@ export function CaptureHost() {
         tabIndex={boardShowing ? -1 : undefined}
         // Phones have no floating button: they add from the Places page. From the lg breakpoint up it floats at the top right.
         className={cn(
-          "fixed top-6 right-10 z-30 hidden items-center justify-center gap-2 rounded-full bg-surface px-4 font-bold text-fg shadow-float",
+          "fixed top-6 right-10 z-30 hidden min-h-12 items-center justify-center gap-2.5 rounded-full bg-surface py-2 pr-4 pl-5 font-bold text-fg shadow-float",
           !boardShowing && "lg:inline-flex",
         )}
       >

@@ -534,7 +534,12 @@ test("Add activity: the category is chosen from a menu (top Add and the small +)
 
   // The small + after a place: its Activity option asks for the category too.
   await page.getByRole("button", { name: "Add after Osaka Castle" }).click();
-  await page.getByRole("group", { name: "After Osaka Castle" }).getByRole("button", { name: "Activity" }).click();
+  const fan = page.getByRole("group", { name: "After Osaka Castle" });
+  await fan.getByRole("button", { name: "Activity" }).click();
+  // Dismissing the category menu leaves the expanded button open.
+  await page.keyboard.press("Escape");
+  await expect(fan.getByRole("button", { name: "Commute" })).toBeVisible();
+  await fan.getByRole("button", { name: "Activity" }).click();
   await page.getByRole("menuitem", { name: /^Shopping/ }).click();
   await expect(page.getByRole("dialog", { name: "Add activity" }).getByRole("button", { name: "Category" })).toContainText("Shopping");
 });

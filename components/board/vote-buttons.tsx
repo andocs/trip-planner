@@ -1,6 +1,7 @@
 "use client";
 
-import { Check, CircleHelp, X } from "lucide-react";
+import { Check, CircleHelp, ThumbsUp, X } from "lucide-react";
+import { DropdownMenu } from "radix-ui";
 import { VOTE_LABEL, type VoteValue } from "@/lib/drafts";
 import { cn } from "@/lib/utils";
 
@@ -43,5 +44,48 @@ export function VoteButtons({
         );
       })}
     </div>
+  );
+}
+
+const MENU_TEXT: Record<VoteValue, string> = { in: "text-teal", maybe: "text-warn-text", pass: "text-danger" };
+const MENU_FILL: Record<VoteValue, string> = { in: "bg-teal-tint text-teal", maybe: "bg-warn-tint text-warn-text", pass: "bg-danger-tint text-danger" };
+
+/**
+ * A small Vote button for a card. Closed it says "Vote", or "Voted" in the colour of the vote already cast; it opens
+ * I’m in | Maybe | Pass. Choosing the vote you already have clears it.
+ */
+export function VoteMenu({ value, onVote, label }: { value: VoteValue | null; onVote: (v: VoteValue | null) => void; label: string }) {
+  const Current = value ? ICON[value] : ThumbsUp;
+  return (
+    <DropdownMenu.Root>
+      <DropdownMenu.Trigger
+        aria-label={label}
+        className={cn(
+          "inline-flex min-h-9 items-center gap-1.5 rounded-full px-3 text-[13px] font-bold transition-colors",
+          value ? MENU_FILL[value] : "bg-surface-2 text-fg hover:bg-line",
+        )}
+      >
+        <Current className="size-4" strokeWidth={2.6} aria-hidden />
+        {value ? `Voted · ${VOTE_LABEL[value]}` : "Vote"}
+      </DropdownMenu.Trigger>
+      <DropdownMenu.Portal>
+        <DropdownMenu.Content align="start" sideOffset={6} className="z-[60] min-w-44 rounded-2xl border border-border bg-surface p-1.5 shadow-card">
+          {(["in", "maybe", "pass"] as VoteValue[]).map((v) => {
+            const Icon = ICON[v];
+            return (
+              <DropdownMenu.CheckboxItem
+                key={v}
+                checked={value === v}
+                onCheckedChange={() => onVote(value === v ? null : v)}
+                className={cn("flex min-h-11 cursor-pointer items-center gap-2.5 rounded-xl px-3 text-sm font-bold outline-none data-[highlighted]:bg-surface-2", value === v && MENU_FILL[v])}
+              >
+                <Icon className={cn("size-4", value !== v && MENU_TEXT[v])} strokeWidth={2.8} aria-hidden />
+                {VOTE_LABEL[v]}
+              </DropdownMenu.CheckboxItem>
+            );
+          })}
+        </DropdownMenu.Content>
+      </DropdownMenu.Portal>
+    </DropdownMenu.Root>
   );
 }

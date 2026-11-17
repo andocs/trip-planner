@@ -119,7 +119,8 @@ test("viewer: votes (name asked once), comments, and has no edit controls", asyn
 
   // First vote asks for a name, then saves the vote.
   const card = page.getByRole("article", { name: CARD });
-  await card.getByRole("button", { name: /I.m in/ }).click();
+  await card.getByRole("button", { name: /^Your vote on/ }).click();
+  await page.getByRole("menuitemcheckbox", { name: /I.m in/ }).click();
   const ask = page.getByRole("dialog", { name: "What should we call you?" });
   await ask.getByLabel("Your name").fill("Tita Rose");
   await ask.getByRole("button", { name: "Save and vote" }).click();
@@ -127,19 +128,15 @@ test("viewer: votes (name asked once), comments, and has no edit controls", asyn
   await expect
     .poll(() => fake.tables.get("votes")?.map((v) => [v.user_id, v.item_id, v.value]))
     .toEqual([[fake.userId, fake.tables.get("attractions")!.find((a) => a.name === CARD)!.id, "in"]]);
-  await expect(card.getByRole("button", { name: /I.m in/ })).toHaveAttribute("aria-pressed", "true");
+  await expect(card.getByRole("button", { name: /^Your vote on/ })).toContainText("Voted");
 
   // Changing it, then a different idea: no second name prompt.
-  await card
-    .getByRole("group", { name: /^Your vote on/ })
-    .getByRole("button", { name: "Maybe" })
-    .click();
+  await card.getByRole("button", { name: /^Your vote on/ }).click();
+  await page.getByRole("menuitemcheckbox", { name: "Maybe" }).click();
   await expect.poll(() => fake.tables.get("votes")?.[0]?.value).toBe("maybe");
   const other = page.getByRole("article", { name: "Bich Dong Pagoda" });
-  await other
-    .getByRole("group", { name: /^Your vote on/ })
-    .getByRole("button", { name: "Pass" })
-    .click();
+  await other.getByRole("button", { name: /^Your vote on/ }).click();
+  await page.getByRole("menuitemcheckbox", { name: "Pass" }).click();
   await expect.poll(() => fake.tables.get("votes")?.length).toBe(2);
   await expect(page.getByRole("dialog", { name: "What should we call you?" })).toHaveCount(0);
 

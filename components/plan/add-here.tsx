@@ -79,12 +79,14 @@ export function AddHere({
           <CategoryMenu
             heading="Add which kind of activity?"
             align="end"
-            onPick={(c) => {
-              setMenuOpen(false);
-              choose(() => onActivity(c))();
+            onOpenChange={(o) => {
+              setMenuOpen(o);
+              // Dismissing the menu leaves the expanded button as it was.
+              if (!o) setOpen(true);
             }}
+            onPick={(c) => choose(() => onActivity(c))()}
           >
-            <button type="button" aria-haspopup="menu" onClick={() => setMenuOpen(true)}>
+            <button type="button" aria-haspopup="menu">
               <MapPin className="size-[18px]" strokeWidth={2.4} aria-hidden />
               Activity
             </button>
