@@ -23,9 +23,12 @@ export function parseBootstrap(raw: unknown): Bootstrap | null {
   };
 }
 
-/** Loads the bootstrap bundle in one RPC (migration 8). Any RPC error is thrown so the caller can show a retry. */
-export async function fetchBootstrap(supabase: SupabaseClient<Database>): Promise<Bootstrap | null> {
-  const { data, error } = await supabase.rpc("trip_bootstrap");
+/**
+ * Loads the bootstrap bundle in one RPC (migration 8). With a trip id (migration 34) it is that trip, and a trip the caller
+ * is not on comes back as trip = null; without one it is the trip joined last. Any RPC error is thrown so the caller can show a retry.
+ */
+export async function fetchBootstrap(supabase: SupabaseClient<Database>, tripId?: string | null): Promise<Bootstrap | null> {
+  const { data, error } = tripId ? await supabase.rpc("trip_bootstrap", { p_trip: tripId }) : await supabase.rpc("trip_bootstrap");
   if (error) throw error;
   return parseBootstrap(data);
 }

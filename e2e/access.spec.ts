@@ -51,7 +51,7 @@ test.describe("viewer (joined with an invite link)", () => {
     await expect(page.getByRole("button", { name: "Continue with Google" })).toBeVisible();
     await page.getByRole("button", { name: "Not now" }).click();
     await expect(page.getByRole("heading", { name: "Vietnam '26" })).toBeVisible();
-    await expect(page).toHaveURL(/\/$/); // the token is gone from the address bar
+    await expect(page).toHaveURL(/\/t\/[0-9a-f-]{36}$/); // the token is gone from the address bar, and the joined trip has its own address
     expect(fake.role).toBe("viewer");
     await expect(page.getByRole("status").filter({ hasText: "View only" })).toBeVisible();
   });

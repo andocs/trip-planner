@@ -13,11 +13,14 @@
  * The copies live in caches named "tp-*" and are deleted when the person signs out (lib/offline/clear.ts).
  * Bump VERSION to drop every old cache on the next deploy.
  */
-const VERSION = "v1";
+const VERSION = "v2";
 const STATIC = "tp-static-" + VERSION;
 const PAGES = "tp-pages-" + VERSION;
 // Keep in step with APP_PATHS in components/offline/sw-register.tsx.
 const APP_PATHS = ["/", "/itinerary", "/flights", "/stays", "/places", "/spend", "/pack", "/settings"];
+// /t/<trip id>/... is the same set of screens inside a trip.
+const TRIP_PREFIX = /^\/t\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(?=\/|$)/i;
+const isAppPath = (p) => APP_PATHS.includes(p.replace(TRIP_PREFIX, "") || "/");
 const MAX_STATIC_ENTRIES = 600;
 const MAX_ASSETS_PER_PAGE = 150;
 
@@ -48,7 +51,7 @@ self.addEventListener("fetch", (event) => {
   if (url.origin !== self.location.origin) return;
   if (url.pathname.startsWith("/_next/static/")) {
     event.respondWith(cacheFirst(req));
-  } else if (req.mode === "navigate" && APP_PATHS.includes(url.pathname)) {
+  } else if (req.mode === "navigate" && isAppPath(url.pathname)) {
     event.respondWith(networkFirstPage(req, url.pathname));
   }
 });
@@ -93,7 +96,7 @@ async function warm(paths) {
   const pages = await caches.open(PAGES);
   const assets = await caches.open(STATIC);
   for (const path of paths) {
-    if (!APP_PATHS.includes(path)) continue;
+    if (!isAppPath(path)) continue;
     try {
       const res = await fetch(path, { credentials: "same-origin", headers: { Accept: "text/html" } });
       if (!cacheable(res) || started !== generation) continue;

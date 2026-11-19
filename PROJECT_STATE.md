@@ -7,10 +7,10 @@ trip-planner is an existing, deployed Next.js 16 + Supabase (Singapore) + Google
 
 ## 2. Current phase & active slice
 - **Phase:** 3 Revisions (adopted; build phase complete, all work merged to main)
-- **Active slice / milestone:** slice 3 Server routes take the trip id (issue #43), awaiting gate; branch feat/multiple-trips (uncommitted)
-- **Gate:** waiting (approve slice 3)
-- **Next action:** on approval start slice 4 (routing /t/[tripId]/..., redirects, last-used-trip cookie, TripGate by route)
-- **User to-do now:** apply supabase/migrations/20261203000034_multiple_trips.sql to production by hand BEFORE any code that uses it deploys (weather now calls trip_by_id)
+- **Active slice / milestone:** slice 4a Trip id made explicit in the app, no URL change (issue #43), building; branch feat/multiple-trips. Slice 3 approved, commit 426d29b
+- **Gate:** none (4a in progress)
+- **Next action:** Claude implements 4a, runs tsc, eslint, unit, e2e and real-build, then gate. 4b (/t/[tripId] routing, redirects, cookie, service worker, e2e helper) follows after 4a approval
+- **User to-do now:** none from slice 4a. Migration 34 must be applied to production by hand before any deploy that uses it (weather calls trip_by_id); not yet confirmed in the log
 
 ## 3. Execution log
 <!-- newest last: - YYYY-MM-DD HH:MM | phase/slice | what happened or was decided | sha -->
@@ -27,6 +27,9 @@ trip-planner is an existing, deployed Next.js 16 + Supabase (Singapore) + Google
 - 2026-11-19 | slice-2 | Slice 2 complete (awaiting gate): migration 34 + rollback; fixed is_trip_owner() NULL for admin non-members (found by new checks); SQL suite 358, live RLS 141, tsc/eslint clean, unit 471, e2e 13 pass; not committed | -
 - 2026-11-19 | slice-3 | Slice 3 complete (awaiting gate): requireMemberId(tripId) via trip_by_id, /api/weather needs trip uuid (400/401), loadExample(tripId) owner-only; unit 473, e2e 18, tsc/eslint clean, check:real-build passed; not committed | -
 - 2026-11-19 | slice-3 | Ledger: no start mark existed for slice-3, so its per-slice token row is n/a (all-time figures would mislead); cumulative row updated | -
+- 2026-11-19 | slice-3 | User approved slice 3; committed and pushed on feat/multiple-trips | 426d29b
+- 2026-11-19 | slice-4 | Scout findings: query keys carry no trip id; trip choice is server side; service worker paths duplicated; 173 e2e page.goto calls use old paths. Slice 4 split: 4a (trip id explicit in app, no URL change, existing tests unchanged) and 4b (/t/[tripId] routing, redirects, cookie, service worker, e2e helper) | -
+- 2026-11-19 | slice-4a | Slice 4a started (building); ledger slice-3 row recorded, cumulative updated, slice-4a start marked | -
 
 ## 4. Open questions
 <!-- - [ ] Q1: ...   resolved: - [x] Q1: ... -> answer -->
@@ -38,11 +41,11 @@ Source: transcript (falls back to `estimate` with `~` numbers). in = fresh input
 
 | Scope | Haiku in | Haiku cached | Haiku out | Sonnet in | Sonnet cached | Sonnet out | Note |
 |---|---|---|---|---|---|---|---|
-| **Cumulative** | 648,557 | 2,838,596 | 69,431 | 141,261 | 19,755,085 | 77,621 | |
+| **Cumulative** | 757,583 | 3,336,333 | 92,847 | 158,752 | 21,390,024 | 82,949 | |
 | Phase 1 | 2,089 | 24,846 | 691 | 1,801 | 179,296 | 565 | adoption only |
 | Slice 1: Switcher mockup | 199,184 | 829,930 | 19,662 | 45,116 | 4,518,351 | 24,235 | |
 | Slice 2: Migration 34 | 191,923 | 982,328 | 25,556 | 54,478 | 8,382,335 | 33,410 | |
-| Slice 3: Server routes take trip id | n/a | n/a | n/a | n/a | n/a | n/a | no start mark was taken for slice-3; per-slice numbers not measurable |
+| Slice 3: Server routes take trip id | 84,266 | 499,240 | 21,717 | 10,124 | 1,302,969 | 4,302 | script row; no start mark existed for slice-3, treat as approximate |
 
 <!-- END SUMMARY -->
 
@@ -53,8 +56,9 @@ Source: transcript (falls back to `estimate` with `~` numbers). in = fresh input
 |---|---|---|---|---|---|
 | 1 | Switcher mockup + approval, revision 4 (issue #43) | none | sequential | approved | feat/multiple-trips |
 | 2 | DB migration 34: my_trips(), trip_bootstrap(p_trip), create-trip without archiving, RLS checks | 1 | sequential | complete (approval not recorded in log) | feat/multiple-trips |
-| 3 | Server routes take trip id and check membership (weather, load-example; places/photos/geocode admin-only, unchanged) | 2 | sequential | awaiting gate | feat/multiple-trips |
-| 4 | Routing /t/[tripId]/... with redirects from old paths and last-used-trip cookie; TripGate/decideAccess by route | 2, 3 | sequential | planned | feat/multiple-trips |
+| 3 | Server routes take trip id and check membership (weather, load-example; places/photos/geocode admin-only, unchanged) | 2 | sequential | approved (commit 426d29b) | feat/multiple-trips |
+| 4a | Trip id explicit in the app: trip id provider, activeTrip query keyed by trip id, bootstrap by id; NO URL change; existing tests unchanged | 3 | sequential | building | feat/multiple-trips |
+| 4b | Routing /t/[tripId]/... with redirects from old paths, last-used-trip cookie, service worker paths, e2e helper; TripGate/decideAccess by route | 4a | sequential | planned | feat/multiple-trips |
 | 5 | Trip switcher UI, new-trip flow, invite-link behaviour | 1, 4 | sequential | planned | feat/multiple-trips |
 | 6 | Offline cache and realtime keyed by trip id; real-build check with a user on two trips | 4 | sequential | planned | feat/multiple-trips |
 
@@ -86,7 +90,7 @@ Other checks: `npm run check:rls` (local Docker), `npm run check:real-build` (op
 ## Slice handoffs (what the user does after each slice)
 <!-- One block per slice/revision, newest first. Format defined in the orchestrate skill. -->
 
-### Slice 3: Server routes take trip id (awaiting gate)
+### Slice 3: Server routes take trip id (approved, commit 426d29b)
 1. Code: branch feat/multiple-trips, uncommitted until the user says commit.
 2. Install deps: none.
 3. Database: no new migration; REQUIRES migration 34 already applied in production (weather membership check calls trip_by_id).

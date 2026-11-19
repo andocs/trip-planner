@@ -42,12 +42,15 @@ test("invite link joins the trip; a bad link explains itself", async ({ page }) 
   const fake = createFakeSupabase({ withSeed: true });
   await fake.install(page);
 
+  // This person is already on a trip, so a link asks before adding another (a link cannot be previewed, so a bad one fails after the question).
   await page.goto("/join/not-a-token");
+  await page.getByRole("button", { name: "Add this trip" }).click();
   await expect(page.getByRole("heading", { name: "This invite link doesn’t work" })).toBeVisible();
 
   await page.goto(`/join/${fake.trip.join_token}`);
-  // This person is already signed in with Google, so there is nothing to offer: straight in.
-  await expect(page).toHaveURL(/\/$/);
+  await page.getByRole("button", { name: "Add this trip" }).click();
+  // Already signed in with Google, so nothing to offer: straight into the joined trip, at its own address.
+  await expect(page).toHaveURL(/\/t\/[0-9a-f-]{36}$/);
   await expect(page.getByRole("heading", { name: "Vietnam '26" })).toBeVisible();
 });
 

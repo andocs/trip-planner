@@ -10,7 +10,8 @@ import { GateLayout, gateTitle } from "@/components/gate/gate-layout";
 import { Board } from "@/components/ui/flap-digits";
 import { Button } from "@/components/ui/button";
 import { joinTrip } from "@/lib/queries/trip";
-import { getCurrentUser, GuestSignInOff, linkGoogle } from "@/lib/supabase/client";
+import { withTrip } from "@/lib/trip-path";
+import { getCurrentUser, getSupabase, GuestSignInOff, linkGoogle } from "@/lib/supabase/client";
 import { errorMessage } from "@/lib/utils";
 
 export function Joining() {
@@ -35,23 +36,59 @@ export function JoinScreen() {
   const [guestOff, setGuestOff] = useState(false);
   // Joined as a guest: offer to keep access with Google before going in.
   const [offer, setOffer] = useState(false);
+  // Already on a trip: ask before adding this one to the list (a stray link must not add a trip by accident).
+  const [ask, setAsk] = useState(false);
+  const [joined, setJoined] = useState<string | null>(null);
   const started = useRef(false);
+  const runJoin = useRef<() => void>(() => {});
 
   useEffect(() => {
     if (started.current) return; // StrictMode runs effects twice in dev
     started.current = true;
-    joinTrip(token)
-      .then(async () => {
-        await qc.invalidateQueries();
-        const me = await getCurrentUser();
-        if (me?.isAnonymous) return setOffer(true);
-        router.replace("/"); // drops the token from the address bar and history
-      })
-      .catch((e: unknown) => {
-        if (e instanceof GuestSignInOff) setGuestOff(true);
-        setError(errorMessage(e));
-      });
+    const run = () =>
+      joinTrip(token)
+        .then(async (tripId) => {
+          await qc.invalidateQueries();
+          const me = await getCurrentUser();
+          if (me?.isAnonymous) {
+            setJoined(tripId);
+            return setOffer(true);
+          }
+          router.replace(withTrip(tripId, "/")); // opens the joined trip and drops the token from the address bar and history
+        })
+        .catch((e: unknown) => {
+          if (e instanceof GuestSignInOff) setGuestOff(true);
+          setError(errorMessage(e));
+        });
+    runJoin.current = () => {
+      setAsk(false);
+      void run();
+    };
+    void (async () => {
+      const me = await getCurrentUser();
+      if (me) {
+        const { data } = await getSupabase().rpc("my_trips");
+        if ((data ?? []).some((t) => !t.archived_at)) return setAsk(true);
+      }
+      void run();
+    })().catch(() => void run());
   }, [token, router, qc]);
+
+  if (ask)
+    return (
+      <GateLayout>
+        <div className="flex flex-col gap-3.5">
+          <h1 className={gateTitle}>Add this trip to your list?</h1>
+          <p className="text-fg-muted">You are already on a trip. Joining adds this one next to it; nothing you have changes, and you can switch between them any time.</p>
+          <Button size="lg" className="mt-1.5 w-full" onClick={() => runJoin.current()}>
+            Add this trip
+          </Button>
+          <Button variant="ghost" size="lg" className="w-full" onClick={() => router.replace("/")}>
+            Not now
+          </Button>
+        </div>
+      </GateLayout>
+    );
 
   if (offer)
     return (
@@ -71,7 +108,7 @@ export function JoinScreen() {
             <Link2 className="size-5" aria-hidden />
             Continue with Google
           </Button>
-          <Button variant="ghost" size="lg" className="w-full" onClick={() => router.replace("/")}>
+          <Button variant="ghost" size="lg" className="w-full" onClick={() => router.replace(withTrip(joined, "/"))}>
             Not now
           </Button>
         </div>

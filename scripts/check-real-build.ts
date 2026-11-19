@@ -139,6 +139,16 @@ async function main() {
         await page.waitForLoadState("networkidle");
         await sleep(400);
       }
+      // the same screens at their own trip addresses (the server prefetch reads the trip id from the path)
+      for (const path of [`/t/${tripId}`, `/t/${tripId}/itinerary`, `/t/${tripId}/places`, `/t/${tripId}/settings`]) {
+        phase = `owner ${path}`;
+        await page.goto(BASE + path);
+        await page.waitForLoadState("networkidle");
+        await sleep(400);
+      }
+      phase = "owner a trip id that is not theirs";
+      await page.goto(`${BASE}/t/00000000-0000-4000-8000-0000000000aa/itinerary`);
+      await see(page, "That trip isn’t available");
       phase = "owner /itinerary";
       await page.goto(`${BASE}/itinerary`);
       await see(page, "Real stop one");
@@ -202,7 +212,7 @@ async function main() {
     {
       const { context, page } = await open(vs.data.session);
       // every main screen as a viewer too: read-only branches render different trees than the owner's
-      for (const path of ["/", "/stays", "/places", "/flights", "/spend", "/pack", "/settings"]) {
+      for (const path of ["/", "/stays", "/places", "/flights", "/spend", "/pack", "/settings", `/t/${tripId}`, `/t/${tripId}/spend`]) {
         phase = `viewer ${path}`;
         await page.goto(BASE + path);
         await page.waitForLoadState("networkidle");

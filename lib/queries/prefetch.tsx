@@ -8,6 +8,7 @@ import type { ReactNode } from "react";
 import { TripGate } from "@/components/trip-gate";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createSupabaseServer } from "@/lib/supabase/server";
+import { screenPath, tripIdFromPath } from "@/lib/trip-path";
 import { fetchBootstrap, type Bootstrap } from "./bootstrap";
 import { qk } from "./keys";
 import type { ChildTable } from "./table";
@@ -60,19 +61,20 @@ async function prefetch(pathname: string | null): Promise<{ state: ReturnType<ty
     // This data is per-user and request-time anyway, so make that explicit before touching the clock.
     await connection();
     const supabase = await createSupabaseServer();
-    const b = await fetchBootstrap(supabase);
+    const requested = tripIdFromPath(pathname); // /t/<id>/...; null for the bare addresses (the trip joined last)
+    const b = await fetchBootstrap(supabase, requested);
     if (!b) return null;
 
     const qc = new QueryClient();
     qc.setQueryData(qk.user, b.user);
-    qc.setQueryData(qk.activeTrip, b.trip);
+    qc.setQueryData(qk.openTrip(requested), b.trip);
     if (!b.user.isAnonymous) qc.setQueryData(qk.admin, b.isAdmin);
     if (b.trip) {
       qc.setQueryData(qk.role(b.trip.id), b.role);
       const db = supabase as unknown as SupabaseClient;
       const tripId = b.trip.id;
       await Promise.all(
-        screenTables(pathname).map(async (t) => {
+        screenTables(screenPath(pathname)).map(async (t) => {
           const { data } = await db.from(t).select("*").eq("trip_id", tripId).order("created_at");
           if (data) qc.setQueryData(qk.table(t, tripId), data);
         }),

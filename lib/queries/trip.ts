@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { toast } from "sonner";
+import { useRequestedTripId } from "@/lib/open-trip";
 import { getCurrentUser, getSupabase, signInForInvite } from "@/lib/supabase/client";
 import { errorMessage } from "@/lib/utils";
 import { fetchBootstrap, type Bootstrap, type Role, type Trip } from "./bootstrap";
@@ -15,12 +16,12 @@ export type { Role, Trip };
  * through this, so mounting them together costs one request (fetchQuery shares an in-flight fetch),
  * and the answers are seeded into each hook's own cache entry so nothing refetches right after.
  */
-function loadBootstrap(qc: QueryClient): Promise<Bootstrap | null> {
+function loadBootstrap(qc: QueryClient, requested: string | null): Promise<Bootstrap | null> {
   return qc.fetchQuery({
-    queryKey: qk.bootstrap,
+    queryKey: qk.bootstrap(requested),
     staleTime: 0,
     queryFn: async () => {
-      const b = await fetchBootstrap(getSupabase());
+      const b = await fetchBootstrap(getSupabase(), requested);
       if (b) {
         if (!b.user.isAnonymous) qc.setQueryData(qk.admin, b.isAdmin);
         if (b.trip) qc.setQueryData(qk.role(b.trip.id), b.role);
@@ -45,13 +46,15 @@ export function useUser() {
   return useQuery({ queryKey: qk.user, queryFn: getCurrentUser, staleTime: Infinity });
 }
 
+/** The open trip: the one the page asked for (see open-trip.tsx), or the trip joined last. */
 export function useActiveTrip() {
   const user = useUser();
   const qc = useQueryClient();
+  const requested = useRequestedTripId();
   return useQuery({
-    queryKey: qk.activeTrip,
+    queryKey: qk.openTrip(requested),
     enabled: !!user.data,
-    queryFn: async (): Promise<Trip | null> => (await loadBootstrap(qc))?.trip ?? null,
+    queryFn: async (): Promise<Trip | null> => (await loadBootstrap(qc, requested))?.trip ?? null,
   });
 }
 
@@ -59,20 +62,22 @@ export function useActiveTrip() {
 export function useIsAdmin() {
   const user = useUser();
   const qc = useQueryClient();
+  const requested = useRequestedTripId();
   return useQuery({
     queryKey: qk.admin,
     enabled: !!user.data && !user.data.isAnonymous,
-    queryFn: async () => (await loadBootstrap(qc))?.isAdmin === true,
+    queryFn: async () => (await loadBootstrap(qc, requested))?.isAdmin === true,
   });
 }
 
 export function useTripRole(tripId: string | undefined) {
   const qc = useQueryClient();
+  const requested = useRequestedTripId();
   return useQuery({
     queryKey: qk.role(tripId ?? ""),
     enabled: !!tripId,
     queryFn: async (): Promise<Role | null> => {
-      const b = await loadBootstrap(qc);
+      const b = await loadBootstrap(qc, requested);
       if (b && b.trip?.id === tripId) return b.role;
       const { data, error } = await getSupabase().rpc("trip_role", { t: tripId! });
       if (error) throw error;
@@ -148,27 +153,29 @@ export type TripPatch = Partial<
 /** Optimistically patches the active trip; rolls back with a toast on failure. */
 export function useUpdateTrip() {
   const qc = useQueryClient();
+  const key = qk.openTrip(useRequestedTripId());
   return useMutation({
     mutationFn: async ({ id, patch }: { id: string; patch: TripPatch }) => {
       const { error } = await getSupabase().from("trips").update(patch).eq("id", id);
       if (error) throw error;
     },
     onMutate: async ({ patch }) => {
-      await qc.cancelQueries({ queryKey: qk.activeTrip });
-      const prev = qc.getQueryData<Trip | null>(qk.activeTrip);
-      if (prev) qc.setQueryData<Trip>(qk.activeTrip, { ...prev, ...patch });
+      await qc.cancelQueries({ queryKey: key });
+      const prev = qc.getQueryData<Trip | null>(key);
+      if (prev) qc.setQueryData<Trip>(key, { ...prev, ...patch });
       return { prev };
     },
     onError: (err, _v, ctx) => {
-      qc.setQueryData(qk.activeTrip, ctx?.prev);
+      qc.setQueryData(key, ctx?.prev);
       toast.error(`Couldn't save trip settings: ${errorMessage(err)}`);
     },
-    onSettled: () => qc.invalidateQueries({ queryKey: qk.activeTrip }),
+    onSettled: () => qc.invalidateQueries({ queryKey: key }),
   });
 }
 
 export function useRegenerateLink() {
   const qc = useQueryClient();
+  const key = qk.openTrip(useRequestedTripId());
   return useMutation({
     mutationFn: async (tripId: string) => {
       const { data, error } = await getSupabase().rpc("regenerate_invite", { p_trip: tripId });
@@ -176,8 +183,8 @@ export function useRegenerateLink() {
       return data;
     },
     onSuccess: (token) => {
-      const prev = qc.getQueryData<Trip | null>(qk.activeTrip);
-      if (prev) qc.setQueryData<Trip>(qk.activeTrip, { ...prev, join_token: token });
+      const prev = qc.getQueryData<Trip | null>(key);
+      if (prev) qc.setQueryData<Trip>(key, { ...prev, join_token: token });
       toast.success("New invite link created. Everyone who joined with the old link is signed out of this trip.");
     },
     onError: (err) => toast.error(`Couldn't create a new link: ${errorMessage(err)}`),

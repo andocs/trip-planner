@@ -46,13 +46,13 @@ export function useRestoreBackup(tripId: string) {
 }
 
 /** Archives the current trip and starts a fresh one; the whole group and the invite link move with it. */
-export function useStartNewTrip() {
+export function useStartNewTrip(tripId?: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (copySetup: boolean) => {
-      const { data, error } = await getSupabase().rpc("start_new_trip", { p_copy_setup: copySetup });
+      const { data, error } = await getSupabase().rpc("start_new_trip", { p_copy_setup: copySetup, ...(tripId ? { p_trip: tripId } : {}) });
       if (error) throw error;
-      return data;
+      return data as string;
     },
     onSuccess: async () => {
       qc.removeQueries({ queryKey: ["trip"] });

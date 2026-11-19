@@ -1,14 +1,16 @@
 "use client";
 
 import { AlertDialog } from "radix-ui";
-import { Archive, CalendarPlus, FileJson, FileSpreadsheet, FileText, Loader2, Sparkles, Upload } from "lucide-react";
+import { Archive, CalendarPlus, FileJson, FileSpreadsheet, FileText, Loader2, Plus, Sparkles, Upload } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { useTrip } from "@/components/trip-gate";
+import { NewTripSheet } from "@/components/trips/trip-switcher";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { fetchExportData, useLoadExample, useRestoreBackup, useStartNewTrip } from "@/lib/queries/trip-actions";
+import { withTrip } from "@/lib/trip-path";
 import { errorMessage } from "@/lib/utils";
 
 /** `owner` shows the admin-only "Start a new trip"; editors get export and the example only. */
@@ -16,7 +18,8 @@ export function TripTools({ owner = false }: { owner?: boolean }) {
   const trip = useTrip();
   const router = useRouter();
   const loadExample = useLoadExample(trip.id);
-  const startNew = useStartNewTrip();
+  const startNew = useStartNewTrip(trip.id);
+  const [newOpen, setNewOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [calendaring, setCalendaring] = useState(false);
   const [saving, setSaving] = useState<"backup" | "csv" | null>(null);
@@ -135,6 +138,17 @@ export function TripTools({ owner = false }: { owner?: boolean }) {
       <p className="-mt-1 text-xs text-fg-muted">The example only loads into a trip with no data yet.</p>
 
       {owner && (
+        <>
+          <Button variant="secondary" className="w-full justify-start" onClick={() => setNewOpen(true)}>
+            <Plus className="size-5" aria-hidden />
+            New trip
+          </Button>
+          <p className="-mt-1 text-xs text-fg-muted">Plan another trip alongside this one. &ldquo;{trip.name}&rdquo; is not changed.</p>
+          <NewTripSheet open={newOpen} onOpenChange={setNewOpen} />
+        </>
+      )}
+
+      {owner && (
       <AlertDialog.Root>
         <AlertDialog.Trigger asChild>
           <Button variant="secondary" className="w-full justify-start text-danger" disabled={startNew.isPending}>
@@ -145,7 +159,7 @@ export function TripTools({ owner = false }: { owner?: boolean }) {
         <AlertDialog.Portal>
           <AlertDialog.Overlay className="fixed inset-0 z-50 bg-black/40" />
           <AlertDialog.Content className="fixed top-1/2 left-1/2 z-50 w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-3xl bg-surface p-6 shadow-card">
-            <AlertDialog.Title className="text-lg font-bold">Start a new trip?</AlertDialog.Title>
+            <AlertDialog.Title className="text-lg font-bold">End this trip and start a new one?</AlertDialog.Title>
             <AlertDialog.Description className="mt-2 text-sm text-fg-muted">
               &ldquo;{trip.name}&rdquo; will be archived and everyone on it moves to a fresh, empty trip. Your invite
               link moves too. Export to Excel first if you want a copy.
@@ -166,7 +180,7 @@ export function TripTools({ owner = false }: { owner?: boolean }) {
               <AlertDialog.Action asChild>
                 <Button
                   variant="danger"
-                  onClick={() => startNew.mutate(copySetup, { onSuccess: () => router.push("/") })}
+                  onClick={() => startNew.mutate(copySetup, { onSuccess: (newId) => router.push(withTrip(newId, "/")) })}
                 >
                   Archive and start new
                 </Button>

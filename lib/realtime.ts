@@ -104,7 +104,8 @@ export function useRealtimeSync(tripId: string) {
           void qc.invalidateQueries({ queryKey: qk.activeTrip });
           return;
         }
-        qc.setQueryData<Trip | null>(qk.activeTrip, (t) => (t && t.id === tripId ? { ...t, ...payload.new } : t));
+        // Every open-trip entry (a page asked for this trip by id, or as the one joined last) that holds this trip.
+        qc.setQueriesData<Trip | null>({ queryKey: qk.activeTrip }, (t) => (t && t.id === tripId ? { ...t, ...payload.new } : t));
       },
     );
 
