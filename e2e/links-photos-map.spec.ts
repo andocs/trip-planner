@@ -561,3 +561,23 @@ test("Itinerary: an outlined Plan Day N button follows the last planned day, and
   const sheet = page.getByRole("dialog", { name: "Add activity" });
   await expect(sheet.getByRole("button", { name: /^Day 11/ })).toHaveAttribute("aria-pressed", "true");
 });
+
+test("Itinerary: an empty day between planned days gets its own dotted Plan Day button", async ({ page }) => {
+  const fake = createFakeSupabase({ withSeed: true });
+  plan(fake);
+  const base = fake.tables.get("itinerary_items")!;
+  const keep = base.filter((r) => r.day === 1).map((r) => ({ ...r }));
+  const late = { ...base.find((r) => r.day === 2)!, id: "t-late", day: 4, on_date: "2026-06-19", activity: "Late day thing" };
+  fake.tables.set("itinerary_items", [...keep, late]);
+  fake.tables.set("hotel_ideas", []);
+  await fake.install(page);
+  await page.goto("/itinerary");
+  const gap = page.getByRole("button", { name: "Plan Day 2" });
+  await expect(gap).toBeVisible();
+  await expect(gap).toHaveClass(/border-dotted/);
+  await expect(page.getByRole("button", { name: "Plan Day 3" })).toHaveCount(0); // one at a time
+  await expect(page.getByRole("button", { name: "Plan Day 5" })).toBeVisible(); // after the last planned day, as before
+  await gap.click();
+  await page.getByRole("menuitem", { name: /^Sightseeing/ }).click();
+  await expect(page.getByRole("dialog", { name: "Add activity" }).getByRole("button", { name: /^Day 2/ })).toHaveAttribute("aria-pressed", "true");
+});

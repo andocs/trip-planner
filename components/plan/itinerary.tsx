@@ -66,7 +66,21 @@ const ConnectorSheet = dynamic(() => import("./connector-sheet").then((m) => m.C
 type Entry =
   | { kind: "day"; id: string; day: number | null; group: DayGroup }
   | { kind: "mark"; id: string; day: number | null; mark: StayMark }
-  | { kind: "item"; id: string; day: number | null; item: ItineraryItem };
+  | { kind: "item"; id: string; day: number | null; item: ItineraryItem }
+  /** A "Plan Day N" button for the first empty day after a planned day that is followed by a later planned day. */
+  | { kind: "gap"; id: string; day: number };
+
+/** The dotted outline button that starts a day: asks which kind of activity first. */
+function PlanDayButton({ day, onPick, className }: { day: number; onPick: (type?: string) => void; className?: string }) {
+  return (
+    <CategoryMenu heading={`Plan Day ${day}: which kind of activity first?`} align="center" onPick={onPick}>
+      <Button variant="outline" className={cn("ml-[54px] w-[calc(100%-54px)] border-2 border-dotted", className)}>
+        <CalendarPlus className="size-[18px]" aria-hidden />
+        Plan Day {day}
+      </Button>
+    </CategoryMenu>
+  );
+}
 
 /** One row of the list that can be dragged (an item), or can only be dropped next to (a day divider, a stay). */
 function SortableRow({ id, locked, label, cover, children }: { id: string; locked: boolean; label: string; /** Hides the dotted line behind this row: the day header at the very top has no line beside it. */ cover?: boolean; children: (handle: ReactNode) => ReactNode }) {
@@ -156,6 +170,9 @@ export function Itinerary() {
       entries.push({ kind: "item", id: it.id, day: g.day, item: it });
     }
     for (const m of marks.filter((x) => x.day === g.day && x.kind === "in")) entries.push({ kind: "mark", id: m.id, day: g.day, mark: m });
+    // An empty day right after this one, with more planned days further on: offer to plan it (days 3 and on follow once it is planned).
+    if (canEdit && !editing && g.day !== null && (len === null || g.day < len) && !groups.some((x) => x.day === g.day! + 1 && (x.items.length > 0 || marks.some((m) => m.day === x.day))) && groups.some((x) => x.day !== null && x.day > g.day! + 1 && (x.items.length > 0 || marks.some((m) => m.day === x.day))))
+      entries.push({ kind: "gap", id: `gap:${g.day + 1}`, day: g.day + 1 });
   }
   const nothing = items.length === 0 && marks.length === 0;
   // After the last planned day: start the next one, unless that was the last day of the trip.
@@ -274,6 +291,13 @@ export function Itinerary() {
               )}
             </>
           )}
+        </SortableRow>
+      );
+    }
+    if (e.kind === "gap") {
+      return (
+        <SortableRow key={e.id} id={e.id} locked label="plan day">
+          {() => <PlanDayButton day={e.day} onPick={(type) => addToDay(e.day, type)} className="mb-4" />}
         </SortableRow>
       );
     }
@@ -543,12 +567,7 @@ export function Itinerary() {
             </DragOverlay>
           </DndContext>
           {canEdit && !editing && nextDay !== null && (view === "all" || view === lastDay) && (
-            <CategoryMenu heading={`Plan Day ${nextDay}: which kind of activity first?`} align="center" onPick={(type) => addToDay(nextDay, type)}>
-              <Button variant="outline" className="mt-2 ml-[54px] w-[calc(100%-54px)]">
-                <CalendarPlus className="size-[18px]" aria-hidden />
-                Plan Day {nextDay}
-              </Button>
-            </CategoryMenu>
+            <PlanDayButton day={nextDay} onPick={(type) => addToDay(nextDay, type)} className="mt-2" />
           )}
           </>
         )}
