@@ -1,7 +1,7 @@
 -- RLS proof for the owner / viewer model. Works in the Supabase SQL editor and in local `psql`.
 -- It creates throwaway users, runs every check as each user, and ALWAYS rolls back by raising an
 -- exception at the end. Read the final message: "RLS CHECK PASSED (n checks)" or "RLS CHECK FAILED: ...".
--- Needs migrations 1..23 applied. Does not need any real admin: it inserts a throwaway admin email.
+-- Needs migrations 1..25 applied. Does not need any real admin: it inserts a throwaway admin email.
 
 do $$
 declare
@@ -86,7 +86,7 @@ begin
   if not ok then failures := failures || 'owner should be admin'::text; end if;
 
   trip_a := public.create_trip('Owner trip');
-  select join_token into tok from public.trips where id = trip_a;
+  select join_token into tok from public.active_trip() where id = trip_a;   -- owner-only since migration 25
   insert into public.travelers (trip_id, name) values (trip_a, 'Aq');
   insert into public.reminders (trip_id, text) values (trip_a, 'secret reminder');
 
@@ -220,6 +220,20 @@ begin
   set local role authenticated;
   perform public.join_trip(tok);
   perform public.join_trip(tok);  -- idempotent
+
+  -- the invite link is owner-only (migration 25): not in the table, not in active_trip() or trip_bootstrap()
+  checks := checks + 1;
+  begin perform join_token from public.trips where id = trip_a; failures := failures || 'a viewer read trips.join_token'::text;
+  exception when insufficient_privilege then null; end;
+  checks := checks + 1;
+  select join_token into r from public.active_trip() where id = trip_a;
+  if r is distinct from '' then failures := failures || 'active_trip() showed the invite link to a viewer'::text; end if;
+  checks := checks + 1;
+  select public.trip_bootstrap() -> 'trip' ->> 'join_token' into r;
+  if r is distinct from '' then failures := failures || 'trip_bootstrap() showed the invite link to a viewer'::text; end if;
+  checks := checks + 1;
+  select count(*) into n from public.trips where id = trip_a;
+  if n <> 1 then failures := failures || 'a viewer could no longer read the trip after migration 25'::text; end if;
 
   -- joining with the link also makes the viewer a traveler, once
   checks := checks + 1;

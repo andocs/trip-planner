@@ -1,12 +1,12 @@
 "use client";
 
-import { AlertDialog } from "radix-ui";
 import { Copy, RefreshCw, Share2 } from "lucide-react";
-import { useSyncExternalStore } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { toast } from "sonner";
 import { useTrip } from "@/components/trip-gate";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
+import { ConfirmSheet } from "@/components/ui/confirm-sheet";
 import { useRegenerateLink } from "@/lib/queries/trip";
 import { useClientValue } from "@/lib/use-client-value";
 
@@ -25,8 +25,12 @@ export function inviteLink(origin: string, token: string) {
 export function InviteSection() {
   const trip = useTrip();
   const regenerate = useRegenerateLink();
+  const [confirming, setConfirming] = useState(false);
   const link = inviteLink(useOrigin(), trip.join_token);
   const canShare = useClientValue(() => "share" in navigator, false);
+
+  // Only the owner receives the link (migration 25); anyone else sees nothing rather than a broken link.
+  if (!trip.join_token) return null;
 
   async function copy() {
     try {
@@ -70,55 +74,23 @@ export function InviteSection() {
             Share
           </Button>
         )}
-        <AlertDialog.Root>
-          <AlertDialog.Trigger asChild>
-            <Button variant="ghost" disabled={regenerate.isPending}>
-              <RefreshCw className="size-4" aria-hidden />
-              New link
-            </Button>
-          </AlertDialog.Trigger>
-          <ConfirmDialog
+        <Button variant="ghost" disabled={regenerate.isPending} onClick={() => setConfirming(true)}>
+          <RefreshCw className="size-4" aria-hidden />
+          New link
+        </Button>
+        {confirming && (
+          <ConfirmSheet
             title="Create a new invite link?"
-            body="The current link stops working and everyone who joined with it loses access until you send them the new link."
-            confirm="Create new link"
-            onConfirm={() => regenerate.mutate(trip.id)}
+            description="The current link stops working and everyone who joined with it loses access until you send them the new link."
+            confirmLabel="Create new link"
+            onClose={() => setConfirming(false)}
+            onConfirm={() => {
+              setConfirming(false);
+              regenerate.mutate(trip.id);
+            }}
           />
-        </AlertDialog.Root>
+        )}
       </div>
     </Card>
-  );
-}
-
-export function ConfirmDialog({
-  title,
-  body,
-  confirm,
-  danger,
-  onConfirm,
-}: {
-  title: string;
-  body: string;
-  confirm: string;
-  danger?: boolean;
-  onConfirm: () => void;
-}) {
-  return (
-    <AlertDialog.Portal>
-      <AlertDialog.Overlay className="fixed inset-0 z-50 bg-black/40" />
-      <AlertDialog.Content className="fixed top-1/2 left-1/2 z-50 w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-3xl bg-surface p-6 shadow-card">
-        <AlertDialog.Title className="text-lg font-bold">{title}</AlertDialog.Title>
-        <AlertDialog.Description className="mt-2 text-sm text-fg-muted">{body}</AlertDialog.Description>
-        <div className="mt-6 flex justify-end gap-2">
-          <AlertDialog.Cancel asChild>
-            <Button variant="ghost">Cancel</Button>
-          </AlertDialog.Cancel>
-          <AlertDialog.Action asChild>
-            <Button variant={danger ? "danger" : "primary"} onClick={onConfirm}>
-              {confirm}
-            </Button>
-          </AlertDialog.Action>
-        </div>
-      </AlertDialog.Content>
-    </AlertDialog.Portal>
   );
 }

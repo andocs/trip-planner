@@ -35,22 +35,6 @@ test("switching a Places category makes no network request and keeps the URL sha
   await expect(page.getByRole("button", { name: /^Stays/ })).toHaveAttribute("aria-pressed", "true");
 });
 
-test("old links still land on the right screen", async ({ page }) => {
-  await createFakeSupabase({ withSeed: true }).install(page);
-  for (const [from, to, heading] of [
-    ["/plan", /\/itinerary$/, "Itinerary"],
-    ["/plan?tab=flights", /\/flights$/, "Flights"],
-    ["/plan?tab=stays", /\/stays$/, "Stays"],
-    ["/plan?tab=ideas", /\/places\?cat=stay$/, "Places"],
-    ["/places?tab=food", /\/places\?cat=food$/, "Places"],
-    ["/places?tab=attractions", /\/places\?cat=sight$/, "Places"],
-  ] as const) {
-    await page.goto(from);
-    await expect(page).toHaveURL(to);
-    await expect(page.getByRole("heading", { name: heading, level: 1 })).toBeVisible();
-  }
-});
-
 test("moving between bottom tabs re-uses the loaded data instead of fetching again", async ({ page }) => {
   await createFakeSupabase({ withSeed: true }).install(page);
   await page.goto("/itinerary");

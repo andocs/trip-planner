@@ -53,9 +53,10 @@ async function main() {
     const { data: id, error } = await client.rpc("create_trip", { p_name: "Vietnam '26" });
     if (error) throw error;
     tripId = id;
-    const { data: trip, error: tErr } = await client.from("trips").select("join_token").eq("id", id).single();
-    if (tErr) throw tErr;
-    joinToken = trip.join_token;
+    // join_token is owner-only: it comes from active_trip(), not a table read (migration 25).
+    const { data: trips, error: tErr } = await client.rpc("active_trip");
+    if (tErr || !trips?.[0]) throw tErr ?? new Error("Could not read the new trip.");
+    joinToken = trips[0].join_token;
   }
 
   if (!(await tripIsEmpty(client, tripId)))

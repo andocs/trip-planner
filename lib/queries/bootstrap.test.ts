@@ -39,29 +39,13 @@ describe("fetchBootstrap", () => {
         data: { user: { id: "u", email: null, is_anonymous: true }, trip, is_admin: false, role: "viewer" },
       },
     });
-    expect((await fetchBootstrap(supabase, null))?.role).toBe("viewer");
+    expect((await fetchBootstrap(supabase))?.role).toBe("viewer");
     expect(rpc).toHaveBeenCalledTimes(1);
   });
-  it("falls back to the legacy calls when the function is missing", async () => {
-    const { rpc, supabase } = client({
-      trip_bootstrap: { error: { code: "PGRST202" } },
-      active_trip: { data: [trip] },
-      is_admin: { data: true },
-      trip_role: { data: "owner" },
-    });
-    const user = { id: "u", email: "a@b.c", isAnonymous: false };
-    expect(await fetchBootstrap(supabase, user)).toEqual({ user, trip, isAdmin: true, role: "owner" });
-    expect(rpc.mock.calls.map((c) => c[0])).toEqual(["trip_bootstrap", "active_trip", "is_admin", "trip_role"]);
-  });
-  it("skips is_admin for anonymous users in the fallback, and returns null without a user", async () => {
-    const missing = { trip_bootstrap: { error: { code: "PGRST202" } }, active_trip: { data: [] } };
-    const a = client(missing);
-    await fetchBootstrap(a.supabase, { id: "u", email: null, isAnonymous: true });
-    expect(a.rpc.mock.calls.map((c) => c[0])).toEqual(["trip_bootstrap", "active_trip"]);
-    expect(await fetchBootstrap(client(missing).supabase, null)).toBeNull();
-  });
-  it("throws other errors", async () => {
-    const { supabase } = client({ trip_bootstrap: { error: { code: "42501" } } });
-    await expect(fetchBootstrap(supabase, null)).rejects.toBeTruthy();
+  it("throws errors, including a missing function", async () => {
+    for (const code of ["42501", "PGRST202"]) {
+      const { supabase } = client({ trip_bootstrap: { error: { code } } });
+      await expect(fetchBootstrap(supabase)).rejects.toBeTruthy();
+    }
   });
 });

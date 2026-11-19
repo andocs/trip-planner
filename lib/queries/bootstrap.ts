@@ -23,31 +23,9 @@ export function parseBootstrap(raw: unknown): Bootstrap | null {
   };
 }
 
-/** PostgREST says "function not found" like this until the migration has been pushed. */
-function isMissingFunction(error: { code?: string } | null) {
-  return error?.code === "PGRST202" || error?.code === "42883";
-}
-
-/**
- * Loads the bootstrap bundle in one RPC. If the migration isn't applied yet, falls back to the
- * original sequential calls (needs `user` to know whether to ask is_admin); with no user it returns null.
- * RPC errors other than "missing function" are thrown so the caller can show a retry.
- */
-export async function fetchBootstrap(
-  supabase: SupabaseClient<Database>,
-  user: AppUser | null,
-): Promise<Bootstrap | null> {
+/** Loads the bootstrap bundle in one RPC (migration 8). Any RPC error is thrown so the caller can show a retry. */
+export async function fetchBootstrap(supabase: SupabaseClient<Database>): Promise<Bootstrap | null> {
   const { data, error } = await supabase.rpc("trip_bootstrap");
-  if (!error) return parseBootstrap(data);
-  if (!isMissingFunction(error)) throw error;
-  if (!user) return null;
-
-  const active = await supabase.rpc("active_trip");
-  if (active.error) throw active.error;
-  const trip = active.data?.[0] ?? null;
-  const admin = user.isAnonymous ? null : await supabase.rpc("is_admin");
-  if (admin?.error) throw admin.error;
-  const role = trip ? await supabase.rpc("trip_role", { t: trip.id }) : null;
-  if (role?.error) throw role.error;
-  return { user, trip, isAdmin: admin?.data === true, role: (role?.data as Role | null) ?? null };
+  if (error) throw error;
+  return parseBootstrap(data);
 }

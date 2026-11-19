@@ -7,7 +7,7 @@ import { Link2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { GateLayout, gateTitle } from "@/components/gate/gate-layout";
-import { Board } from "@/components/ui/board";
+import { Board } from "@/components/ui/flap-digits";
 import { Button } from "@/components/ui/button";
 import { joinTrip } from "@/lib/queries/trip";
 import { getCurrentUser, GuestSignInOff, linkGoogle } from "@/lib/supabase/client";

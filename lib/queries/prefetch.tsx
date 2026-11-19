@@ -61,7 +61,7 @@ async function prefetch(pathname: string | null): Promise<{ state: ReturnType<ty
     // This data is per-user and request-time anyway, so make that explicit before touching the clock.
     await connection();
     const supabase = await createSupabaseServer();
-    const b = await fetchBootstrap(supabase, null);
+    const b = await fetchBootstrap(supabase);
     if (!b) return null;
 
     const qc = new QueryClient();

@@ -3,7 +3,7 @@
 import { ChevronDown, ChevronUp, Crosshair, GripVertical, Loader2, MapPin, Minus, Plus, Search, X } from "lucide-react";
 import { useEffect, useId, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import type { Place } from "@/app/api/geocode/route";
-import { Board } from "@/components/ui/board";
+import { Board } from "@/components/ui/flap-digits";
 import { Button } from "@/components/ui/button";
 import type { Pin, StepProps } from "@/components/wizard/wizard";
 import { MAX_NIGHTS, totalNights } from "@/lib/wizard";

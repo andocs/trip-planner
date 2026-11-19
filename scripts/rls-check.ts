@@ -98,8 +98,11 @@ async function main() {
     if (!tripId) throw new Error("no trip to test against");
 
     await owner.from("travelers").insert({ trip_id: tripId, name: "Aq" });
-    const { data: trip } = await owner.from("trips").select("join_token").eq("id", tripId).single();
-    const token = trip!.join_token;
+    // The invite link is owner-only (migration 25): the table refuses the column, active_trip() hands it to the owner.
+    check("owner cannot read join_token from the table", !!(await owner.from("trips").select("join_token").eq("id", tripId)).error);
+    const { data: trip } = await owner.rpc("active_trip");
+    const token = trip?.[0]?.join_token ?? "";
+    check("owner gets the invite link from active_trip", token.length > 8);
 
     check("stranger sees no trips", ((await stranger.from("trips").select("id")).data ?? []).length === 0);
     check("stranger sees no travelers", ((await stranger.from("travelers").select("id")).data ?? []).length === 0);
@@ -116,6 +119,9 @@ async function main() {
       "viewer reads the trip",
       ((await viewer.from("trips").select("id").eq("id", tripId)).data ?? []).length === 1,
     );
+    check("viewer cannot read join_token from the table", !!(await viewer.from("trips").select("join_token").eq("id", tripId)).error);
+    check("viewer's active_trip has no invite link", (await viewer.rpc("active_trip")).data?.[0]?.join_token === "");
+    check("viewer's bootstrap has no invite link", ((await viewer.rpc("trip_bootstrap")).data as { trip?: { join_token?: string } } | null)?.trip?.join_token === "");
     check(
       // The owner's traveler plus the one migration 20 adds for the viewer who joined by link.
       "viewer reads travelers",
