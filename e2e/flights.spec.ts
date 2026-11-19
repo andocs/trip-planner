@@ -34,7 +34,7 @@ test("details and the booking reference save; the reference goes to its own tabl
   await expect.poll(() => fake.tables.get("flights")?.find((f) => f.from_code === "MNL")?.gate).toBe("B7");
   const flight = fake.tables.get("flights")!.find((f) => f.from_code === "MNL")!;
   expect(flight.duration_min).toBe(220);
-  expect(flight.booking_ref).toBeNull(); // never written back to the flight row
+  expect(flight).not.toHaveProperty("booking_ref"); // the flights table has no such column any more
   await expect
     .poll(() => fake.tables.get("flight_refs")?.find((r) => r.flight_id === flight.id)?.booking_ref)
     .toBe("QX7K2P");
@@ -61,7 +61,7 @@ test("a viewer sees the reference hidden, and the real one never reaches the pag
   ]);
   fake.tables.set(
     "flights",
-    fake.tables.get("flights")!.map((f) => (f.id === flight.id ? { ...f, has_ref: true, booking_ref: null } : f)),
+    fake.tables.get("flights")!.map((f) => (f.id === flight.id ? { ...f, has_ref: true } : f)),
   );
   await fake.install(page);
   await page.goto("/flights");
@@ -70,26 +70,6 @@ test("a viewer sees the reference hidden, and the real one never reaches the pag
   await expect(pass.getByText("Only the owner can see this.")).toBeVisible();
   expect(await page.content()).not.toContain("SECRET9");
   await expect(page.getByRole("button", { name: /^MNL to HAN.*Edit$/ })).toHaveCount(0);
-});
-
-test("an old reference still in the flight row moves to the owner-only table on save", async ({ page }) => {
-  const fake = createFakeSupabase({ withSeed: true });
-  const flight = fake.tables.get("flights")!.find((f) => f.from_code === "MNL")!;
-  fake.tables.set(
-    "flights",
-    fake.tables.get("flights")!.map((f) => (f.id === flight.id ? { ...f, booking_ref: "OLD123" } : f)),
-  );
-  await fake.install(page);
-  await page.goto("/flights");
-  await expect(page.getByRole("article", { name: /^MNL to HAN/ })).toContainText("OLD123");
-  await page.getByRole("button", { name: /^MNL to HAN.*Edit$/ }).click();
-  const sheet = page.getByRole("dialog", { name: "Edit flight" });
-  await expect(sheet.getByLabel("Booking reference")).toHaveValue("OLD123");
-  await sheet.getByRole("button", { name: "Save" }).click();
-  await expect
-    .poll(() => fake.tables.get("flight_refs")?.find((r) => r.flight_id === flight.id)?.booking_ref)
-    .toBe("OLD123");
-  expect(fake.tables.get("flights")!.find((f) => f.id === flight.id)!.booking_ref).toBeNull();
 });
 
 test("deleting a flight removes its reference", async ({ page }) => {

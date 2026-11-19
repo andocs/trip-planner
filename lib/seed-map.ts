@@ -229,7 +229,7 @@ export function buildSeedPlan(
         arrives_at: t(f.arr),
         fare: f.fare ?? null,
         status: status(f.status),
-        booking_ref: t(f.ref),
+        // The seed's `ref` is not written: booking references live in the owner-only flight_refs table, never on the flight.
       })),
       transfers: seed.transfers.map((x) => ({
         id: uuid(),

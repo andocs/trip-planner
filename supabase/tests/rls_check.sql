@@ -1,7 +1,7 @@
 -- RLS proof for the owner / viewer model. Works in the Supabase SQL editor and in local `psql`.
 -- It creates throwaway users, runs every check as each user, and ALWAYS rolls back by raising an
 -- exception at the end. Read the final message: "RLS CHECK PASSED (n checks)" or "RLS CHECK FAILED: ...".
--- Needs migrations 1..28 applied. Does not need any real admin: it inserts a throwaway admin email.
+-- Needs migrations 1..29 applied. Does not need any real admin: it inserts a throwaway admin email.
 
 do $$
 declare
@@ -1399,6 +1399,11 @@ begin
   get diagnostics rc = row_count;
   if rc <> 0 then failures := failures || 'someone outside the trip changed an expense rate'::text; end if;
   reset role;
+
+  -- migration 29: the old booking_ref column (readable by every viewer) is gone; references live only in flight_refs
+  checks := checks + 1;
+  select count(*) into n from information_schema.columns where table_schema = 'public' and table_name = 'flights' and column_name = 'booking_ref';
+  if n <> 0 then failures := failures || 'flights still has the old booking_ref column'::text; end if;
 
   -- migration 26: one trip holds at most 300 photos (the project's storage is shared)
   perform set_config('request.jwt.claims', c_owner, true);

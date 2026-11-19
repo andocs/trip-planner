@@ -376,7 +376,6 @@ export type Database = {
           airline: string | null
           arrives_at: string | null
           arr_tz: string | null
-          booking_ref: string | null
           created_at: string
           departs_at: string | null
           dep_tz: string | null
@@ -397,7 +396,6 @@ export type Database = {
           airline?: string | null
           arrives_at?: string | null
           arr_tz?: string | null
-          booking_ref?: string | null
           created_at?: string
           departs_at?: string | null
           dep_tz?: string | null
@@ -418,7 +416,6 @@ export type Database = {
           airline?: string | null
           arrives_at?: string | null
           arr_tz?: string | null
-          booking_ref?: string | null
           created_at?: string
           departs_at?: string | null
           dep_tz?: string | null

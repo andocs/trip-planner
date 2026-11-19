@@ -21,6 +21,8 @@ export type ExportData = {
   expenses: Tables<"expenses">[];
   itinerary_items: Tables<"itinerary_items">[];
   flights: Tables<"flights">[];
+  /** Booking references from the owner-only table; empty for someone who may not read it. Excel only (never the ICS or JSON backup). */
+  flight_refs?: { flight_id: string; booking_ref: string }[];
   transfers: Tables<"transfers">[];
   stays: Tables<"stays">[];
   hotel_ideas: Tables<"hotel_ideas">[];
@@ -55,6 +57,7 @@ export function buildWorkbook(d: ExportData): Sheet[] {
   const spent = totalSpent(d.expenses, t);
   const byCat = spentByCategory(d.expenses, t);
   const settle = settleUp(d.expenses, d.travelers, t);
+  const refByFlight = new Map((d.flight_refs ?? []).map((r) => [r.flight_id, r.booking_ref]));
 
   return [
     {
@@ -155,7 +158,7 @@ export function buildWorkbook(d: ExportData): Sheet[] {
             f.arrives_at?.slice(0, 16).replace("T", " ") ?? null,
             n(f.fare),
             f.status,
-            f.booking_ref,
+            refByFlight.get(f.id) ?? null,
           ]),
         [],
         ["Transfer route", "Provider", "Cost", "Link"],
