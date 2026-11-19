@@ -6,12 +6,13 @@ import { tripLength, localISODate } from "@/lib/calc";
 import { groupDays, isStop } from "@/lib/itinerary";
 import { planRequests, roundCoord, type Request, type WeatherDay } from "@/lib/weather";
 import { useClientValue } from "@/lib/use-client-value";
+import { useTrip } from "@/components/trip-gate";
 import { useCities } from "./places";
 import type { Row } from "./table";
 
 /** The weather service's answer through our own route (the browser never contacts the weather service itself). */
-async function fetchDays(r: Request): Promise<WeatherDay[]> {
-  const qs = new URLSearchParams({ lat: String(r.lat), lng: String(r.lng), from: r.from, to: r.to });
+async function fetchDays(tripId: string, r: Request): Promise<WeatherDay[]> {
+  const qs = new URLSearchParams({ trip: tripId, lat: String(r.lat), lng: String(r.lng), from: r.from, to: r.to });
   const res = await fetch(`/api/weather?${qs}`, { credentials: "same-origin" });
   if (!res.ok) throw new Error("weather unavailable");
   const body = (await res.json()) as { days?: unknown };
@@ -32,6 +33,7 @@ export function useItineraryWeather(
   end: string | null,
 ): (date: string | null) => WeatherDay | undefined {
   const cities = useCities();
+  const tripId = useTrip().id;
   const today = useClientValue(() => localISODate(), null);
 
   const plan = useMemo(() => {
@@ -45,7 +47,7 @@ export function useItineraryWeather(
   const byDay = useQueries({
     queries: plan.requests.map((r) => ({
       queryKey: ["weather", r.lat, r.lng, r.from, r.to] as const,
-      queryFn: () => fetchDays(r),
+      queryFn: () => fetchDays(tripId, r),
       staleTime: 60 * 60_000,
       retry: false,
       refetchOnWindowFocus: false,

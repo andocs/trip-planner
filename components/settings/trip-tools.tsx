@@ -15,7 +15,7 @@ import { errorMessage } from "@/lib/utils";
 export function TripTools({ owner = false }: { owner?: boolean }) {
   const trip = useTrip();
   const router = useRouter();
-  const loadExample = useLoadExample();
+  const loadExample = useLoadExample(trip.id);
   const startNew = useStartNewTrip();
   const [exporting, setExporting] = useState(false);
   const [calendaring, setCalendaring] = useState(false);

@@ -7,10 +7,10 @@ trip-planner is an existing, deployed Next.js 16 + Supabase (Singapore) + Google
 
 ## 2. Current phase & active slice
 - **Phase:** 3 Revisions (adopted; build phase complete, all work merged to main)
-- **Active slice / milestone:** slice 2 Migration 34 (issue #43), awaiting gate; branch feat/multiple-trips (uncommitted)
-- **Gate:** waiting (approve slice 2)
-- **Next action:** on approval start slice 3 (server routes take the trip id and check membership)
-- **User to-do now:** apply supabase/migrations/20261203000034_multiple_trips.sql to production by hand BEFORE any code that uses it merges
+- **Active slice / milestone:** slice 3 Server routes take the trip id (issue #43), awaiting gate; branch feat/multiple-trips (uncommitted)
+- **Gate:** waiting (approve slice 3)
+- **Next action:** on approval start slice 4 (routing /t/[tripId]/..., redirects, last-used-trip cookie, TripGate by route)
+- **User to-do now:** apply supabase/migrations/20261203000034_multiple_trips.sql to production by hand BEFORE any code that uses it deploys (weather now calls trip_by_id)
 
 ## 3. Execution log
 <!-- newest last: - YYYY-MM-DD HH:MM | phase/slice | what happened or was decided | sha -->
@@ -25,6 +25,8 @@ trip-planner is an existing, deployed Next.js 16 + Supabase (Singapore) + Google
 - 2026-11-19 | slice-1 | User approved the switcher mockup (revision 4); slice 1 closed | -
 - 2026-11-19 | slice-2 | Slice 2 started: migration 34 (my_trips(), trip_bootstrap(p_trip), create a trip without archiving) + rollback + RLS checks | -
 - 2026-11-19 | slice-2 | Slice 2 complete (awaiting gate): migration 34 + rollback; fixed is_trip_owner() NULL for admin non-members (found by new checks); SQL suite 358, live RLS 141, tsc/eslint clean, unit 471, e2e 13 pass; not committed | -
+- 2026-11-19 | slice-3 | Slice 3 complete (awaiting gate): requireMemberId(tripId) via trip_by_id, /api/weather needs trip uuid (400/401), loadExample(tripId) owner-only; unit 473, e2e 18, tsc/eslint clean, check:real-build passed; not committed | -
+- 2026-11-19 | slice-3 | Ledger: no start mark existed for slice-3, so its per-slice token row is n/a (all-time figures would mislead); cumulative row updated | -
 
 ## 4. Open questions
 <!-- - [ ] Q1: ...   resolved: - [x] Q1: ... -> answer -->
@@ -36,10 +38,11 @@ Source: transcript (falls back to `estimate` with `~` numbers). in = fresh input
 
 | Scope | Haiku in | Haiku cached | Haiku out | Sonnet in | Sonnet cached | Sonnet out | Note |
 |---|---|---|---|---|---|---|---|
-| **Cumulative** | 466,800 | 1,896,369 | 51,056 | 103,572 | 13,622,347 | 60,405 | |
+| **Cumulative** | 648,557 | 2,838,596 | 69,431 | 141,261 | 19,755,085 | 77,621 | |
 | Phase 1 | 2,089 | 24,846 | 691 | 1,801 | 179,296 | 565 | adoption only |
 | Slice 1: Switcher mockup | 199,184 | 829,930 | 19,662 | 45,116 | 4,518,351 | 24,235 | |
 | Slice 2: Migration 34 | 191,923 | 982,328 | 25,556 | 54,478 | 8,382,335 | 33,410 | |
+| Slice 3: Server routes take trip id | n/a | n/a | n/a | n/a | n/a | n/a | no start mark was taken for slice-3; per-slice numbers not measurable |
 
 <!-- END SUMMARY -->
 
@@ -49,8 +52,8 @@ Source: transcript (falls back to `estimate` with `~` numbers). in = fresh input
 | # | Slice | Depends on | Run | Status | Branch |
 |---|---|---|---|---|---|
 | 1 | Switcher mockup + approval, revision 4 (issue #43) | none | sequential | approved | feat/multiple-trips |
-| 2 | DB migration 34: my_trips(), trip_bootstrap(p_trip), create-trip without archiving, RLS checks | 1 | sequential | awaiting gate | feat/multiple-trips |
-| 3 | Server routes take trip id and check membership (weather, places, photos link, load-example) | 2 | sequential | planned | feat/multiple-trips |
+| 2 | DB migration 34: my_trips(), trip_bootstrap(p_trip), create-trip without archiving, RLS checks | 1 | sequential | complete (approval not recorded in log) | feat/multiple-trips |
+| 3 | Server routes take trip id and check membership (weather, load-example; places/photos/geocode admin-only, unchanged) | 2 | sequential | awaiting gate | feat/multiple-trips |
 | 4 | Routing /t/[tripId]/... with redirects from old paths and last-used-trip cookie; TripGate/decideAccess by route | 2, 3 | sequential | planned | feat/multiple-trips |
 | 5 | Trip switcher UI, new-trip flow, invite-link behaviour | 1, 4 | sequential | planned | feat/multiple-trips |
 | 6 | Offline cache and realtime keyed by trip id; real-build check with a user on two trips | 4 | sequential | planned | feat/multiple-trips |
@@ -83,7 +86,16 @@ Other checks: `npm run check:rls` (local Docker), `npm run check:real-build` (op
 ## Slice handoffs (what the user does after each slice)
 <!-- One block per slice/revision, newest first. Format defined in the orchestrate skill. -->
 
-### Slice 2: Migration 34 (awaiting gate)
+### Slice 3: Server routes take trip id (awaiting gate)
+1. Code: branch feat/multiple-trips, uncommitted until the user says commit.
+2. Install deps: none.
+3. Database: no new migration; REQUIRES migration 34 already applied in production (weather membership check calls trip_by_id).
+4. Config: none.
+5. Start: npm run dev; open Itinerary and the weather chips still show.
+6. Check: as a trip member weather chips appear; a stranger request to /api/weather?trip=<id> returns 401.
+7. Known limits: UI still has one open trip at a time; local Docker supabase was stopped by check:real-build teardown (run `npx supabase start` before the next DB run).
+
+### Slice 2: Migration 34 (complete; gate approval not recorded in log)
 1. Code: branch feat/multiple-trips, uncommitted until the user says commit.
 2. Install deps: none.
 3. Database: apply supabase/migrations/20261203000034_multiple_trips.sql to production by hand (SQL editor). Additive, except it drops start_new_trip(boolean) and recreates it as start_new_trip(boolean, uuid), and replaces is_trip_owner (NULL fix). Existing app calls keep working. Rollback: supabase/rollback/rollback_000034.sql. Check after: `select proname from pg_proc where proname in ('my_trips','trip_by_id','new_trip','archive_trip','restore_trip')` returns 5 rows.

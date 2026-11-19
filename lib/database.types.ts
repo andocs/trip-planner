@@ -1011,6 +1011,7 @@ export type Database = {
       set_member_role: { Args: { p_trip: string; p_user: string; p_role: string }; Returns: undefined }
       sync_my_membership: { Args: never; Returns: undefined }
       trip_role: { Args: { t: string }; Returns: string }
+      is_trip_owner: { Args: { t: string }; Returns: boolean }
       trip_bootstrap: { Args: Record<PropertyKey, never> | { p_trip: string }; Returns: Json }
       my_trips: {
         Args: never

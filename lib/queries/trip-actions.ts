@@ -12,12 +12,12 @@ import { qk } from "./keys";
 import type { Trip } from "./trip";
 
 /** Loads the example via the server action, then refreshes everything. */
-export function useLoadExample() {
+export function useLoadExample(tripId?: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async () => {
       if (!(await getCurrentUser())) throw new Error("Sign in first"); // the server action reads the session cookie
-      const res = await loadExample();
+      const res = await loadExample(tripId);
       if (!res.ok) throw new Error(res.error);
       return res.notes;
     },

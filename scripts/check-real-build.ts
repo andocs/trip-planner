@@ -223,7 +223,7 @@ async function main() {
       const { context, page } = await open(ss.data.session);
       await page.goto(`${BASE}/itinerary`);
       await see(page, "No access yet");
-      const refused = await page.request.get(`${BASE}/api/weather?lat=51.51&lng=-0.13&from=${iso(2)}&to=${iso(3)}`);
+      const refused = await page.request.get(`${BASE}/api/weather?trip=${tripId}&lat=51.51&lng=-0.13&from=${iso(2)}&to=${iso(3)}`);
       if (refused.status() !== 401) throw new Error(`a guest who never joined got ${refused.status()} from /api/weather, expected 401`);
       await sleep(1500);
       console.log("stranger: sees No access yet");
@@ -235,7 +235,7 @@ async function main() {
       const { context, page } = await open(null);
       await page.goto(`${BASE}/itinerary`);
       await see(page, "Invite only");
-      const refused = await page.request.get(`${BASE}/api/weather?lat=51.51&lng=-0.13&from=${iso(2)}&to=${iso(3)}`);
+      const refused = await page.request.get(`${BASE}/api/weather?trip=${tripId}&lat=51.51&lng=-0.13&from=${iso(2)}&to=${iso(3)}`);
       if (refused.status() !== 401) throw new Error(`a signed-out visitor got ${refused.status()} from /api/weather, expected 401`);
       await sleep(1500);
       console.log("signed out: sees Invite only");
