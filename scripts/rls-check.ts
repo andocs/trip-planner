@@ -87,6 +87,7 @@ async function main() {
   if (v.error || s.error) throw v.error ?? s.error;
 
   let tripId: string | null = null;
+  let secondId: string | null = null; // a second trip made by the multi-trip checks (migration 34)
   try {
     check("owner is admin", (await owner.rpc("is_admin")).data === true);
     check("anonymous viewer is not admin", (await viewer.rpc("is_admin")).data === false);
@@ -619,7 +620,27 @@ async function main() {
     );
     check("old link no longer works", !!(await stranger.rpc("join_trip", { p_token: token })).error);
     check("new link works", !(await stranger.rpc("join_trip", { p_token: nt.data! })).error);
+
+    // Migration 34: several live trips per person, with real GoTrue sessions.
+    const second = await owner.rpc("new_trip", { p_name: "Live second trip" });
+    check("owner can add a second trip", !second.error && !!second.data);
+    if (second.data) {
+      secondId = second.data;
+      const mine = (await owner.rpc("my_trips")).data ?? [];
+      check("owner's my_trips lists both live trips", [tripId, secondId].every((id) => mine.some((t) => t.id === id && t.archived_at === null)));
+      const boot = (await stranger.rpc("trip_bootstrap", { p_trip: secondId })).data as { trip?: unknown; role?: unknown } | null;
+      check("a person not on the second trip gets no trip or role from trip_bootstrap(id)", !boot?.trip && !boot?.role);
+      check("a person not on the second trip cannot archive it", !!(await stranger.rpc("archive_trip", { p_trip: secondId })).error);
+      check("a person not on the second trip does not see it in my_trips", !((await stranger.rpc("my_trips")).data ?? []).some((t) => t.id === secondId));
+      check("the first trip is still there for the owner after adding another", mine.some((t) => t.id === tripId));
+      check("owner can archive the second trip", !(await owner.rpc("archive_trip", { p_trip: secondId })).error);
+      check(
+        "archiving the second trip leaves the first live",
+        ((await owner.rpc("my_trips")).data ?? []).some((t) => t.id === tripId && t.archived_at === null),
+      );
+    }
   } finally {
+    if (secondId) await admin.from("trips").delete().eq("id", secondId);
     if (tripId) await admin.from("trips").delete().eq("id", tripId);
     await (admin as unknown as SupabaseClient).from("app_admins").delete().eq("email", email);
     for (const id of created) await admin.auth.admin.deleteUser(id);

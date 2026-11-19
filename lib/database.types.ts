@@ -1011,7 +1011,15 @@ export type Database = {
       set_member_role: { Args: { p_trip: string; p_user: string; p_role: string }; Returns: undefined }
       sync_my_membership: { Args: never; Returns: undefined }
       trip_role: { Args: { t: string }; Returns: string }
-      trip_bootstrap: { Args: never; Returns: Json }
+      trip_bootstrap: { Args: Record<PropertyKey, never> | { p_trip: string }; Returns: Json }
+      my_trips: {
+        Args: never
+        Returns: { id: string; name: string; destination: string | null; start_date: string | null; end_date: string | null; status: string; archived_at: string | null; role: string; joined_at: string }[]
+      }
+      trip_by_id: { Args: { p_trip: string }; Returns: Database["public"]["Tables"]["trips"]["Row"][] }
+      new_trip: { Args: { p_name?: string; p_copy_from?: string }; Returns: string }
+      archive_trip: { Args: { p_trip: string }; Returns: undefined }
+      restore_trip: { Args: { p_trip: string }; Returns: undefined }
       trip_people: { Args: { p_trip: string }; Returns: { user_id: string; label: string | null; role: string }[] }
       set_my_label: { Args: { p_trip: string; p_label: string }; Returns: undefined }
       reserve_api_call: { Args: { p_sku: string }; Returns: string }
@@ -1039,7 +1047,7 @@ export type Database = {
         Returns: string
       }
       start_new_trip: {
-        Args: { p_copy_setup?: boolean }
+        Args: { p_copy_setup?: boolean; p_trip?: string }
         Returns: string
       }
     }
