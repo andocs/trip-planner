@@ -1,11 +1,12 @@
 "use client";
 
 import { Eye } from "lucide-react";
-import { useCanEdit } from "@/components/trip-gate";
+import { useCanEdit, useTrip } from "@/components/trip-gate";
 
-/** Shown to viewers only: says why there are no edit controls. */
+/** Shown to viewers only: says why there are no edit controls. (An archived trip has its own banner.) */
 export function ViewOnlyBanner() {
-  if (useCanEdit()) return null;
+  const archived = !!useTrip().archived_at;
+  if (useCanEdit() || archived) return null;
   return (
     <div
       role="status"

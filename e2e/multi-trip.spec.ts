@@ -68,6 +68,50 @@ test("opening an invite link when already on a trip asks first, then opens that 
   await expect(page).toHaveURL(new RegExp(`/t/${String(fake.trip.id)}$`));
 });
 
+test("an archived trip opens read-only with a banner; the owner can restore it", async ({ page }) => {
+  const fake = createFakeSupabase({ withSeed: true });
+  withSecondTrip(fake);
+  Object.assign(fake.extraTrips[0], { archived_at: "2026-06-02T00:00:00Z", status: "archived" });
+  await fake.install(page);
+  await page.goto(`/t/${OTHER}/itinerary`);
+  await expect(page.getByRole("status").filter({ hasText: "Archived" })).toBeVisible();
+  // the generic "view only" notice would say the wrong thing here
+  await expect(page.getByText(/only the trip owner can make changes/i)).toHaveCount(0);
+  await page.getByRole("button", { name: "Restore trip" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Archived" })).toHaveCount(0);
+  expect(fake.extraTrips[0].archived_at ?? null).toBeNull();
+});
+
+test("a bare address opens the trip last viewed (also in a new tab); ?latest goes back to the trip joined last", async ({ page }) => {
+  const fake = createFakeSupabase({ withSeed: true });
+  withSecondTrip(fake);
+  await fake.install(page);
+  await page.goto(`/t/${OTHER}/places`);
+  await expect(page.getByRole("button", { name: "Switch trip" })).toContainText("Palawan, barkada");
+
+  const tab = await page.context().newPage();
+  await fake.install(tab);
+  await tab.goto("/itinerary");
+  await expect(tab).toHaveURL(new RegExp(`/t/${OTHER}/itinerary$`));
+
+  // "Go to my latest trip" forgets the memory: bare addresses mean the trip joined last again
+  await tab.goto("/?latest=1");
+  await expect(tab).toHaveURL(/\/\?latest=1$/);
+  await tab.goto("/itinerary");
+  await expect(tab).toHaveURL(/\/itinerary$/);
+  await expect(tab.getByRole("button", { name: "Switch trip" })).toContainText(String(fake.trip.name));
+});
+
+test("a trip address that did not open is not remembered", async ({ page }) => {
+  const fake = createFakeSupabase({ withSeed: true });
+  await fake.install(page);
+  await page.goto("/t/33333333-3333-4333-8333-333333333333/itinerary");
+  await expect(page.getByRole("heading", { name: "That trip isn’t available" })).toBeVisible();
+  await page.goto("/itinerary");
+  await expect(page).toHaveURL(/\/itinerary$/);
+  await expect(page.getByRole("button", { name: "Switch trip" })).toContainText(String(fake.trip.name));
+});
+
 test.describe("on a phone", () => {
   test.use({ viewport: { width: 390, height: 780 } });
 

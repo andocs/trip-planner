@@ -46,8 +46,9 @@ export type Access =
 /** An owner row only counts while the account is still an admin (the database applies the same rule). */
 export const canEditAs = (role: Role, isAdmin: boolean) => role === "editor" || (role === "owner" && isAdmin);
 
+/** An archived trip opens read-only for everyone, owner included, until it is restored. */
 const ready = (trip: Trip, role: Role | null | undefined, isAdmin: boolean, email: string | null): Access =>
-  role ? { kind: "ready", trip, role, canEdit: canEditAs(role, isAdmin) } : { kind: "no-access", email };
+  role ? { kind: "ready", trip, role, canEdit: canEditAs(role, isAdmin) && !trip.archived_at } : { kind: "no-access", email };
 
 export function decideAccess(i: AccessInput): Access {
   // No snapshot and not mounted: the server sent a skeleton, so the first client render must be one too.

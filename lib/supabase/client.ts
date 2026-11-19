@@ -3,6 +3,7 @@
 import { createBrowserClient } from "@supabase/ssr";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/database.types";
+import { forgetTripCookie } from "@/lib/last-trip";
 import { clearOfflineData } from "@/lib/offline/clear";
 import type { AppUser } from "@/lib/queries/bootstrap";
 import { supabaseEnv } from "./env";
@@ -99,5 +100,6 @@ export async function syncGoogleProfile(): Promise<boolean> {
 export async function signOut() {
   // The offline copy of the trip belongs to this person: remove it before the session goes.
   await clearOfflineData();
+  document.cookie = forgetTripCookie; // the remembered trip belongs to this person too
   await getSupabase().auth.signOut();
 }

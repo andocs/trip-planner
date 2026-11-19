@@ -110,7 +110,7 @@ export function MapStopCard({
             href={directionsHref}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex min-h-11 flex-1 items-center justify-center rounded-full text-sm font-extrabold ring-2 ring-line-strong hover:bg-surface-2"
+            className="inline-flex min-h-11 flex-1 items-center justify-center rounded-full text-sm font-extrabold hover:bg-surface-2"
           >
             Directions
           </a>
