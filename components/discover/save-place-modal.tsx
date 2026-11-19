@@ -1,10 +1,13 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { IdeaModal } from "@/components/ideas/idea-modal";
+import dynamic from "next/dynamic";
 import { KIND_OF_TABLE } from "@/lib/drafts";
 import type { PlaceCard, PlaceKind, WikiPhoto } from "@/lib/places/types";
 import { useSavePlace } from "@/lib/queries/places";
+
+// Loaded when it is first opened: the sheet and its form code are large and most visits never open it.
+const IdeaModal = dynamic(() => import("@/components/ideas/idea-modal").then((m) => m.IdeaModal), { ssr: false });
 
 /**
  * Save a suggestion to the board: the same add form as everywhere else, opened with the Google result's name and
