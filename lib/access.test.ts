@@ -38,6 +38,11 @@ describe("before the page has mounted", () => {
     it("an owner who is no longer an admin can look but not edit", () => {
       expect(pre(boot({ isAdmin: false }))).toMatchObject({ kind: "ready", role: "owner", canEdit: false });
     });
+    it("an archived trip is read-only for everyone, owner included", () => {
+      const archived = { ...trip, archived_at: "2026-11-01T00:00:00Z" } as Trip;
+      expect(pre(boot({ trip: archived }))).toMatchObject({ kind: "ready", role: "owner", canEdit: false });
+      expect(pre(boot({ trip: archived, role: "editor", isAdmin: false }))).toMatchObject({ canEdit: false });
+    });
     it("an editor can edit; a viewer cannot", () => {
       expect(pre(boot({ role: "editor", isAdmin: false }))).toMatchObject({ role: "editor", canEdit: true });
       expect(pre(boot({ role: "viewer", isAdmin: false }))).toMatchObject({ role: "viewer", canEdit: false });

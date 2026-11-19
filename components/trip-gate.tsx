@@ -20,6 +20,9 @@ import {
 } from "@/lib/queries/trip";
 import { decideAccess } from "@/lib/access";
 import type { Bootstrap } from "@/lib/queries/bootstrap";
+import { Archive } from "lucide-react";
+import { rememberTripCookie } from "@/lib/last-trip";
+import { useArchiveTrip } from "@/lib/queries/trips";
 import { useRealtimeSync, useWarmCache } from "@/lib/realtime";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import Link from "next/link";
@@ -130,7 +133,7 @@ function TripUnavailable() {
       <h1 className="font-display text-2xl font-extrabold">That trip isn’t available</h1>
       <p className="mt-2 text-fg-muted">It may have been removed, or you may not be on it any more.</p>
       {/* data-bare-trip: this link must leave the trip in the address */}
-      <Link href="/" data-bare-trip className="mt-4 inline-flex min-h-11 items-center font-bold text-teal">
+      <Link href="/?latest=1" data-bare-trip className="mt-4 inline-flex min-h-11 items-center font-bold text-teal">
         Go to my latest trip
       </Link>
     </div>
@@ -140,6 +143,11 @@ function TripUnavailable() {
 /** The signed-in, allowed-in screen: the owner's setup wizard while the trip is a draft, otherwise the app. */
 function TripShell({ trip, role, canEdit, children }: { trip: Trip; role: Role; canEdit: boolean; children: ReactNode }) {
   const value = { trip, role, canEdit };
+  // Remember a trip once it has really opened (not merely been asked for in the address): a bare link comes back to it.
+  const requested = useRequestedTripId();
+  useEffect(() => {
+    if (requested && requested === trip.id) document.cookie = rememberTripCookie(trip.id, location.protocol === "https:");
+  }, [requested, trip.id]);
   // A draft is the owner's setup wizard; viewers wait until it is finished.
   if (trip.status === "draft") {
     return canEdit ? (
@@ -153,8 +161,27 @@ function TripShell({ trip, role, canEdit, children }: { trip: Trip; role: Role; 
   return (
     <TripContext value={value}>
       <RealtimeSync tripId={trip.id} />
+      {trip.archived_at && <ArchivedBanner trip={trip} isOwner={role === "owner"} />}
       {children}
     </TripContext>
+  );
+}
+
+/** An archived trip opens read-only (see lib/access.ts); the owner can bring it back from here. */
+function ArchivedBanner({ trip, isOwner }: { trip: Trip; isOwner: boolean }) {
+  const restore = useArchiveTrip();
+  return (
+    <div role="status" className="mb-3 flex flex-wrap items-center gap-2.5 rounded-[14px] bg-teal-tint px-3.5 py-2.5 text-sm font-bold text-teal">
+      <Archive className="size-[18px] shrink-0" aria-hidden />
+      <span className="min-w-0 flex-1">
+        Archived <span className="font-medium text-fg-muted">· read-only until it is restored.</span>
+      </span>
+      {isOwner && (
+        <Button size="xs" variant="outline" disabled={restore.isPending} onClick={() => restore.mutate({ tripId: trip.id, restore: true })}>
+          Restore trip
+        </Button>
+      )}
+    </div>
   );
 }
 

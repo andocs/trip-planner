@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { bareRedirect, LAST_TRIP_COOKIE, LATEST_PARAM } from "@/lib/last-trip";
 
 /**
  * Two jobs on every page navigation:
@@ -21,7 +22,14 @@ export async function proxy(request: NextRequest) {
   // Tell server code which screen a cold load is for (so it prefetches only that screen's tables).
   // Set here, so a value sent by the client is overwritten.
   request.headers.set("x-pathname", pathname);
+
+  // A bare screen address opens the trip this browser had open last (also in a new tab). "?latest" opts out and forgets it.
+  if (request.method === "GET" || request.method === "HEAD") {
+    const to = bareRedirect(pathname, request.cookies.get(LAST_TRIP_COOKIE)?.value, request.nextUrl.searchParams);
+    if (to) return NextResponse.redirect(new URL(`${to}${request.nextUrl.search}`, request.url));
+  }
   let response = NextResponse.next({ request });
+  if (request.nextUrl.searchParams.has(LATEST_PARAM)) response.cookies.set(LAST_TRIP_COOKIE, "", { path: "/", maxAge: 0 });
   if (!url || !anonKey) return response;
 
   const open = OPEN.some((p) => pathname === p.replace(/\/$/, "") || pathname.startsWith(p));

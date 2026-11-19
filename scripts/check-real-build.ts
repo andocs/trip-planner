@@ -129,22 +129,34 @@ async function main() {
       return { context, page };
     };
 
+    /** Opens an address and waits for the page to settle; a failure names the address. */
+    const visit = async (page: Page, path: string) => {
+      const seen: string[] = [];
+      const onRequest = (r: { url: () => string }) => seen.push(r.url().replace(BASE, "").slice(0, 90));
+      page.on("request", onRequest);
+      try {
+        await page.goto(BASE + path);
+        await page.waitForLoadState("networkidle");
+        await sleep(400);
+      } catch (e) {
+        throw new Error(`${path}: ${e instanceof Error ? e.message : String(e)} | ${seen.length} requests, last: ${seen.slice(-6).join(" ; ")}`);
+      } finally {
+        page.off("request", onRequest);
+      }
+    };
+
     // owner: every main screen is fresh server HTML (the prefetch differs per screen)
     phase = "owner";
     {
       const { context, page } = await open(ownerSession.session, "allow");
       for (const path of ["/", "/itinerary", "/stays", "/places", "/flights", "/spend", "/pack", "/settings"]) {
         phase = `owner ${path}`;
-        await page.goto(BASE + path);
-        await page.waitForLoadState("networkidle");
-        await sleep(400);
+        await visit(page, path);
       }
       // the same screens at their own trip addresses (the server prefetch reads the trip id from the path)
       for (const path of [`/t/${tripId}`, `/t/${tripId}/itinerary`, `/t/${tripId}/places`, `/t/${tripId}/settings`]) {
         phase = `owner ${path}`;
-        await page.goto(BASE + path);
-        await page.waitForLoadState("networkidle");
-        await sleep(400);
+        await visit(page, path);
       }
       phase = "owner a trip id that is not theirs";
       await page.goto(`${BASE}/t/00000000-0000-4000-8000-0000000000aa/itinerary`);
@@ -214,9 +226,7 @@ async function main() {
       // every main screen as a viewer too: read-only branches render different trees than the owner's
       for (const path of ["/", "/stays", "/places", "/flights", "/spend", "/pack", "/settings", `/t/${tripId}`, `/t/${tripId}/spend`]) {
         phase = `viewer ${path}`;
-        await page.goto(BASE + path);
-        await page.waitForLoadState("networkidle");
-        await sleep(400);
+        await visit(page, path);
       }
       phase = "viewer";
       await page.goto(`${BASE}/itinerary`);

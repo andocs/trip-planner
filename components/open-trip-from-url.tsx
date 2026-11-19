@@ -12,7 +12,7 @@ const BARE_SCREEN = /^\/(?:itinerary|places|stays|flights|spend|pack|settings)?(
  * Reads the trip id from the address and offers it to everything below. While a trip is open by id, a click on an in-app link
  * to a bare screen ("/pack?tab=gifts", from a card or reminder) stays inside that trip instead of jumping to the trip joined
  * last. Links that must leave the trip carry data-bare-trip. (Opening such a link in a new tab, or with a modifier key, is left
- * to the browser and lands on the trip joined last.)
+ * to the browser; the proxy then sends the bare address to the trip remembered in the tp-last-trip cookie, which TripShell writes once a trip has opened, see lib/last-trip.ts.)
  */
 export function OpenTripFromUrl({ children }: { children: ReactNode }) {
   const pathname = usePathname();
