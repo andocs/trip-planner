@@ -43,7 +43,7 @@ test("owner: Log as expense turns a booked flight into one linked expense, once"
   fake.tables.get("flights")!.forEach((f) => (f.status = "Booked"));
   fake.tables.get("stays")!.forEach((x) => (x.status = "Booked"));
   await fake.install(page);
-  await page.goto("/plan?tab=flights");
+  await page.goto("/flights");
 
   const first = fake.tables.get("flights")!.find((f) => f.fare && Number(f.fare) > 0)!;
   const before = fake.tables.get("expenses")!.length;
@@ -76,7 +76,7 @@ test("owner: a stay can be logged too, under Accommodation", async ({ page }) =>
   fake.tables.get("flights")!.forEach((f) => (f.status = "Booked"));
   fake.tables.get("stays")!.forEach((x) => (x.status = "Booked"));
   await fake.install(page);
-  await page.goto("/plan?tab=stays");
+  await page.goto("/stays");
   await page.getByRole("button", { name: "Log as expense" }).first().click();
   const sheet = page.getByRole("dialog", { name: "Log as expense" });
   await expect(sheet.getByLabel("Description")).toHaveValue(/^Stay: /);
@@ -90,7 +90,7 @@ test("owner: the form won't log an empty amount", async ({ page }) => {
   fake.tables.get("flights")!.forEach((f) => (f.status = "Booked"));
   fake.tables.get("stays")!.forEach((x) => (x.status = "Booked"));
   await fake.install(page);
-  await page.goto("/plan?tab=flights");
+  await page.goto("/flights");
   await page.getByRole("button", { name: "Log as expense" }).first().click();
   const sheet = page.getByRole("dialog", { name: "Log as expense" });
   const before = fake.tables.get("expenses")!.length;
@@ -124,7 +124,7 @@ test("viewer: sees which bookings are logged, but never a Log button", async ({ 
     source_id: flight.id,
   });
   await fake.install(page);
-  await page.goto("/plan?tab=flights");
+  await page.goto("/flights");
   await expect(page.getByRole("link", { name: /Logged/ })).toHaveCount(1);
   await expect(page.getByRole("button", { name: "Log as expense" })).toHaveCount(0);
 });

@@ -20,8 +20,7 @@ function loadBootstrap(qc: QueryClient): Promise<Bootstrap | null> {
     queryKey: qk.bootstrap,
     staleTime: 0,
     queryFn: async () => {
-      const user = await getCurrentUser();
-      const b = await fetchBootstrap(getSupabase(), user);
+      const b = await fetchBootstrap(getSupabase());
       if (b) {
         if (!b.user.isAnonymous) qc.setQueryData(qk.admin, b.isAdmin);
         if (b.trip) qc.setQueryData(qk.role(b.trip.id), b.role);

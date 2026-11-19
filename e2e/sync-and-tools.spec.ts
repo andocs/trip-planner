@@ -85,6 +85,20 @@ test("export to Excel downloads the workbook tabs", async ({ page }) => {
   expect(itinerary).toHaveLength(140);
 });
 
+test("add to calendar downloads an .ics with the trip's activities, flights and stays, and no booking numbers", async ({ page }) => {
+  await createFakeSupabase({ withSeed: true }).install(page);
+  await page.goto("/settings");
+  const download = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Add to calendar (.ics)" }).click();
+  const file = await download;
+  expect(file.suggestedFilename()).toBe("Vietnam 26.ics");
+  const ics = readFileSync(await file.path(), "utf8");
+  expect(ics.startsWith("BEGIN:VCALENDAR")).toBe(true);
+  expect(ics.split("BEGIN:VEVENT").length - 1).toBeGreaterThan(100);
+  expect(ics).toContain("SUMMARY:Flight:");
+  expect(ics).not.toMatch(/booking|confirmation/i);
+});
+
 test("start a new trip archives the old one and keeps travelers", async ({ page }) => {
   const fake = createFakeSupabase({ withSeed: true });
   await fake.install(page);

@@ -4,7 +4,7 @@ import { ExternalLink, Check, ChevronRight } from "lucide-react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { EditOnly, useTrip } from "@/components/trip-gate";
-import { Board } from "@/components/ui/board";
+import { Board } from "@/components/ui/flap-digits";
 import { Card, CardTitle } from "@/components/ui/card";
 import { AnimatedNumber } from "@/components/ui/animated-number";
 import { Progress } from "@/components/ui/progress";

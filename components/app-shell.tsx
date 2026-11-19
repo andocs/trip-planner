@@ -15,7 +15,7 @@ import {
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
-import { Board } from "@/components/ui/board";
+import { Board } from "@/components/ui/flap-digits";
 import { Sheet } from "@/components/ui/sheet";
 import { daysToGo, localISODate } from "@/lib/calc";
 import { useActiveTrip } from "@/lib/queries/trip";

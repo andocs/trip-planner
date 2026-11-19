@@ -16,7 +16,7 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { inviteLink } from "@/components/settings/invite-section";
-import { Board } from "@/components/ui/board";
+import { Board } from "@/components/ui/flap-digits";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/field";
 import { StepHeading } from "@/components/wizard/steps-map";

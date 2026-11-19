@@ -1,0 +1,88 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  NEXT_TELEMETRY_DISABLED: "1"
+  # The build and the browser tests run against a fake Supabase and no Google keys: CI needs no secrets.
+  NEXT_PUBLIC_SUPABASE_URL: http://fake.supabase.test
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-anon-key
+  NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY: ""
+  NEXT_PUBLIC_GOOGLE_MAP_ID: ""
+  GOOGLE_MAPS_SERVER_KEY: ""
+
+jobs:
+  checks:
+    name: Types, lint, unit tests, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+      # Fails if a server-only Google key or the service-role key ended up in the browser bundles.
+      - run: npm run check:secrets -- --require-build
+      # Reported, not blocking: a new advisory in a dependency should not stop an unrelated change.
+      - run: npm audit --audit-level=high
+        continue-on-error: true
+
+  e2e:
+    name: Browser tests (fake Supabase)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-traces
+          path: test-results
+          retention-days: 7
+
+  rls:
+    name: Database access rules (local Supabase)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # Not blocking until it has run green once on GitHub: it needs Docker and the Supabase CLI.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - run: supabase start -x studio,imgproxy,inbucket,edge-runtime,logflare,vector,pooler
+      - name: SQL suite (rolls itself back; the PASSED line is raised as an error on purpose)
+        run: |
+          out=$(docker exec -i supabase_db_trip-planner psql -U postgres < supabase/tests/rls_check.sql 2>&1 || true)
+          echo "$out"
+          echo "$out" | grep -q "RLS CHECK PASSED"
+      - run: npm run check:rls

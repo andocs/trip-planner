@@ -1,7 +1,7 @@
 "use client";
 
 import { AlertDialog } from "radix-ui";
-import { Archive, FileSpreadsheet, Loader2, Sparkles } from "lucide-react";
+import { Archive, CalendarPlus, FileSpreadsheet, Loader2, Sparkles } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -18,6 +18,7 @@ export function TripTools({ owner = false }: { owner?: boolean }) {
   const loadExample = useLoadExample();
   const startNew = useStartNewTrip();
   const [exporting, setExporting] = useState(false);
+  const [calendaring, setCalendaring] = useState(false);
   const [copySetup, setCopySetup] = useState(true);
 
   async function exportExcel() {
@@ -33,6 +34,19 @@ export function TripTools({ owner = false }: { owner?: boolean }) {
     }
   }
 
+  async function exportCalendar() {
+    setCalendaring(true);
+    try {
+      const [{ downloadIcs }, data] = await Promise.all([import("@/lib/ics"), fetchExportData(trip)]);
+      downloadIcs(data);
+      toast.success("Calendar file downloaded");
+    } catch (e) {
+      toast.error(`Calendar export failed: ${errorMessage(e)}`);
+    } finally {
+      setCalendaring(false);
+    }
+  }
+
   return (
     <Card className="space-y-3">
       <CardTitle>Trip tools</CardTitle>
@@ -44,6 +58,15 @@ export function TripTools({ owner = false }: { owner?: boolean }) {
         )}
         Export to Excel
       </Button>
+      <Button variant="secondary" className="w-full justify-start" onClick={exportCalendar} disabled={calendaring}>
+        {calendaring ? (
+          <Loader2 className="size-5 animate-spin" aria-hidden />
+        ) : (
+          <CalendarPlus className="size-5" aria-hidden />
+        )}
+        Add to calendar (.ics)
+      </Button>
+      <p className="-mt-1 text-xs text-fg-muted">Activities, flights and stays. Booking numbers and prices are left out.</p>
       <Button
         variant="secondary"
         className="w-full justify-start"

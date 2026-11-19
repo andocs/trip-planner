@@ -3,8 +3,8 @@
  * (the SQL suite in supabase/tests/rls_check.sql fakes the claims; this proves the shape GoTrue issues).
  *
  *   npm run check:rls            → the local stack from `npx supabase start`
- *   npm run check:rls -- --remote → NEXT_PUBLIC_SUPABASE_URL from .env.local (uses the service-role key to
- *                                   create and delete throwaway users and one throwaway trip)
+ *   npm run check:rls -- --remote → no longer supported: the admin check needs a Google identity row
+ *                                   that only the local database lets us create (migration 23)
  *
  * Creates: a Google-style admin (owner), two anonymous users (viewer, stranger). Deletes everything after.
  */
@@ -61,6 +61,17 @@ async function main() {
   });
   if (ue || !u.user) throw ue ?? new Error("could not create the owner");
   created.push(u.user.id);
+  // is_admin() (migration 23) reads the Google identity row, which the admin API cannot create, so the
+  // local stack gets one straight from the database. A remote project has no such door.
+  if (remote) {
+    throw new Error("check:rls --remote cannot create a Google identity; run it against the local stack instead.");
+  }
+  const identity = JSON.stringify({ sub: u.user.id, email, email_verified: true });
+  execSync(`docker exec -i supabase_db_trip-planner psql -U postgres -v ON_ERROR_STOP=1`, {
+    input:
+      `insert into auth.identities (id, user_id, identity_data, provider, provider_id, created_at, updated_at) ` +
+      `values (gen_random_uuid(), '${u.user.id}', '${identity}'::jsonb, 'google', '${u.user.id}', now(), now());`,
+  });
   await (admin as unknown as SupabaseClient).from("app_admins").insert({ email });
 
   const owner = mk(anonKey);
@@ -87,8 +98,11 @@ async function main() {
     if (!tripId) throw new Error("no trip to test against");
 
     await owner.from("travelers").insert({ trip_id: tripId, name: "Aq" });
-    const { data: trip } = await owner.from("trips").select("join_token").eq("id", tripId).single();
-    const token = trip!.join_token;
+    // The invite link is owner-only (migration 25): the table refuses the column, active_trip() hands it to the owner.
+    check("owner cannot read join_token from the table", !!(await owner.from("trips").select("join_token").eq("id", tripId)).error);
+    const { data: trip } = await owner.rpc("active_trip");
+    const token = trip?.[0]?.join_token ?? "";
+    check("owner gets the invite link from active_trip", token.length > 8);
 
     check("stranger sees no trips", ((await stranger.from("trips").select("id")).data ?? []).length === 0);
     check("stranger sees no travelers", ((await stranger.from("travelers").select("id")).data ?? []).length === 0);
@@ -105,9 +119,13 @@ async function main() {
       "viewer reads the trip",
       ((await viewer.from("trips").select("id").eq("id", tripId)).data ?? []).length === 1,
     );
+    check("viewer cannot read join_token from the table", !!(await viewer.from("trips").select("join_token").eq("id", tripId)).error);
+    check("viewer's active_trip has no invite link", (await viewer.rpc("active_trip")).data?.[0]?.join_token === "");
+    check("viewer's bootstrap has no invite link", ((await viewer.rpc("trip_bootstrap")).data as { trip?: { join_token?: string } } | null)?.trip?.join_token === "");
     check(
+      // The owner's traveler plus the one migration 20 adds for the viewer who joined by link.
       "viewer reads travelers",
-      ((await viewer.from("travelers").select("id").eq("trip_id", tripId)).data ?? []).length === 1,
+      ((await viewer.from("travelers").select("id").eq("trip_id", tripId)).data ?? []).length === 2,
     );
     check("viewer is a viewer", (await viewer.rpc("trip_role", { t: tripId })).data === "viewer");
     check("viewer cannot insert", !!(await viewer.from("travelers").insert({ trip_id: tripId, name: "nope" })).error);

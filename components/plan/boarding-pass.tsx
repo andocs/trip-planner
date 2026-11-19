@@ -3,7 +3,7 @@
 import { Lock, Plane } from "lucide-react";
 import { LogExpenseRow } from "@/components/plan/log-expense";
 import { useCanEdit, useTrip } from "@/components/trip-gate";
-import { Board } from "@/components/ui/board";
+import { Board } from "@/components/ui/flap-digits";
 import { StatusBadge, StatusChip } from "@/components/ui/status-chip";
 import { arrivalDayOffset, flightMinutes, formatDuration, isIdeaStatus, MASKED_REF } from "@/lib/flights";
 import { formatDay, formatMoney, formatTime } from "@/lib/format";

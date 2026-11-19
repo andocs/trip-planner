@@ -1,7 +1,7 @@
 -- RLS proof for the owner / viewer model. Works in the Supabase SQL editor and in local `psql`.
 -- It creates throwaway users, runs every check as each user, and ALWAYS rolls back by raising an
 -- exception at the end. Read the final message: "RLS CHECK PASSED (n checks)" or "RLS CHECK FAILED: ...".
--- Needs migrations 1..22 applied. Does not need any real admin: it inserts a throwaway admin email.
+-- Needs migrations 1..25 applied. Does not need any real admin: it inserts a throwaway admin email.
 
 do $$
 declare
@@ -11,6 +11,8 @@ declare
   stranger uuid := gen_random_uuid();    -- anonymous, never joined
   legacy_u uuid := gen_random_uuid();    -- pre-revision member row (role defaulted to viewer)
   fake_admin uuid := gen_random_uuid();  -- anonymous session carrying an admin email
+  linker uuid := gen_random_uuid();      -- password account with the admin's email, linked to someone else's Google (migration 23)
+  unverified uuid := gen_random_uuid();  -- Google identity with the admin's email but email_verified = false (migration 23)
   trip_a uuid;
   trip_old uuid;
   trip_old_draft uuid;
@@ -40,8 +42,12 @@ declare
     'transfers', 'stays', 'hotel_ideas', 'food_places', 'menu_items', 'attractions', 'packing_items', 'gifts', 'reminders'];
 
   -- claims builder
-  c_owner text; c_other text; c_viewer text; c_stranger text; c_legacy text; c_fake text;
+  c_owner text; c_other text; c_viewer text; c_stranger text; c_legacy text; c_fake text; c_linker text; c_unverified text;
 begin
+  c_linker := json_build_object('sub', linker, 'role', 'authenticated', 'email', 'rls-owner@test.local',
+    'is_anonymous', false, 'app_metadata', json_build_object('provider', 'email', 'providers', json_build_array('email', 'google')))::text;
+  c_unverified := json_build_object('sub', unverified, 'role', 'authenticated', 'email', 'rls-owner@test.local',
+    'is_anonymous', false, 'app_metadata', json_build_object('provider', 'google', 'providers', json_build_array('google')))::text;
   c_owner := json_build_object('sub', owner_u, 'role', 'authenticated', 'email', 'rls-owner@test.local',
     'is_anonymous', false, 'app_metadata', json_build_object('provider', 'google', 'providers', json_build_array('google')))::text;
   c_other := json_build_object('sub', other_g, 'role', 'authenticated', 'email', 'rls-other@test.local',
@@ -57,8 +63,14 @@ begin
 
   insert into auth.users (id, instance_id, aud, role, is_anonymous, created_at, updated_at)
   select u, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', anon, now(), now()
-  from (values (owner_u, false), (other_g, false), (viewer_u, true), (stranger, true), (legacy_u, true), (fake_admin, true)) v(u, anon);
+  from (values (owner_u, false), (other_g, false), (viewer_u, true), (stranger, true), (legacy_u, true), (fake_admin, true),
+               (linker, false), (unverified, false)) v(u, anon);
   insert into public.app_admins (email) values ('rls-owner@test.local');
+  -- Google identities, as GoTrue stores them. is_admin() reads these, not the JWT's own email claim.
+  insert into auth.identities (id, user_id, identity_data, provider, provider_id, created_at, updated_at)
+  select gen_random_uuid(), u, jsonb_build_object('sub', u::text, 'email', em, 'email_verified', ver), 'google', u::text, now(), now()
+  from (values (owner_u, 'rls-owner@test.local', true), (other_g, 'rls-other@test.local', true),
+               (linker, 'attacker@evil.test', true), (unverified, 'rls-owner@test.local', false)) g(u, em, ver);
 
   -- Fixtures (as the table owner): an old, unclaimed trip with a legacy member, and data to read.
   insert into public.trips (name) values ('Legacy trip') returning id into trip_old;
@@ -74,7 +86,7 @@ begin
   if not ok then failures := failures || 'owner should be admin'::text; end if;
 
   trip_a := public.create_trip('Owner trip');
-  select join_token into tok from public.trips where id = trip_a;
+  select join_token into tok from public.active_trip() where id = trip_a;   -- owner-only since migration 25
   insert into public.travelers (trip_id, name) values (trip_a, 'Aq');
   insert into public.reminders (trip_id, text) values (trip_a, 'secret reminder');
 
@@ -209,6 +221,20 @@ begin
   perform public.join_trip(tok);
   perform public.join_trip(tok);  -- idempotent
 
+  -- the invite link is owner-only (migration 25): not in the table, not in active_trip() or trip_bootstrap()
+  checks := checks + 1;
+  begin perform join_token from public.trips where id = trip_a; failures := failures || 'a viewer read trips.join_token'::text;
+  exception when insufficient_privilege then null; end;
+  checks := checks + 1;
+  select join_token into r from public.active_trip() where id = trip_a;
+  if r is distinct from '' then failures := failures || 'active_trip() showed the invite link to a viewer'::text; end if;
+  checks := checks + 1;
+  select public.trip_bootstrap() -> 'trip' ->> 'join_token' into r;
+  if r is distinct from '' then failures := failures || 'trip_bootstrap() showed the invite link to a viewer'::text; end if;
+  checks := checks + 1;
+  select count(*) into n from public.trips where id = trip_a;
+  if n <> 1 then failures := failures || 'a viewer could no longer read the trip after migration 25'::text; end if;
+
   -- joining with the link also makes the viewer a traveler, once
   checks := checks + 1;
   select count(*) into n from public.travelers where trip_id = trip_a and user_id is not null;
@@ -325,6 +351,23 @@ begin
   checks := checks + 1;
   begin perform public.create_trip('x'); failures := failures || 'fake admin created a trip'::text;
   exception when insufficient_privilege then null; end;
+  reset role;
+
+  -- migration 23: the admin email must belong to a verified Google identity of the caller
+  perform set_config('request.jwt.claims', c_linker, true);
+  set local role authenticated;
+  checks := checks + 1;
+  select public.is_admin() into ok;
+  if ok then failures := failures || 'password account with the admin email plus a foreign Google link passed is_admin'::text; end if;
+  checks := checks + 1;
+  begin perform public.create_trip('x'); failures := failures || 'linked impostor created a trip'::text;
+  exception when insufficient_privilege then null; end;
+  reset role;
+  perform set_config('request.jwt.claims', c_unverified, true);
+  set local role authenticated;
+  checks := checks + 1;
+  select public.is_admin() into ok;
+  if ok then failures := failures || 'unverified Google email passed is_admin'::text; end if;
   reset role;
 
   -- ============================== REVOKE AND REPLACE LINK ==============================
@@ -833,12 +876,12 @@ begin
   begin
     insert into public.item_images (trip_id, item_table, item_id, source, url) values (trip_a, 'itinerary_items', gen_random_uuid(), 'link', 'https://cdn.example.com/act.jpg');
     delete from public.item_images where item_table = 'itinerary_items';
-  exception when check_violation then failures := failures || 'an activity photo was refused'::text; end;
+  exception when check_violation or insufficient_privilege then failures := failures || 'an activity photo was refused'::text; end;
   checks := checks + 1;
   begin
     insert into public.item_images (trip_id, item_table, item_id, source, url) values (trip_a, 'expenses', gen_random_uuid(), 'link', 'https://cdn.example.com/x.jpg');
     failures := failures || 'a photo on an unknown table was accepted'::text;
-  exception when check_violation then null; end;
+  exception when check_violation or insufficient_privilege then null; end;
 
   -- the shape of each kind is enforced by the database
   checks := checks + 1;
@@ -1282,6 +1325,29 @@ begin
   exception when insufficient_privilege then null; end;
   checks := checks + 1;
   begin perform public.set_member_role(trip_a, viewer_u, 'editor'); failures := failures || 'a viewer promoted themselves'::text;
+  exception when insufficient_privilege then null; end;
+  reset role;
+
+  -- migration 23: a removed editor who returns after the link was replaced comes back as a viewer
+  perform set_config('request.jwt.claims', c_owner, true);
+  set local role authenticated;
+  perform public.set_member_role(trip_a, viewer_u, 'editor');
+  perform public.revoke_viewer(trip_a, viewer_u);
+  tok2 := public.regenerate_invite(trip_a);
+  reset role;
+  perform set_config('request.jwt.claims', c_viewer, true);
+  set local role authenticated;
+  perform public.join_trip(tok2);
+  reset role;
+  checks := checks + 1;
+  select role into r from public.trip_members where trip_id = trip_a and user_id = viewer_u;
+  if r is distinct from 'viewer' then failures := failures || format('a removed editor rejoined as %s', r); end if;
+  perform set_config('request.jwt.claims', c_viewer, true);
+  set local role authenticated;
+  checks := checks + 1;
+  begin
+    insert into public.travelers (trip_id, name, sort) values (trip_a, 'Ex-editor added', 101);
+    failures := failures || 'a removed editor could still add a traveler after rejoining'::text;
   exception when insufficient_privilege then null; end;
   reset role;
 
