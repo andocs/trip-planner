@@ -1042,6 +1042,9 @@ export type Database = {
       claimable_trips: { Args: never; Returns: Database["public"]["Tables"]["trips"]["Row"][] }
       is_admin: { Args: never; Returns: boolean }
       regenerate_invite: { Args: { p_trip: string }; Returns: string }
+      create_trip_share: { Args: { p_trip: string }; Returns: string }
+      revoke_trip_share: { Args: { p_trip: string }; Returns: undefined }
+      shared_trip: { Args: { p_token: string }; Returns: Json }
       revoke_viewer: { Args: { p_trip: string; p_user: string }; Returns: undefined }
       set_member_role: { Args: { p_trip: string; p_user: string; p_role: string }; Returns: undefined }
       sync_my_membership: { Args: never; Returns: undefined }

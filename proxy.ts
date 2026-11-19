@@ -12,7 +12,7 @@ import { NextResponse, type NextRequest } from "next/server";
  * It never creates users: anonymous sign-in happens only on /join, so crawlers and link previews
  * never create accounts.
  */
-const OPEN = ["/join/", "/login", "/auth/", "/invite-only"];
+const OPEN = ["/join/", "/share/", "/login", "/auth/", "/invite-only"];
 
 export async function proxy(request: NextRequest) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
