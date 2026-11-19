@@ -16,7 +16,7 @@ test("Planned is its own counter: allocations, grown by flights and stays that a
   fake.tables
     .get("flights")!
     .forEach((f, i) => Object.assign(f, { fare: i === 0 ? 30000 : 5000, status: i === 0 ? "Booked" : "Cancelled" }));
-  fake.tables.get("stays")!.forEach((s) => Object.assign(s, { total: 99999, status: "Idea" })); // ideas are not in the plan
+  fake.stayRows().forEach((s) => Object.assign(s, { total: 99999, stay_status: "Idea" })); // ideas are not in the plan
   const others = cats.filter((c) => c !== flightsCat && c !== staysCat).reduce((s, c) => s + Number(c.planned ?? 0), 0);
   await fake.install(page);
   await page.goto("/");
@@ -41,7 +41,7 @@ test("a plan over the budget says so, and Left still means real money", async ({
 test("owner: Log as expense turns a booked flight into one linked expense, once", async ({ page }) => {
   const fake = createFakeSupabase({ withSeed: true });
   fake.tables.get("flights")!.forEach((f) => (f.status = "Booked"));
-  fake.tables.get("stays")!.forEach((x) => (x.status = "Booked"));
+  fake.stayRows().forEach((x) => (x.stay_status = "Booked"));
   await fake.install(page);
   await page.goto("/flights");
 
@@ -74,21 +74,21 @@ test("owner: Log as expense turns a booked flight into one linked expense, once"
 test("owner: a stay can be logged too, under Accommodation", async ({ page }) => {
   const fake = createFakeSupabase({ withSeed: true });
   fake.tables.get("flights")!.forEach((f) => (f.status = "Booked"));
-  fake.tables.get("stays")!.forEach((x) => (x.status = "Booked"));
+  fake.stayRows().forEach((x) => (x.stay_status = "Booked"));
   await fake.install(page);
   await page.goto("/stays");
   await page.getByRole("button", { name: "Log as expense" }).first().click();
   const sheet = page.getByRole("dialog", { name: "Log as expense" });
   await expect(sheet.getByLabel("Description")).toHaveValue(/^Stay: /);
   await sheet.getByRole("button", { name: "Log expense" }).click();
-  await expect.poll(() => fake.tables.get("expenses")!.some((e) => e.source_table === "stays")).toBe(true);
+  await expect.poll(() => fake.tables.get("expenses")!.some((e) => e.source_table === "hotel_ideas")).toBe(true);
   await expect(page.getByRole("link", { name: /Logged/ })).toHaveCount(1);
 });
 
 test("owner: the form won't log an empty amount", async ({ page }) => {
   const fake = createFakeSupabase({ withSeed: true });
   fake.tables.get("flights")!.forEach((f) => (f.status = "Booked"));
-  fake.tables.get("stays")!.forEach((x) => (x.status = "Booked"));
+  fake.stayRows().forEach((x) => (x.stay_status = "Booked"));
   await fake.install(page);
   await page.goto("/flights");
   await page.getByRole("button", { name: "Log as expense" }).first().click();

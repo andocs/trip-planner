@@ -1,4 +1,5 @@
 import type { Tables } from "@/lib/database.types";
+import type { Stay } from "@/lib/stays";
 import { saveTextFile } from "@/lib/download";
 import { exportFileName } from "@/lib/export";
 import { dateForDay, dayOf, isStop } from "@/lib/itinerary";
@@ -9,7 +10,7 @@ export type IcsData = {
   trip: Tables<"trips">;
   itinerary_items: Tables<"itinerary_items">[];
   flights: Tables<"flights">[];
-  stays: Tables<"stays">[];
+  stays: Stay[];
 };
 
 const CRLF = "\r\n";

@@ -1,7 +1,7 @@
 -- RLS proof for the owner / viewer model. Works in the Supabase SQL editor and in local `psql`.
 -- It creates throwaway users, runs every check as each user, and ALWAYS rolls back by raising an
 -- exception at the end. Read the final message: "RLS CHECK PASSED (n checks)" or "RLS CHECK FAILED: ...".
--- Needs migrations 1..30 applied. Does not need any real admin: it inserts a throwaway admin email.
+-- Needs migrations 1..31 applied. Does not need any real admin: it inserts a throwaway admin email.
 
 do $$
 declare
@@ -21,6 +21,8 @@ declare
   tok2 text;
   tok_s text;       -- the read-only share token (migration 30)
   tok_s2 text;
+  stay_id uuid;     -- a booked hotel idea (migration 31)
+  idea_only uuid;   -- a hotel idea that is not booked
   shr jsonb;
   item_a uuid;      -- a draft attraction on trip_a
   item_f uuid;      -- a draft food place on trip_a
@@ -43,7 +45,7 @@ declare
   checks int := 0;
   t text;
   child_tables text[] := array['travelers', 'destinations', 'categories', 'expenses', 'itinerary_items', 'flights',
-    'transfers', 'stays', 'hotel_ideas', 'food_places', 'menu_items', 'attractions', 'packing_items', 'gifts', 'reminders'];
+    'transfers', 'hotel_ideas', 'food_places', 'menu_items', 'attractions', 'packing_items', 'gifts', 'reminders'];
 
   -- claims builder
   c_owner text; c_other text; c_viewer text; c_stranger text; c_legacy text; c_fake text; c_linker text; c_unverified text; c_namer text;
@@ -1403,6 +1405,65 @@ begin
   if rc <> 0 then failures := failures || 'someone outside the trip changed an expense rate'::text; end if;
   reset role;
 
+  -- migration 31: a stay is a hotel idea that has been booked
+  perform set_config('request.jwt.claims', c_owner, true);
+  set local role authenticated;
+  insert into public.hotel_ideas (trip_id, hotel, city, decision, is_stay, check_in, check_out, stay_status, confirmation, total, details)
+  values (trip_a, 'Merged Inn', 'Hanoi', 'confirmed', true, current_date, current_date + 3, 'Booked', 'CONF-M31', 4200, '{"rooms":"Deluxe"}'::jsonb)
+  returning id into stay_id;
+  insert into public.hotel_ideas (trip_id, hotel, decision) values (trip_a, 'Just an idea', 'draft') returning id into idea_only;
+  checks := checks + 1;
+  select count(*) into n from public.hotel_ideas where id = stay_id and is_stay and stay_status = 'Booked' and confirmation = 'CONF-M31';
+  if n <> 1 then failures := failures || 'the owner could not save a booked stay on a hotel idea'::text; end if;
+  checks := checks + 1;
+  begin update public.hotel_ideas set stay_status = 'Nonsense' where id = stay_id; failures := failures || 'a stay status outside the list was accepted'::text;
+  exception when check_violation then null; end;
+  checks := checks + 1;
+  begin update public.hotel_ideas set check_out = check_in - 1 where id = stay_id; failures := failures || 'a stay that ends before it starts was accepted'::text;
+  exception when check_violation then null; end;
+  -- an expense can be logged from a stay (a booked idea), not from an idea that is not booked, and no longer from "stays"
+  checks := checks + 1;
+  insert into public.expenses (trip_id, amount, currency, description, spent_on, source_table, source_id)
+  values (trip_a, 4200, 'PHP', 'Stay: Merged Inn', current_date, 'hotel_ideas', stay_id);
+  select count(*) into n from public.expenses where source_table = 'hotel_ideas' and source_id = stay_id;
+  if n <> 1 then failures := failures || 'an expense could not be logged from a booked stay'::text; end if;
+  checks := checks + 1;
+  begin
+    insert into public.expenses (trip_id, amount, currency, description, spent_on, source_table, source_id)
+    values (trip_a, 1, 'PHP', 'From an unbooked idea', current_date, 'hotel_ideas', idea_only);
+    failures := failures || 'an expense was linked to a hotel idea that is not a booked stay'::text;
+  exception when foreign_key_violation then null; end;
+  checks := checks + 1;
+  begin
+    insert into public.expenses (trip_id, amount, currency, description, spent_on, source_table, source_id)
+    values (trip_a, 1, 'PHP', 'Old table name', current_date, 'stays', stay_id);
+    failures := failures || 'an expense was linked to the retired stays table'::text;
+  exception when check_violation then null; end;
+  -- taking a stay off Stays keeps the idea and the expense's link; deleting the idea releases the expense
+  update public.hotel_ideas set is_stay = false, check_in = null, check_out = null, confirmation = null, stay_status = 'Planned' where id = stay_id;
+  checks := checks + 1;
+  select count(*) into n from public.expenses where source_table = 'hotel_ideas' and source_id = stay_id;
+  if n <> 1 then failures := failures || 'un-booking a stay broke the expense link'::text; end if;
+  delete from public.hotel_ideas where id = stay_id;
+  checks := checks + 1;
+  select count(*) into n from public.expenses where description = 'Stay: Merged Inn' and source_id is null and source_table is null;
+  if n <> 1 then failures := failures || 'deleting the idea did not release the expense that was logged from it'::text; end if;
+  -- the old table is out of reach for everyone
+  checks := checks + 1;
+  begin perform 1 from public.stays_retired; failures := failures || 'the retired stays table is still readable'::text;
+  exception when insufficient_privilege then null; end;
+  checks := checks + 1;
+  if to_regclass('public.stays') is not null then failures := failures || 'a table called stays still exists'::text; end if;
+  reset role;
+  -- a viewer cannot book a stay
+  perform set_config('request.jwt.claims', c_viewer, true);
+  set local role authenticated;
+  checks := checks + 1;
+  update public.hotel_ideas set is_stay = true, confirmation = 'VIEWER' where id = idea_only;
+  get diagnostics rc = row_count;
+  if rc <> 0 then failures := failures || 'a viewer booked a stay'::text; end if;
+  reset role;
+
   -- migration 29: the old booking_ref column (readable by every viewer) is gone; references live only in flight_refs
   checks := checks + 1;
   select count(*) into n from information_schema.columns where table_schema = 'public' and table_name = 'flights' and column_name = 'booking_ref';
@@ -1415,7 +1476,8 @@ begin
   checks := checks + 1;
   if char_length(tok_s) < 36 then failures := failures || 'the share token is too short'::text; end if;
   insert into public.flights (trip_id, airline, flight_no, from_code, to_code, fare, seat, terminal) values (trip_a, 'ShareAir', 'SA 1', 'MNL', 'HAN', 777123, '31Z', '3');
-  insert into public.stays (trip_id, hotel, city, check_in, check_out, confirmation, total, note) values (trip_a, 'Share Inn', 'Hanoi', current_date, current_date + 2, 'CONF-X9', 555321, 'secret stay note');
+  insert into public.hotel_ideas (trip_id, hotel, city, decision, is_stay, check_in, check_out, confirmation, total, room) values (trip_a, 'Share Inn', 'Hanoi', 'confirmed', true, current_date, current_date + 2, 'CONF-X9', 555321, 'secret stay note');
+  insert into public.hotel_ideas (trip_id, hotel, city, decision, total) values (trip_a, 'Unbooked Idea Hotel', 'Hue', 'draft', 424242);
   insert into public.itinerary_items (trip_id, activity, day, kind, note) values (trip_a, 'Share stop', 1, 'stop', 'private itinerary note');
   checks := checks + 1;
   select count(*) into n from public.trip_shares where trip_id = trip_a;
@@ -1445,6 +1507,8 @@ begin
   if shr is null or shr -> 'trip' ->> 'name' is null then failures := failures || 'a valid share token returned nothing'::text; end if;
   checks := checks + 1;
   if not (shr::text like '%Share Inn%' and shr::text like '%ShareAir%' and shr::text like '%Share stop%') then failures := failures || 'the shared view is missing the itinerary, flight or stay'::text; end if;
+  checks := checks + 1;
+  if shr::text like '%Unbooked Idea Hotel%' or shr::text like '%424242%' then failures := failures || 'the shared view showed a hotel idea that is not booked'::text; end if;
   checks := checks + 1;
   if shr::text ~ '777123|31Z|CONF-X9|555321|secret stay note|private itinerary note|join_token|booking_ref' then failures := failures || 'the shared view leaked a private field'::text; end if;
   checks := checks + 1;

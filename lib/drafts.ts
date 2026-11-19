@@ -57,6 +57,8 @@ export type Idea = {
   details: unknown;
   dealBreaker: boolean;
   created_at: string;
+  /** Hotels only: the booking, when this idea has been booked as a stay (migration 31); null while it is just an idea. */
+  stay?: { checkIn: string | null; checkOut: string | null; status: string; confirmation: string | null } | null;
 };
 
 const decisionOf = (v: string): Decision => (isDecision(v) ? v : "draft");
@@ -88,6 +90,7 @@ export function ideasFrom(d: {
       details: h.details,
       dealBreaker: h.deal_breaker === true,
       created_at: h.created_at,
+      stay: h.is_stay === true ? { checkIn: h.check_in, checkOut: h.check_out, status: h.stay_status, confirmation: h.confirmation } : null,
     };
   });
   const place = (

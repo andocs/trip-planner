@@ -14,6 +14,7 @@ import { formatDateRange, formatPercent } from "@/lib/format";
 import { joinNames, nextUp, solidStopCount } from "@/lib/home";
 import type { Budget } from "@/lib/queries/budget";
 import { useRows } from "@/lib/queries/table";
+import { useStays } from "@/lib/queries/stays";
 import { useClientValue } from "@/lib/use-client-value";
 import { useMedia } from "@/lib/use-media";
 import { bySort } from "@/lib/use-sheet";
@@ -154,7 +155,7 @@ export function NextUp({ budget }: { budget: Budget }) {
   const trip = useTrip();
   const stops = useRows("destinations");
   const flights = useRows("flights");
-  const stays = useRows("stays");
+  const stays = useStays();
   const itinerary = useRows("itinerary_items");
   const ready = [stops, flights, stays, itinerary].every((q) => q.isSuccess);
   if (!ready) return null;

@@ -1,5 +1,6 @@
 "use client";
 
+import { useStays } from "./stays";
 import { useTrip } from "@/components/trip-gate";
 import {
   effectivePlanned,
@@ -55,7 +56,7 @@ export function useBudget(): Budget {
   const categories = useRows("categories", bySort);
   const travelers = useRows("travelers", bySort);
   const flights = useRows("flights");
-  const stays = useRows("stays");
+  const stays = useStays();
 
   const ex = expenses.data ?? [];
   const cats = categories.data ?? [];

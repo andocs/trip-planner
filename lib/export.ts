@@ -10,6 +10,7 @@ import {
   totalSpent,
 } from "@/lib/calc";
 import type { Tables } from "@/lib/database.types";
+import type { Stay } from "@/lib/stays";
 import { formatTime } from "@/lib/format";
 
 /** Everything the export needs, already loaded. */
@@ -24,7 +25,7 @@ export type ExportData = {
   /** Booking references from the owner-only table; empty for someone who may not read it. Excel only (never the ICS or JSON backup). */
   flight_refs?: { flight_id: string; booking_ref: string }[];
   transfers: Tables<"transfers">[];
-  stays: Tables<"stays">[];
+  stays: Stay[];
   hotel_ideas: Tables<"hotel_ideas">[];
   food_places: Tables<"food_places">[];
   menu_items: Tables<"menu_items">[];

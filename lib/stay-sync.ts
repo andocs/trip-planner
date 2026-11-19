@@ -1,49 +1,38 @@
-import { dayNumberFor } from "./calc";
-import type { Tables } from "./database.types";
+import { daysBetween, dayNumberFor } from "./calc";
 import type { Idea } from "./drafts";
 import { blankForm, formFromIdea, type IdeaFormValues, type IdeaPayload } from "./idea-form";
 import { parseDetails } from "./idea-details";
 import { dateForDay } from "./itinerary";
 import { str } from "./schemas";
-import { buildStayDetails, parseStayDetails } from "./stay-details";
+import { STAY_STATUSES, validStatus } from "./stays";
+
+export { STAY_STATUSES };
 
 /**
- * A stay is a booking (real dates, a confirmation number), a board idea is a plan (trip day numbers). The Stays page edits
- * a stay in the SAME form as a place, so these helpers translate between the two: record -> form, idea -> form, and form ->
- * the stay row. Every stay is linked to a hotel idea (details.ideaId) so the board and Stays stay one list. Pure.
+ * A stay is a hotel idea that has been booked (migration 31): the SAME row, with real dates and the booking on it. A board
+ * idea thinks in trip day numbers; a booked stay in real dates. The Stays page edits a stay in the SAME form as a place, so
+ * these helpers translate between the form and the idea's columns. Pure: no React, no network.
  */
-
-type Stay = Tables<"stays">;
-export const STAY_STATUSES = ["Planned", "Booked", "Done", "Cancelled"] as const;
 
 const dayToDate = (start: string | null | undefined, day: number | undefined) => (day === undefined ? "" : (dateForDay(start, day) ?? ""));
 
-/** The form for a stay that already exists (its own dates and booking first, then what the linked idea knows). */
-export function formFromStay(stay: Stay, idea: Idea | undefined, currency: string): IdeaFormValues {
-  const f = idea ? formFromIdea(idea, currency) : blankForm("stay", currency);
-  const d = parseStayDetails(stay.details);
-  f.name = stay.hotel;
-  f.city = stay.city ?? "";
-  f.notes = stay.note ?? "";
-  f.rooms = stay.room ?? f.rooms;
-  f.checkIn = stay.check_in ?? "";
-  f.checkOut = stay.check_out ?? "";
-  f.confirmation = stay.confirmation ?? "";
-  f.stayStatus = (STAY_STATUSES as readonly string[]).includes(stay.status) ? stay.status : "Planned";
-  f.cancellation = d.cancellation ?? f.cancellation;
+/** The form for a stay that already exists: the idea's own fields, then its booking (dates, status, confirmation). */
+export function formFromStay(idea: Idea, currency: string): IdeaFormValues {
+  const f = formFromIdea(idea, currency);
+  const d = parseDetails("stay", idea.details);
+  f.checkIn = idea.stay?.checkIn ?? "";
+  f.checkOut = idea.stay?.checkOut ?? "";
+  f.confirmation = idea.stay?.confirmation ?? "";
+  f.stayStatus = validStatus(idea.stay?.status);
   f.freeUntil = d.freeUntil ?? "";
-  f.checkInTime = d.checkInTime ?? f.checkInTime;
-  f.breakfast = d.breakfast ?? f.breakfast;
-  f.website = d.website ?? f.website;
-  f.mapsUrl = d.mapsUrl ?? f.mapsUrl;
-  // The stay's total is what was booked: it is shown as a plain total.
-  f.cost = str(stay.total);
+  // What was booked is shown as a plain total.
+  f.cost = str(idea.total);
   f.unit = "total";
   f.decision = "confirmed";
   return f;
 }
 
-/** The form for confirming an existing board idea as a stay: its trip days become real dates from the trip start. */
+/** The form for booking an existing board idea as a stay: its trip days become real dates from the trip start. */
 export function formFromIdeaAsStay(idea: Idea, start: string | null | undefined, currency: string): IdeaFormValues {
   const f = formFromIdea(idea, currency);
   const d = parseDetails("stay", idea.details);
@@ -54,6 +43,9 @@ export function formFromIdeaAsStay(idea: Idea, start: string | null | undefined,
   f.decision = "confirmed";
   return f;
 }
+
+/** A blank form for a stay entered by hand: confirmed, priced as a total. */
+export const blankStayForm = (currency: string): IdeaFormValues => ({ ...blankForm("stay", currency), decision: "confirmed", unit: "total" });
 
 /** Before the form is turned into an idea payload: the real dates give the trip day numbers (and so the nights). */
 export function withDayNumbers<T extends { checkIn: string | null; checkOut: string | null; freeUntil: string | null; checkInDay: number | null; checkOutDay: number | null; freeUntilDay: number | null }>(
@@ -70,49 +62,43 @@ export function withDayNumbers<T extends { checkIn: string | null; checkOut: str
   };
 }
 
-type StayOut = {
-  name: string;
-  city: string | null;
-  notes: string | null;
-  rooms?: string | null;
-  checkIn: string | null;
-  checkOut: string | null;
-  freeUntil: string | null;
-  confirmation: string | null;
-  stayStatus: string;
-  cancellation: string;
-  checkInTime: string;
-  breakfast: boolean;
-  website: string | null;
-  mapsUrl: string | null;
-};
+type StayOut = { checkIn: string | null; checkOut: string | null; confirmation: string | null; stayStatus: string };
 
-/** The columns of the stay row for a saved form. `payload.columns.total` already holds nights times price. */
-export function stayColumns(out: StayOut, payload: IdeaPayload, ideaId: string | null) {
-  const total = payload.columns.total;
+/**
+ * The hotel idea's columns for a saved stay form: the idea's own columns (name, city, notes, total, details) plus the booking.
+ * The real dates are the truth for the nights. `payload.columns.total` already holds nights times price.
+ */
+export function stayIdeaColumns(out: StayOut, payload: IdeaPayload): Record<string, unknown> {
+  const nights = out.checkIn && out.checkOut ? daysBetween(out.checkIn, out.checkOut) : (payload.columns.nights ?? null);
   return {
-    hotel: out.name,
-    city: out.city,
-    room: out.rooms ?? null,
-    note: out.notes,
+    ...payload.columns,
+    nights,
+    decision: "confirmed",
+    is_stay: true,
     check_in: out.checkIn,
     check_out: out.checkOut,
-    total: typeof total === "number" ? total : null,
     confirmation: out.confirmation,
-    status: (STAY_STATUSES as readonly string[]).includes(out.stayStatus) ? out.stayStatus : "Planned",
-    details: buildStayDetails({
-      cancellation: out.cancellation,
-      freeUntil: out.freeUntil,
-      checkInTime: out.checkInTime,
-      breakfast: out.breakfast,
-      website: out.website,
-      mapsUrl: out.mapsUrl,
-      ideaId,
-    }),
+    stay_status: validStatus(out.stayStatus),
   };
 }
 
-/** The stay row that came from this board idea, if there is one. */
-export function stayOfIdea(stays: Stay[], ideaId: string): Stay | undefined {
-  return stays.find((s) => parseStayDetails(s.details).ideaId === ideaId);
+/**
+ * What confirming a hotel idea adds to it so it becomes a stay: real dates from its trip days and the trip start, a free-until
+ * date when the cancellation is free, and its price as a total. Null when it already is a stay.
+ */
+export function bookingForConfirm(idea: Idea, start: string | null | undefined): Record<string, unknown> | null {
+  if (idea.kind !== "stay" || idea.stay) return null;
+  const d = parseDetails("stay", idea.details);
+  const freeUntil = d.cancellation === "free" ? dateForDay(start, d.freeUntilDay ?? null) : null;
+  const total = idea.total ?? (idea.priceUnit === "total" ? idea.price : null);
+  const checkIn = dateForDay(start, d.checkInDay ?? null);
+  const checkOut = dateForDay(start, d.checkOutDay ?? null);
+  return {
+    is_stay: true,
+    check_in: checkIn,
+    check_out: checkOut,
+    stay_status: "Planned",
+    ...(total !== null && idea.total === null ? { total } : {}),
+    ...(freeUntil ? { details: { ...(idea.details as Record<string, unknown>), freeUntil } } : {}),
+  };
 }

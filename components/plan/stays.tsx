@@ -16,7 +16,8 @@ import { ideaKey } from "@/lib/drafts";
 import { formatDay, formatMoney, formatTime } from "@/lib/format";
 import { FormGroup } from "@/components/ui/form-group";
 import { useImages, usePhotoUrls, type ImageRow } from "@/lib/queries/images";
-import { useDeleteRow, useRows, useUpdateRow, type Row } from "@/lib/queries/table";
+import { useRemoveStay, useSetStayStatus, useStays } from "@/lib/queries/stays";
+import type { Stay } from "@/lib/stays";
 import { AddStayMenu, type StayStep } from "./stay-flow";
 import { PlaceLinks } from "@/components/ui/place-links";
 import { cancellationFact, checkInFact, isBooked, parseStayDetails, type Fact } from "@/lib/stay-details";
@@ -26,24 +27,14 @@ import { cn } from "@/lib/utils";
 /** Form sheets load on first open, keeping zod / react-hook-form / vaul out of the page's initial JS. */
 const StayFlow = dynamic(() => import("./stay-flow").then((m) => m.StayFlow), { ssr: false });
 
-type Stay = Row<"stays">;
 const byCheckIn = (a: Stay, b: Stay) =>
   (a.check_in ?? "9").localeCompare(b.check_in ?? "9") || a.created_at.localeCompare(b.created_at);
-const norm = (s: string) => s.trim().toLowerCase();
 
-/**
- * A booked stay shows the cover photo of the board idea with the same hotel name, when there is one: the photos
- * were already saved there, so nothing new is stored or fetched.
- */
+/** A stay IS its hotel idea (same id), so its photos are the idea's photos: nothing new is stored or fetched. */
 function useStayPhotos() {
-  const ideas = useRows("hotel_ideas").data ?? [];
   const { byIdea } = useImages();
   const urlOf = usePhotoUrls();
-  const byName = new Map(ideas.map((i) => [norm(i.hotel), i.id]));
-  const imagesFor = (s: Stay): ImageRow[] => {
-    const id = byName.get(norm(s.hotel));
-    return id ? (byIdea.get(ideaKey("hotel_ideas", id)) ?? []) : [];
-  };
+  const imagesFor = (s: Stay): ImageRow[] => byIdea.get(ideaKey("hotel_ideas", s.id)) ?? [];
   return { imagesFor, urlOf };
 }
 
@@ -90,8 +81,8 @@ function datesLine(s: Stay, n: number | null) {
 export function Stays() {
   const trip = useTrip();
   const canEdit = useCanEdit();
-  const { data: stays = [], isPending } = useRows("stays", byCheckIn);
-  const update = useUpdateRow("stays", "stay");
+  const { data: stays = [], isPending } = useStays(byCheckIn);
+  const setStatus = useSetStayStatus();
   // What is open over the page: the idea picker, the stay form (the same form as a place), or an add-a-plan form.
   const [flow, setFlow] = useState<StayStep | null>(null);
   const photos = useStayPhotos();
@@ -167,7 +158,7 @@ export function Stays() {
                         <StatusChip
                           status={s.status}
                           label={s.hotel}
-                          onChange={(status) => update.mutate({ id: s.id, patch: { status } })}
+                          onChange={(status) => setStatus(s.id, status)}
                         />
                       ) : (
                         <StatusBadge status={s.status} />
@@ -208,7 +199,7 @@ export function Stays() {
                         )}
                       </p>
                     )}
-                    <LogExpenseRow kind="stays" item={s} />
+                    <LogExpenseRow kind="hotel_ideas" item={s} />
                   </div>
                 </article>
               </li>
@@ -251,8 +242,8 @@ function StayDetail({
   onClose: () => void;
 }) {
   const trip = useTrip();
-  const remove = useDeleteRow("stays", "stay");
-  const update = useUpdateRow("stays", "stay");
+  const remove = useRemoveStay();
+  const setStatus = useSetStayStatus();
   const [showRef, setShowRef] = useState(false);
   const cur = trip.home_currency;
   const n = stayNights(stay.check_in, stay.check_out);
@@ -278,20 +269,20 @@ function StayDetail({
             <DropdownMenu.Portal>
               <DropdownMenu.Content align="end" sideOffset={4} className="z-[60] min-w-52 rounded-2xl border border-border bg-surface p-1.5 shadow-card">
                 {!cancelled && (
-                  <DropdownMenu.Item onSelect={() => update.mutate({ id: stay.id, patch: { status: "Cancelled" } })} className={menuRow}>
+                  <DropdownMenu.Item onSelect={() => setStatus(stay.id, "Cancelled")} className={menuRow}>
                     <Ban className="size-4 text-fg-muted" aria-hidden />
                     Cancel stay
                   </DropdownMenu.Item>
                 )}
                 <DropdownMenu.Item
                   onSelect={() => {
-                    remove(stay, stay.hotel);
+                    remove(stay);
                     onClose();
                   }}
                   className={cn(menuRow, "text-danger")}
                 >
                   <Trash2 className="size-4" aria-hidden />
-                  Delete stay
+                  Remove from Stays
                 </DropdownMenu.Item>
               </DropdownMenu.Content>
             </DropdownMenu.Portal>
@@ -308,7 +299,7 @@ function StayDetail({
               Edit
             </Button>
           )}
-          <LogExpenseRow kind="stays" item={stay} className="pb-0" />
+          <LogExpenseRow kind="hotel_ideas" item={stay} className="pb-0" />
         </div>
 
         <Photo stay={stay} photos={photos} className="aspect-[2/1] rounded-[18px]" />

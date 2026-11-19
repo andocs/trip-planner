@@ -10,8 +10,6 @@ import { compact, link, stayCommon } from "./idea-details";
  */
 export const stayRecordDetails = z.object({
   ...stayCommon,
-  /** Last day the booking can be cancelled for free (YYYY-MM-DD). */
-  freeUntil: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   /** The board idea this stay was confirmed from (hotel_ideas.id), so the two stay one stay. */
   ideaId: z.string().uuid().optional(),
   /** The stay's own website and its Google Maps link (plain browser links). */

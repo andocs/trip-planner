@@ -11,6 +11,7 @@ import { bookedProgress, giftsProgress, itineraryProgress, packedProgress } from
 import { formatMoney } from "@/lib/format";
 import type { Budget } from "@/lib/queries/budget";
 import { useRows } from "@/lib/queries/table";
+import { useStays } from "@/lib/queries/stays";
 import { donutSlices } from "./chart-data";
 
 const ChartFallback = () => <Skeleton className="h-48" />;
@@ -102,7 +103,7 @@ function TableView({ budget }: { budget: Budget }) {
 export function ReadinessCard() {
   const packing = useRows("packing_items");
   const itin = useRows("itinerary_items");
-  const stays = useRows("stays");
+  const stays = useStays();
   const flights = useRows("flights");
   const gifts = useRows("gifts");
 

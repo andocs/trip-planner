@@ -17,6 +17,7 @@ import { daysBetween, homeAmount, localISODate } from "@/lib/calc";
 import { expenseDefaults, type LoggableKind } from "@/lib/log-expense";
 import { formatMoney } from "@/lib/format";
 import { newId, useDeleteRow, useInsertRow, useUpdateRow, type Row } from "@/lib/queries/table";
+import type { Stay } from "@/lib/stays";
 import { optionalNumber, optionalText, requiredNumber, requiredText, str } from "@/lib/schemas";
 import type { useSheet } from "@/lib/use-sheet";
 
@@ -77,7 +78,7 @@ export function ExpenseSheet({
   categories: Row<"categories">[];
   travelers: Row<"travelers">[];
   /** "Log as expense" from a booked flight or stay: the form opens prefilled from it, and the expense remembers it (once). */
-  source?: { kind: LoggableKind; item: Row<"flights"> | Row<"stays"> };
+  source?: { kind: LoggableKind; item: Row<"flights"> | Stay };
 }) {
   const trip = useTrip();
   const insert = useInsertRow("expenses", "expense");

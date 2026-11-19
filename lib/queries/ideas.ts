@@ -18,10 +18,7 @@ import { getSupabase } from "@/lib/supabase/client";
 import { errorMessage } from "@/lib/utils";
 import { qk } from "./keys";
 import { placeAtEndOfDay } from "./itinerary";
-import { parseDetails } from "@/lib/idea-details";
-import { dateForDay } from "@/lib/itinerary";
-import { buildStayDetails } from "@/lib/stay-details";
-import { stayOfIdea } from "@/lib/stay-sync";
+import { bookingForConfirm } from "@/lib/stay-sync";
 import { newId, useDeleteRow, useInsertRow, useRows, useUpdateRow, type Row } from "./table";
 import { useUser } from "./trip";
 
@@ -229,35 +226,13 @@ export function useSetDecision() {
 export function useConfirmIdea() {
   const trip = useTrip();
   const setDecision = useSetDecision();
-  const stays = useRows("stays");
-  const insertStay = useInsertRow("stays", "stay");
+  const updateHotel = useUpdateRow("hotel_ideas", "stay");
   return (idea: Idea) => {
     setDecision(idea, "confirmed");
-    if (idea.kind !== "stay" || stayOfIdea(stays.data ?? [], idea.id)) return;
-    const d = parseDetails("stay", idea.details);
-    const total = idea.total ?? (idea.priceUnit === "total" ? idea.price : null);
-    insertStay.mutate([
-      {
-        id: newId(),
-        hotel: idea.name,
-        city: idea.city,
-        room: d.rooms ?? null,
-        note: idea.note,
-        check_in: dateForDay(trip.start_date, d.checkInDay ?? null),
-        check_out: dateForDay(trip.start_date, d.checkOutDay ?? null),
-        total,
-        status: "Planned",
-        details: buildStayDetails({
-          cancellation: d.cancellation ?? "",
-          freeUntil: dateForDay(trip.start_date, d.freeUntilDay ?? null),
-          checkInTime: d.checkInTime ?? "",
-          breakfast: d.breakfast === true,
-          website: d.website ?? null,
-          mapsUrl: d.mapsUrl ?? null,
-          ideaId: idea.id,
-        }),
-      },
-    ]);
+    // A stay is this same idea row with its booking filled in (nothing to insert): a stay that already is one is left alone.
+    const booking = bookingForConfirm(idea, trip.start_date);
+    if (!booking) return;
+    updateHotel.mutate({ id: idea.id, patch: booking as never });
     toast.success("Confirmed, and added to Stays.");
   };
 }

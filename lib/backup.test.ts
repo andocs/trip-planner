@@ -36,7 +36,7 @@ const data = {
 describe("buildBackup", () => {
   const b = buildBackup(data, new Date("2026-07-01T00:00:00Z"));
   it("carries the trip settings and every table, with ids", () => {
-    expect(b).toMatchObject({ format: "trip-planner-backup", version: 1, exportedAt: "2026-07-01T00:00:00.000Z" });
+    expect(b).toMatchObject({ format: "trip-planner-backup", version: 2, exportedAt: "2026-07-01T00:00:00.000Z" });
     expect(b.trip).toMatchObject({ name: "Vietnam '26", rate: 0.002457, timezone: "Asia/Manila" });
     expect(Object.keys(b.tables)).toEqual([...BACKUP_TABLES]);
     expect(b.tables.expenses.map((r) => r.id)).toEqual([id(30), id(31)]);
@@ -58,7 +58,7 @@ describe("parseBackup", () => {
   it.each([
     ["not json", "nope"],
     ["wrong format", JSON.stringify({ format: "other" })],
-    ["a future version", JSON.stringify({ ...JSON.parse(good), version: 2 })],
+    ["a future version", JSON.stringify({ ...JSON.parse(good), version: 3 })],
     ["a damaged table", JSON.stringify({ ...JSON.parse(good), tables: { travelers: "x" } })],
     ["a row without an id", JSON.stringify({ ...JSON.parse(good), tables: { travelers: [{ name: "x" }] } })],
     ["a row with a bad id", JSON.stringify({ ...JSON.parse(good), tables: { travelers: [{ id: "1; drop table", name: "x" }] } })],

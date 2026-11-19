@@ -7,9 +7,9 @@ test.beforeEach(async ({ page }) => {
 
 test("owner: stays are photo cards with the price, dates and what is booked", async ({ page }) => {
   const fake = createFakeSupabase({ withSeed: true });
-  const stay = fake.tables.get("stays")![0];
+  const stay = fake.stayRows()[0];
   stay.hotel = "Lakeside Inn"; // the seed has several stays called "To be decided"
-  Object.assign(stay, { status: "Booked", check_in: "2026-06-11", check_out: "2026-06-14", total: 11400, details: { cancellation: "free", freeUntil: "2026-06-12", breakfast: true } });
+  Object.assign(stay, { stay_status: "Booked", check_in: "2026-06-11", check_out: "2026-06-14", total: 11400, details: { cancellation: "free", freeUntil: "2026-06-12", breakfast: true } });
   await fake.install(page);
   await page.goto("/stays");
 
@@ -25,7 +25,7 @@ test("owner: stays are photo cards with the price, dates and what is booked", as
 
 test("owner: the cancellation terms are saved with the stay", async ({ page }) => {
   const fake = createFakeSupabase({ withSeed: true });
-  const stay = fake.tables.get("stays")![0];
+  const stay = fake.stayRows()[0];
   stay.hotel = "Lakeside Inn"; // the seed has several stays called "To be decided"
   await fake.install(page);
   await page.goto("/stays");
@@ -40,23 +40,21 @@ test("owner: the cancellation terms are saved with the stay", async ({ page }) =
   await edit.getByRole("button", { name: "Save" }).click();
 
   await expect
-    .poll(() => fake.tables.get("stays")!.find((s) => s.id === stay.id)?.details)
-    .toMatchObject({ cancellation: "free", freeUntil: "2026-06-15", checkInTime: "14:00", breakfast: true }); // plus the idea it is now linked to
+    .poll(() => fake.stayRows().find((s) => s.id === stay.id)?.details)
+    .toMatchObject({ cancellation: "free", freeUntil: "2026-06-15", checkInTime: "14:00", breakfast: true });
   await expect(page.getByRole("article", { name: String(stay.hotel) }).getByText("Free cancellation until 15 Jun")).toBeVisible();
 });
 
-test("a stay shows the cover photo of the hotel idea with the same name", async ({ page }) => {
+test("a stay shows the cover photo saved on its own hotel idea (the same row)", async ({ page }) => {
   const fake = createFakeSupabase({ withSeed: true });
-  const stay = fake.tables.get("stays")![0];
+  const stay = fake.stayRows()[0];
   stay.hotel = "Lakeside Inn"; // the seed has several stays called "To be decided"
-  const idea = fake.tables.get("hotel_ideas")![0];
-  idea.hotel = stay.hotel;
   fake.tables.set("item_images", [
     {
       id: "im1",
       trip_id: stay.trip_id,
       item_table: "hotel_ideas",
-      item_id: idea.id,
+      item_id: stay.id, // a stay IS its hotel idea, so its photos are the idea's photos
       source: "link",
       url: "https://example.com/room.jpg",
       page_url: null,
@@ -74,7 +72,7 @@ test("a stay shows the cover photo of the hotel idea with the same name", async 
 
 test("viewer: sees the cards and the terms, with no add, no status menu and no confirmation number", async ({ page }) => {
   const fake = createFakeSupabase({ withSeed: true, role: "viewer" });
-  const stay = fake.tables.get("stays")![0];
+  const stay = fake.stayRows()[0];
   stay.hotel = "Lakeside Inn"; // the seed has several stays called "To be decided"
   Object.assign(stay, { confirmation: "AGD-482913", details: { cancellation: "non-refundable" } });
   await fake.install(page);

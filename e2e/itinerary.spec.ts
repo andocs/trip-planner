@@ -174,7 +174,7 @@ test("owner: reorder with the keyboard changes one row, and the order survives",
 test("a stay appears on its check-in day by itself", async ({ page }) => {
   const fake = createFakeSupabase({ withSeed: true });
   plan(fake);
-  Object.assign(fake.tables.get("stays")![0], { hotel: "Old Quarter boutique hotel", status: "Booked", check_in: "2026-06-17", check_out: "2026-06-18" });
+  Object.assign(fake.stayRows()[0], { hotel: "Old Quarter boutique hotel", stay_status: "Booked", check_in: "2026-06-17", check_out: "2026-06-18" });
   await fake.install(page);
   await page.goto("/itinerary");
   await expect(page.getByRole("link", { name: /Old Quarter boutique hotel/ }).first()).toBeVisible();

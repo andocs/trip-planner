@@ -8,6 +8,7 @@ import { Card, CardTitle } from "@/components/ui/card";
 import { localISODate } from "@/lib/calc";
 import { useIdeas } from "@/lib/queries/ideas";
 import { useRows } from "@/lib/queries/table";
+import { useStays } from "@/lib/queries/stays";
 import { autoReminders, type ReminderIcon } from "@/lib/reminders";
 import { useClientValue } from "@/lib/use-client-value";
 import { cn } from "@/lib/utils";
@@ -63,7 +64,7 @@ function useDismissed(tripId: string) {
  */
 export function RemindersCard() {
   const trip = useTrip();
-  const stays = useRows("stays");
+  const stays = useStays();
   const notes = useRows("reminders");
   const itinerary = useRows("itinerary_items");
   const { ideas, isPending } = useIdeas();

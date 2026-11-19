@@ -28,7 +28,7 @@ describe("only confirmed counts", () => {
 });
 
 describe("ideasFrom", () => {
-  const base = { created_at: "2026-06-01T00:00:00Z", trip_id: "t", city: "Hanoi", details: {}, deal_breaker: false };
+  const base = { created_at: "2026-06-01T00:00:00Z", trip_id: "t", city: "Hanoi", details: {}, deal_breaker: false, is_stay: false, check_in: null, check_out: null, confirmation: null, stay_status: "Planned" };
   it("normalizes the three tables", () => {
     const ideas = ideasFrom({
       hotel_ideas: [
