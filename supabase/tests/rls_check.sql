@@ -1,7 +1,7 @@
 -- RLS proof for the owner / viewer model. Works in the Supabase SQL editor and in local `psql`.
 -- It creates throwaway users, runs every check as each user, and ALWAYS rolls back by raising an
 -- exception at the end. Read the final message: "RLS CHECK PASSED (n checks)" or "RLS CHECK FAILED: ...".
--- Needs migrations 1..26 applied. Does not need any real admin: it inserts a throwaway admin email.
+-- Needs migrations 1..27 applied. Does not need any real admin: it inserts a throwaway admin email.
 
 do $$
 declare
@@ -12,6 +12,7 @@ declare
   legacy_u uuid := gen_random_uuid();    -- pre-revision member row (role defaulted to viewer)
   fake_admin uuid := gen_random_uuid();  -- anonymous session carrying an admin email
   linker uuid := gen_random_uuid();      -- password account with the admin's email, linked to someone else's Google (migration 23)
+  namer uuid := gen_random_uuid();       -- anonymous joiner who names themselves like an existing traveler (migration 27)
   unverified uuid := gen_random_uuid();  -- Google identity with the admin's email but email_verified = false (migration 23)
   trip_a uuid;
   trip_old uuid;
@@ -42,8 +43,11 @@ declare
     'transfers', 'stays', 'hotel_ideas', 'food_places', 'menu_items', 'attractions', 'packing_items', 'gifts', 'reminders'];
 
   -- claims builder
-  c_owner text; c_other text; c_viewer text; c_stranger text; c_legacy text; c_fake text; c_linker text; c_unverified text;
+  c_owner text; c_other text; c_viewer text; c_stranger text; c_legacy text; c_fake text; c_linker text; c_unverified text; c_namer text;
 begin
+  c_namer := json_build_object('sub', namer, 'role', 'authenticated', 'is_anonymous', true,
+    'user_metadata', json_build_object('full_name', 'AQ'),
+    'app_metadata', json_build_object('provider', 'anonymous', 'providers', json_build_array('anonymous')))::text;
   c_linker := json_build_object('sub', linker, 'role', 'authenticated', 'email', 'rls-owner@test.local',
     'is_anonymous', false, 'app_metadata', json_build_object('provider', 'email', 'providers', json_build_array('email', 'google')))::text;
   c_unverified := json_build_object('sub', unverified, 'role', 'authenticated', 'email', 'rls-owner@test.local',
@@ -64,7 +68,7 @@ begin
   insert into auth.users (id, instance_id, aud, role, is_anonymous, created_at, updated_at)
   select u, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', anon, now(), now()
   from (values (owner_u, false), (other_g, false), (viewer_u, true), (stranger, true), (legacy_u, true), (fake_admin, true),
-               (linker, false), (unverified, false)) v(u, anon);
+               (linker, false), (unverified, false), (namer, true)) v(u, anon);
   insert into public.app_admins (email) values ('rls-owner@test.local');
   -- Google identities, as GoTrue stores them. is_admin() reads these, not the JWT's own email claim.
   insert into auth.identities (id, user_id, identity_data, provider, provider_id, created_at, updated_at)
@@ -1350,6 +1354,26 @@ begin
     failures := failures || 'a removed editor could still add a traveler after rejoining'::text;
   exception when insufficient_privilege then null; end;
   reset role;
+
+  -- migration 27: place-coordinate purge is an owner chore; a joiner cannot take another traveler's name
+  perform set_config('request.jwt.claims', c_owner, true);
+  set local role authenticated;
+  checks := checks + 1;
+  begin perform public.purge_stale_place_coords(); exception when insufficient_privilege then failures := failures || 'the owner could not run the coordinate purge'::text; end;
+  reset role;
+  perform set_config('request.jwt.claims', c_other, true);
+  set local role authenticated;
+  checks := checks + 1;
+  begin perform public.purge_stale_place_coords(); failures := failures || 'a non-admin ran the coordinate purge'::text;
+  exception when insufficient_privilege then null; end;
+  reset role;
+  perform set_config('request.jwt.claims', c_namer, true);
+  set local role authenticated;
+  perform public.join_trip(tok2);
+  reset role;
+  checks := checks + 1;
+  select name into r from public.travelers where trip_id = trip_a and user_id = namer;
+  if r is distinct from 'AQ (2)' then failures := failures || format('a joiner named like an existing traveler got %L, expected AQ (2)', r); end if;
 
   -- migration 26: one trip holds at most 300 photos (the project's storage is shared)
   perform set_config('request.jwt.claims', c_owner, true);

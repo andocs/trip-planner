@@ -11,6 +11,13 @@ const securityHeaders = [
 
 // Where the browser may talk to. Supabase's address comes from the environment (the e2e tests use a fake one).
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
+const supabaseOrigin = (() => {
+  try {
+    return new URL(supabaseUrl).origin;
+  } catch {
+    return "";
+  }
+})();
 const supabaseHosts = (() => {
   try {
     const u = new URL(supabaseUrl);
@@ -24,19 +31,23 @@ const google = "https://*.googleapis.com https://*.gstatic.com https://*.google.
 const devEval = process.env.NODE_ENV === "production" ? "" : " 'unsafe-eval'";
 
 /**
- * ENFORCED: the directives that cannot break a page (no framing, no plugins, no <base> tricks, forms stay on-site).
- * REPORT-ONLY: the full policy. It shows violations in the browser console without blocking anything. After a
- * deploy, open every screen (especially Itinerary with the map), and when the console is quiet, move these
- * directives into the enforced header. Not verified against the real Google Maps scripts.
+ * The Content-Security-Policy, enforced. It ran in report-only mode first and was checked against the real Google
+ * Maps scripts (2026-11-19). If a new third-party script or host is added, a violation now BLOCKS it: add the host
+ * here. To investigate without blocking, temporarily send this value as Content-Security-Policy-Report-Only.
+ * e2e/security-headers.spec.ts fails if one of our own screens logs a violation.
  */
-const enforcedCsp = "frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'";
-const fullCsp = [
+const csp = [
+  "frame-ancestors 'none'",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
   "default-src 'self'",
   // Next and the theme script are inline (a nonce setup would replace 'unsafe-inline'). 'wasm-unsafe-eval' lets the
   // Google Maps script compile its WebAssembly; it does NOT allow evaluating strings. Our own bundle has no WebAssembly.
   `script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'${devEval} ${google}`,
   `connect-src 'self' data: ${supabaseHosts} ${google}`, // data: is used by the Google Maps label worker
-  "img-src 'self' data: blob: https:", // photos can come from any https site the owner pasted
+  // Photos can come from any https site the owner pasted; the Supabase origin is named so signed links work over http in tests.
+  `img-src 'self' data: blob: https: ${supabaseOrigin}`,
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' data: https://fonts.gstatic.com",
   "worker-src 'self' blob:",
@@ -62,8 +73,7 @@ const nextConfig: NextConfig = {
         source: "/:path*",
         headers: [
           ...securityHeaders,
-          { key: "Content-Security-Policy", value: enforcedCsp },
-          { key: "Content-Security-Policy-Report-Only", value: fullCsp },
+          { key: "Content-Security-Policy", value: csp },
         ],
       },
     ];

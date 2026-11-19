@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { daysBetween } from "./calc";
 import { formatDay } from "./format";
-import { CANCELLATION, compact } from "./idea-details";
+import { compact, link, stayCommon } from "./idea-details";
 
 /**
  * Extra facts about a booked stay, kept in `stays.details` (a small JSON object, like the idea details).
@@ -9,16 +9,14 @@ import { CANCELLATION, compact } from "./idea-details";
  * Pure: no React, no network. `today` is passed in so server and browser render the same words.
  */
 export const stayRecordDetails = z.object({
-  cancellation: z.enum(CANCELLATION).optional(),
+  ...stayCommon,
   /** Last day the booking can be cancelled for free (YYYY-MM-DD). */
   freeUntil: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-  checkInTime: z.string().regex(/^\d{2}:\d{2}$/).optional(),
-  breakfast: z.boolean().optional(),
   /** The board idea this stay was confirmed from (hotel_ideas.id), so the two stay one stay. */
   ideaId: z.string().uuid().optional(),
   /** The stay's own website and its Google Maps link (plain browser links). */
-  website: z.string().trim().max(500).regex(/^https?:\/\/[^\s]+$/i).optional(),
-  mapsUrl: z.string().trim().max(500).regex(/^https?:\/\/[^\s]+$/i).optional(),
+  website: link.optional(),
+  mapsUrl: link.optional(),
 });
 export type StayRecordDetails = z.infer<typeof stayRecordDetails>;
 

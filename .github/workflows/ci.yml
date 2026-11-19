@@ -35,7 +35,7 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm run lint
-      - run: npm test
+      - run: npm run test:coverage
       - run: npm run build
       # Fails if a server-only Google key or the service-role key ended up in the browser bundles.
       - run: npm run check:secrets -- --require-build
