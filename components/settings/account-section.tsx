@@ -7,6 +7,7 @@ import { useRole } from "@/components/trip-gate";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { useUser } from "@/lib/queries/trip";
+import { useClientValue } from "@/lib/use-client-value";
 import { linkGoogle } from "@/lib/supabase/client";
 import { errorMessage } from "@/lib/utils";
 
@@ -14,7 +15,9 @@ import { errorMessage } from "@/lib/utils";
 export function AccountSection() {
   const user = useUser().data;
   const role = useRole();
-  if (!user) return null;
+  // The signed-in user is only known to the browser while a streamed page hydrates, so the card appears once it is live.
+  const live = useClientValue(() => true, false);
+  if (!live || !user) return null;
 
   async function keepAccess() {
     try {

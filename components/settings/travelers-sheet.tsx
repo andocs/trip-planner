@@ -10,7 +10,7 @@ import { Field, Input } from "@/components/ui/field";
 import { useGuests, useRemoveGuestAccess, useSetMemberRole } from "@/lib/queries/guests";
 import { RowSheet } from "@/components/ui/row-sheet";
 import { newId, useDeleteRow, useInsertRow, useUpdateRow, type Row } from "@/lib/queries/table";
-import { PaymentSchema, parsePayment, toPayment } from "@/lib/payment";
+import { METHODS, PaymentSchema, parsePayment, toPayment } from "@/lib/payment";
 import { requiredText } from "@/lib/schemas";
 import { useSheet } from "@/lib/use-sheet";
 
@@ -30,18 +30,18 @@ export function TravelerSheet({ sheet, sort }: { sheet: ReturnType<typeof useShe
   useEffect(() => {
     if (sheet.open) {
       const pay = parsePayment(sheet.row?.payment);
-      reset({ name: sheet.row?.name ?? "", paypal: pay?.paypal ?? "", venmo: pay?.venmo ?? "", other: pay?.other ?? "" });
+      reset({ name: sheet.row?.name ?? "", gcash: pay?.gcash ?? "", maya: pay?.maya ?? "", maribank: pay?.maribank ?? "", qrph: pay?.qrph ?? "", other: pay?.other ?? "" });
     }
   }, [sheet.open, sheet.row, reset]);
 
-  const onSubmit = handleSubmit(({ name, paypal, venmo, other }) => {
-    const payment = toPayment({ paypal, venmo, other });
+  const onSubmit = handleSubmit(({ name, ...methods }) => {
+    const payment = toPayment(methods);
     if (sheet.row) {
       update.mutate({ id: sheet.row.id, patch: { name, payment } });
       sheet.close();
     } else {
       insert.mutate([{ id: newId(), name, sort, payment }]);
-      reset({ name: "", paypal: "", venmo: "", other: "" });
+      reset({ name: "", gcash: "", maya: "", maribank: "", qrph: "", other: "" });
       setFocus("name");
     }
   });
@@ -71,16 +71,12 @@ export function TravelerSheet({ sheet, sort }: { sheet: ReturnType<typeof useShe
       </Field>
       <div className="mt-4 space-y-3">
         <p className="text-sm font-semibold">How to pay {sheet.row?.name ?? "them"} back</p>
-        <p className="text-[13px] text-fg-muted">Shown to everyone on the trip in Settle up. Never put a card number or password here.</p>
-        <Field label="PayPal.Me name" error={formState.errors.paypal?.message}>
-          {(p) => <Input {...p} {...register("paypal")} autoComplete="off" placeholder="yourname" />}
-        </Field>
-        <Field label="Venmo name" hint="Venmo links appear when the trip is in US dollars." error={formState.errors.venmo?.message}>
-          {(p) => <Input {...p} {...register("venmo")} autoComplete="off" placeholder="yourname" />}
-        </Field>
-        <Field label="Anything else" hint="For example GCash 0917 123 4567. It gets a copy button." error={formState.errors.other?.message}>
-          {(p) => <Input {...p} {...register("other")} autoComplete="off" />}
-        </Field>
+        <p className="text-[13px] text-fg-muted">Shown to everyone on the trip in Settle up, with a copy button. Numbers only: never a PIN, password or card number.</p>
+        {METHODS.map((m) => (
+          <Field key={m.key} label={m.label} hint={m.hint} error={formState.errors[m.key]?.message}>
+            {(p) => <Input {...p} {...register(m.key)} autoComplete="off" />}
+          </Field>
+        ))}
       </div>
       {guest && (
         <div className="mt-4 space-y-2 rounded-2xl bg-surface-2 p-3.5">

@@ -109,14 +109,11 @@ function TripGateInner({ children, prefetched, boot }: { children: ReactNode; pr
     case "no-access":
       return <NoAccess email={access.email} />;
     case "ready":
-      // The key makes the screen mount afresh once the page is live, on purpose (the old gate did this too, by accident of
-      // having two component types). Parts of a streamed page hydrate AFTER the first effects, reading the browser's cache
-      // instead of what the server sent, and several screens still do (Settings' time zone labels and Account card were
-      // caught in a real-build test). Mounting afresh renders them in the browser instead of comparing them with the HTML,
-      // so nothing is reported. Removing the key is possible, but only after each screen is made hydration-safe:
-      // run `npm run check:real-build` with it removed to see what is left.
+      // No remount key: every screen hydrates against the server HTML. Anything that only the browser knows (today's date,
+      // the signed-in user) must go through useClientValue, or it is reported as a hydration mismatch. After touching a
+      // screen, the gate or the prefetch, run `npm run check:real-build` (owner and viewer, every main screen).
       return (
-        <TripShell key={mounted ? "live" : "snapshot"} trip={access.trip} role={access.role} canEdit={access.canEdit}>
+        <TripShell trip={access.trip} role={access.role} canEdit={access.canEdit}>
           {children}
         </TripShell>
       );
