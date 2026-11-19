@@ -155,7 +155,9 @@ test("owner: paste a link, see the picture, add it with a credit", async ({ page
   });
   expect(calls.linkCalls).toBe(1);
 
-  // The card now has a cover that says where it came from.
+  // The card now has a cover that says where it came from. Escape closes the TOPMOST dialog, so wait for the
+  // "Add a photo" one to finish closing first, or on a slow machine Escape closes it and the place sheet stays open.
+  await expect(add).toBeHidden();
   await page.keyboard.press("Escape");
   const card = page.getByRole("article", { name: CARD });
   await expect(card.getByRole("img", { name: `Photo of ${CARD}` })).toBeVisible();
@@ -215,6 +217,7 @@ test("owner: an upload is shrunk to 1280 px before it leaves the phone, then sho
   expect(calls.uploads[0].h).toBe(960);
   expect(calls.uploads[0].bytes).toBeLessThan(big.length);
 
+  await expect(add).toBeHidden(); // see the note in the link test: Escape closes the topmost dialog
   await page.keyboard.press("Escape");
   await expect(page.getByRole("article", { name: CARD }).getByRole("img", { name: `Photo of ${CARD}` })).toBeVisible();
   await expect(page.getByRole("article", { name: CARD }).getByText("Uploaded")).toBeVisible();

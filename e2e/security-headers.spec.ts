@@ -1,17 +1,18 @@
 import { expect, test } from "@playwright/test";
 import { createFakeSupabase } from "./fake-supabase";
 
-test("pages carry the security headers, with the full CSP in report-only mode", async ({ page }) => {
+test("pages carry the security headers, with the full CSP enforced", async ({ page }) => {
   await createFakeSupabase({ withSeed: true }).install(page);
   const res = await page.goto("/");
   const h = res!.headers();
   expect(h["strict-transport-security"]).toContain("max-age=");
   expect(h["x-frame-options"]).toBe("DENY");
-  expect(h["content-security-policy"]).toContain("frame-ancestors 'none'");
-  expect(h["content-security-policy"]).toContain("object-src 'none'");
-  const report = h["content-security-policy-report-only"];
-  expect(report).toContain("default-src 'self'");
-  expect(report).toContain("fake.supabase.test"); // the Supabase address comes from the environment
+  const csp = h["content-security-policy"];
+  expect(csp).toContain("frame-ancestors 'none'");
+  expect(csp).toContain("object-src 'none'");
+  expect(csp).toContain("default-src 'self'");
+  expect(csp).toContain("fake.supabase.test"); // the Supabase address comes from the environment
+  expect(h["content-security-policy-report-only"]).toBeUndefined();
 });
 
 test("API POSTs from another site are refused", async ({ page }) => {

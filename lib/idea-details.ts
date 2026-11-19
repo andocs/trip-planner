@@ -40,7 +40,14 @@ export const SETTING = ["indoor", "outdoor", "both"] as const;
 
 const text = (n: number) => z.string().trim().min(1).max(n);
 const day = z.number().int().min(-30).max(365);
-const link = z.string().trim().max(500).regex(/^https?:\/\/[^\s]+$/i);
+/** A plain http(s) link, trimmed and short. Also used by the booked-stay record. */
+export const link = z.string().trim().max(500).regex(/^https?:\/\/[^\s]+$/i);
+/** What a stay has both as a board idea and as a booked record (lib/stay-details.ts), defined once. */
+export const stayCommon = {
+  cancellation: z.enum(CANCELLATION).optional(),
+  checkInTime: z.string().regex(/^\d{2}:\d{2}$/).optional(),
+  breakfast: z.boolean().optional(),
+};
 const shared = {
   unit: z.enum(UNITS).optional(),
   currency: z.string().regex(/^[A-Z]{3}$/).optional(),
@@ -55,12 +62,10 @@ export const stayDetails = z.object({
   pricePerNight: z.number().min(0).optional(),
   checkInDay: day.optional(),
   checkOutDay: day.optional(),
-  checkInTime: z.string().regex(/^\d{2}:\d{2}$/).optional(),
+  ...stayCommon,
   rooms: text(60).optional(),
   maxGuests: z.number().int().min(1).max(50).optional(),
-  cancellation: z.enum(CANCELLATION).optional(),
   freeUntilDay: day.optional(),
-  breakfast: z.boolean().optional(),
   amenities: z.array(z.enum(AMENITIES)).max(10).optional(),
   nearby: text(120).optional(),
   booking: z.enum(BOOKING).optional(),
