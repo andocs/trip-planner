@@ -72,14 +72,19 @@ async function main() {
   let server: ChildProcess | undefined;
   try {
     tripId = (await owner.rpc("create_trip", { p_name: "Real build check" })).data as string;
-    await admin.from("trips").update({ status: "active", start_date: "2026-06-16", end_date: "2026-06-20" }).eq("id", tripId);
+    // Dates relative to today: day 1 is inside the forecast reach, day 40 is far beyond it ("usually", from last year).
+    const iso = (n: number) => new Date(Date.now() + n * 86_400_000).toISOString().slice(0, 10);
+    await admin.from("trips").update({ status: "active", start_date: iso(2), end_date: iso(6) }).eq("id", tripId);
     const must = (r: { error: { message: string } | null }, what: string) => {
       if (r.error) throw new Error(`${what}: ${r.error.message}`);
     };
     must(await owner.from("itinerary_items").insert([
-      { id: randomUUID(), trip_id: tripId, activity: "Real stop one", day: 1, kind: "stop", position: 1000 },
-      { id: randomUUID(), trip_id: tripId, activity: "Real stop two", day: 1, kind: "stop", position: 2000 },
+      { id: randomUUID(), trip_id: tripId, activity: "Real stop one", day: 1, kind: "stop", position: 1000, city: "London" },
+      { id: randomUUID(), trip_id: tripId, activity: "Real stop two", day: 1, kind: "stop", position: 2000, city: "London" },
+      { id: randomUUID(), trip_id: tripId, activity: "Far stop", day: 40, kind: "stop", position: 1000, city: "London" },
     ]), "itinerary");
+    // Neutral coordinates (London): this check really calls the weather service, so it must not send anyone's real trip.
+    must(await owner.from("destinations").insert({ id: randomUUID(), trip_id: tripId, city: "London", country: "UK", nights: 5, lat: 51.51, lng: -0.13, sort: 0 }), "destination");
     must(await owner.from("hotel_ideas").insert({ id: randomUUID(), trip_id: tripId, hotel: "Real Inn", decision: "confirmed", is_stay: true, check_in: "2026-06-16", check_out: "2026-06-18", stay_status: "Booked" }), "stay");
 
     // a viewer who joined by the invite link, and a stranger who signed in as a guest but never joined
@@ -138,6 +143,11 @@ async function main() {
       await page.goto(`${BASE}/itinerary`);
       await see(page, "Real stop one");
       console.log("owner: plan visible on every screen");
+      phase = "owner weather";
+      await page.goto(BASE + "/itinerary");
+      await page.getByRole("img", { name: /^Weather: (?!Usually)/ }).first().waitFor({ timeout: 40_000 });
+      await page.getByRole("img", { name: /^Weather: Usually/ }).first().waitFor({ timeout: 40_000 });
+      console.log("owner: a real forecast and a real 'usually' day from the weather service");
 
       // offline reload: service worker + the saved copy
       await page.evaluate(() => navigator.serviceWorker.ready.then(() => true));
@@ -194,6 +204,7 @@ async function main() {
       await page.goto(`${BASE}/itinerary`);
       await see(page, "Real stop one");
       await see(page, "View only");
+      await page.getByRole("img", { name: /^Weather:/ }).first().waitFor({ timeout: 40_000 });
       await sleep(1500);
       console.log("viewer: sees the plan and the View only banner");
       await context.close();
@@ -204,6 +215,8 @@ async function main() {
       const { context, page } = await open(ss.data.session);
       await page.goto(`${BASE}/itinerary`);
       await see(page, "No access yet");
+      const refused = await page.request.get(`${BASE}/api/weather?lat=51.51&lng=-0.13&from=${iso(2)}&to=${iso(3)}`);
+      if (refused.status() !== 401) throw new Error(`a guest who never joined got ${refused.status()} from /api/weather, expected 401`);
       await sleep(1500);
       console.log("stranger: sees No access yet");
       await context.close();
@@ -214,6 +227,8 @@ async function main() {
       const { context, page } = await open(null);
       await page.goto(`${BASE}/itinerary`);
       await see(page, "Invite only");
+      const refused = await page.request.get(`${BASE}/api/weather?lat=51.51&lng=-0.13&from=${iso(2)}&to=${iso(3)}`);
+      if (refused.status() !== 401) throw new Error(`a signed-out visitor got ${refused.status()} from /api/weather, expected 401`);
       await sleep(1500);
       console.log("signed out: sees Invite only");
       await context.close();

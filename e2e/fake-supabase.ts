@@ -648,6 +648,9 @@ export function createFakeSupabase(
           body: res.body === undefined ? "" : JSON.stringify(res.body),
         });
       });
+      // The itinerary asks our own /api/weather. The real route would try to reach this fake Supabase from the server (it
+      // cannot) and hang, so by default it answers with no weather; e2e/weather.spec.ts replaces this with real-looking days.
+      await page.route("**/api/weather**", (route: Route) => route.fulfill({ json: { days: [] } }));
       // Photo links in the fixtures point at example.com. Serve a pixel so the tests never depend on the network:
       // an unreachable host fails at once on a CI runner, and the photo then falls back to its placeholder.
       await page.route("**://example.com/**", (route: Route) => route.fulfill({ body: PIXEL_PNG, contentType: "image/png" }));
