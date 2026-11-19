@@ -14,6 +14,7 @@ import { buildSeedPlan, INSERT_ORDER } from "../lib/seed-map";
  * the real policies are proven in supabase/tests/rls_check.sql.
  */
 export const FAKE_URL = "http://fake.supabase.test";
+const PIXEL_PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg==", "base64");
 
 type Row = Record<string, unknown> & { id: string };
 export type FakeRequest = { method: string; url: string; body?: unknown; size?: number };
@@ -607,6 +608,9 @@ export function createFakeSupabase(
           body: res.body === undefined ? "" : JSON.stringify(res.body),
         });
       });
+      // Photo links in the fixtures point at example.com. Serve a pixel so the tests never depend on the network:
+      // an unreachable host fails at once on a CI runner, and the photo then falls back to its placeholder.
+      await page.route("**://example.com/**", (route: Route) => route.fulfill({ body: PIXEL_PNG, contentType: "image/png" }));
       await page.routeWebSocket(/fake\.supabase\.test\/realtime/, onSocket);
     },
   };
