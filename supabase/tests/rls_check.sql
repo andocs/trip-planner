@@ -1448,10 +1448,9 @@ begin
   checks := checks + 1;
   select count(*) into n from public.expenses where description = 'Stay: Merged Inn' and source_id is null and source_table is null;
   if n <> 1 then failures := failures || 'deleting the idea did not release the expense that was logged from it'::text; end if;
-  -- the old table is out of reach for everyone
+  -- the old table is gone (migration 33)
   checks := checks + 1;
-  begin perform 1 from public.stays_retired; failures := failures || 'the retired stays table is still readable'::text;
-  exception when insufficient_privilege then null; end;
+  if to_regclass('public.stays_retired') is not null then failures := failures || 'the retired stays table still exists'::text; end if;
   checks := checks + 1;
   if to_regclass('public.stays') is not null then failures := failures || 'a table called stays still exists'::text; end if;
   reset role;

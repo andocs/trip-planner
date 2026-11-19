@@ -118,6 +118,7 @@ export type Database = {
           created_at: string
           id: string
           name: string
+          payment: Json | null
           sort: number
           trip_id: string
           user_id: string | null
@@ -126,6 +127,7 @@ export type Database = {
           created_at?: string
           id?: string
           name: string
+          payment?: Json | null
           sort?: number
           trip_id: string
           user_id?: string | null
@@ -134,6 +136,7 @@ export type Database = {
           created_at?: string
           id?: string
           name?: string
+          payment?: Json | null
           sort?: number
           trip_id?: string
           user_id?: string | null
