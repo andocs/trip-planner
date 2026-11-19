@@ -7,7 +7,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { Card, CardTitle } from "@/components/ui/card";
 import type { Settlement } from "@/lib/calc";
 import { formatMoney } from "@/lib/format";
-import { parsePayment, payLinks, type Payment } from "@/lib/payment";
+import { parsePayment, payLines, type Payment } from "@/lib/payment";
 import { useRows } from "@/lib/queries/table";
 import { cn } from "@/lib/utils";
 
@@ -37,55 +37,44 @@ export function TransfersList({ settlement }: { settlement: Settlement }) {
             <span className="font-semibold">{t.to.name}</span>
             <span className="ml-auto font-bold tabular-nums">{formatMoney(t.amount, trip.home_currency)}</span>
           </div>
-          <PayHow payment={payments.get(t.to.id) ?? null} to={t.to.name} amount={t.amount} currency={trip.home_currency} tripName={trip.name} />
+          <PayHow payment={payments.get(t.to.id) ?? null} to={t.to.name} />
         </li>
       ))}
     </ul>
   );
 }
 
-/** How to pay this person: links that open the payment app with the amount filled in, and their own words to copy. */
-function PayHow({ payment, to, amount, currency, tripName }: { payment: Payment | null; to: string; amount: number; currency: string; tripName: string }) {
-  const [copied, setCopied] = useState(false);
-  if (!payment) return null;
-  const links = payLinks(payment, amount, currency, `${tripName} (settle up)`);
-  const copy = () => {
-    void navigator.clipboard?.writeText(payment.other ?? "").then(
+/** How to pay this person: each method they use, with a copy button. */
+function PayHow({ payment, to }: { payment: Payment | null; to: string }) {
+  const [copied, setCopied] = useState<string | null>(null);
+  const lines = payLines(payment);
+  if (lines.length === 0) return null;
+  const copy = (key: string, value: string) => {
+    void navigator.clipboard?.writeText(value).then(
       () => {
-        setCopied(true);
-        setTimeout(() => setCopied(false), 1500);
+        setCopied(key);
+        setTimeout(() => setCopied((c) => (c === key ? null : c)), 1500);
       },
       () => {},
     );
   };
   return (
-    <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
-      {links.map((l) => (
-        <a
-          key={l.label}
-          href={l.href}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex min-h-9 items-center rounded-full border border-border bg-surface px-3 font-semibold text-teal"
-          aria-label={`Pay ${to} with ${l.label}`}
-        >
-          {l.label}
-        </a>
-      ))}
-      {payment.other && (
-        <span className="flex min-w-0 items-center gap-1.5 text-fg-muted">
-          <span className="truncate">{payment.other}</span>
+    <ul className="mt-1.5 space-y-0.5 text-sm">
+      {lines.map((l) => (
+        <li key={l.key} className="flex items-center gap-1.5 text-fg-muted">
+          <span className="w-24 shrink-0 font-semibold text-fg">{l.label}</span>
+          <span className="min-w-0 flex-1 truncate">{l.value}</span>
           <button
             type="button"
-            onClick={copy}
+            onClick={() => copy(l.key, l.value)}
             className="inline-flex size-9 shrink-0 items-center justify-center rounded-full hover:bg-surface"
-            aria-label={`Copy ${to}'s payment details`}
+            aria-label={`Copy ${to}'s ${l.label} details`}
           >
-            {copied ? <Check className="size-4" aria-hidden /> : <Copy className="size-4" aria-hidden />}
+            {copied === l.key ? <Check className="size-4" aria-hidden /> : <Copy className="size-4" aria-hidden />}
           </button>
-        </span>
-      )}
-    </div>
+        </li>
+      ))}
+    </ul>
   );
 }
 

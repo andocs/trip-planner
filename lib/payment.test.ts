@@ -1,43 +1,38 @@
 import { describe, expect, it } from "vitest";
-import { normalizePaypal, normalizeVenmo, parsePayment, payLinks, PaymentSchema, toPayment } from "./payment";
+import { parsePayment, payLines, PaymentSchema, toPayment } from "./payment";
 
-describe("handles", () => {
-  it("accepts a pasted link or @name", () => {
-    expect(normalizePaypal("https://www.paypal.me/jam/20")).toBe("jam");
-    expect(normalizePaypal("@jam")).toBe("jam");
-    expect(normalizeVenmo("https://venmo.com/u/jam-d?x=1")).toBe("jam-d");
-    expect(normalizeVenmo("@jam_d")).toBe("jam_d");
+describe("validation", () => {
+  it("accepts phone and account numbers with the usual punctuation", () => {
+    expect(PaymentSchema.safeParse({ gcash: "0917 123 4567", maya: "+63 917-123-4567", maribank: "1234567890" }).success).toBe(true);
   });
-  it("refuses odd characters", () => {
-    expect(PaymentSchema.safeParse({ paypal: "a b" }).success).toBe(false);
-    expect(PaymentSchema.safeParse({ venmo: "x".repeat(31) }).success).toBe(false);
-    expect(PaymentSchema.safeParse({ other: "line\nbreak" }).success).toBe(false);
-    expect(PaymentSchema.safeParse({ other: "x".repeat(121) }).success).toBe(false);
+  it("refuses letters and absurd lengths in number fields", () => {
+    expect(PaymentSchema.safeParse({ gcash: "call me" }).success).toBe(false);
+    expect(PaymentSchema.safeParse({ maya: "123" }).success).toBe(false);
+    expect(PaymentSchema.safeParse({ maribank: "1".repeat(25) }).success).toBe(false);
+  });
+  it("bounds free text and refuses line breaks", () => {
+    expect(PaymentSchema.safeParse({ qrph: "x".repeat(121) }).success).toBe(false);
+    expect(PaymentSchema.safeParse({ other: "a\nb" }).success).toBe(false);
   });
 });
 describe("storage", () => {
   it("drops empty fields and returns null when nothing is left", () => {
-    expect(toPayment({ paypal: "  ", other: "" })).toBeNull();
-    expect(toPayment({ paypal: "jam", other: " GCash 0917 " })).toEqual({ paypal: "jam", other: "GCash 0917" });
+    expect(toPayment({ gcash: "  ", other: "" })).toBeNull();
+    expect(toPayment({ gcash: " 0917 123 4567 ", qrph: "Ana S." })).toEqual({ gcash: "0917 123 4567", qrph: "Ana S." });
   });
-  it("reads the column defensively", () => {
+  it("reads the column defensively, dropping anything old, unknown or invalid", () => {
     expect(parsePayment(null)).toBeNull();
     expect(parsePayment([1])).toBeNull();
-    expect(parsePayment({ paypal: 5, evil: "<script>" })).toBeNull();
-    expect(parsePayment({ paypal: "jam", extra: 1 })).toEqual({ paypal: "jam" });
-    expect(parsePayment({ venmo: "bad name!" })).toBeNull();
+    expect(parsePayment({ paypal: "ana", venmo: "ana" })).toBeNull(); // the earlier version's keys
+    expect(parsePayment({ gcash: "0917 123 4567", evil: "<script>", maya: "nope" })).toEqual({ gcash: "0917 123 4567" });
   });
 });
-describe("payLinks", () => {
-  it("fills in amount and currency", () => {
-    expect(payLinks({ paypal: "jam" }, 12.345, "php", "Trip")).toEqual([{ label: "PayPal", href: "https://paypal.me/jam/12.35PHP" }]);
-  });
-  it("offers Venmo only in dollars", () => {
-    expect(payLinks({ venmo: "jam" }, 5, "php", "Trip")).toEqual([]);
-    expect(payLinks({ venmo: "jam" }, 5, "usd", "Hanoi trip")[0].href).toBe("https://venmo.com/jam?txn=pay&amount=5.00&note=Hanoi%20trip");
-  });
-  it("offers nothing for no amount or no handles", () => {
-    expect(payLinks({ paypal: "jam" }, 0, "usd", "")).toEqual([]);
-    expect(payLinks(null, 10, "usd", "")).toEqual([]);
+describe("payLines", () => {
+  it("lists the filled-in methods in a fixed order", () => {
+    expect(payLines({ other: "BDO 123", gcash: "0917 123 4567" })).toEqual([
+      { key: "gcash", label: "GCash", value: "0917 123 4567" },
+      { key: "other", label: "Anything else", value: "BDO 123" },
+    ]);
+    expect(payLines(null)).toEqual([]);
   });
 });
