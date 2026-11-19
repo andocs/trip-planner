@@ -94,11 +94,15 @@ function TripGateInner({ children, prefetched, boot }: { children: ReactNode; pr
   const snap = !mounted && boot ? boot : null;
   if (snap) return <Ready boot={snap}>{children}</Ready>;
 
-  if (user.isError) return <ErrorState message={errorMessage(user.error)} onRetry={() => user.refetch()} />;
-  if (!user.isSuccess) return <PageSkeleton />;
+  // An answer we already hold (loaded earlier, or the offline copy) beats a failed refresh: a failed refetch must not
+  // replace a working screen with an error. Only "no answer at all" is an error or a skeleton.
+  const userKnown = user.data !== undefined;
+  const tripKnown = trip.data !== undefined;
+  if (user.isError && !userKnown) return <ErrorState message={errorMessage(user.error)} onRetry={() => user.refetch()} />;
+  if (!user.isSuccess && !userKnown) return <PageSkeleton />;
   if (!user.data) return <InviteOnly />;
-  if (trip.isError) return <ErrorState message={errorMessage(trip.error)} onRetry={() => trip.refetch()} />;
-  if (!trip.isSuccess || (!user.data.isAnonymous && !admin.isFetched)) return <PageSkeleton />;
+  if (trip.isError && !tripKnown) return <ErrorState message={errorMessage(trip.error)} onRetry={() => trip.refetch()} />;
+  if ((!trip.isSuccess && !tripKnown) || (!user.data.isAnonymous && !admin.isFetched && admin.data === undefined)) return <PageSkeleton />;
 
   if (!trip.data) {
     return admin.data ? <OwnerWithoutTrip /> : <NoAccess email={user.data.email} />;

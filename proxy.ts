@@ -61,6 +61,7 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|icons/|manifest.webmanifest|api/|.*\\.(?:png|svg|ico|webp|jpg)$).*)",
+    // sw.js and offline.html are static files with no data: the gate must not rewrite them (a service worker script must be JavaScript).
+    "/((?!_next/static|_next/image|favicon.ico|icons/|manifest.webmanifest|sw.js|offline.html|api/|.*\\.(?:png|svg|ico|webp|jpg)$).*)",
   ],
 };

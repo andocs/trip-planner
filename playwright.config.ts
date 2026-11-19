@@ -19,6 +19,9 @@ export default defineConfig({
     browserName: "chromium",
     viewport: { width: 390, height: 844 },
     trace: "retain-on-failure",
+    // The production build registers a service worker (offline mode). Every test runs without it, so a worker can never
+    // change what a test sees; e2e/offline.spec.ts switches it back on.
+    serviceWorkers: "block",
   },
   webServer: {
     command: `npx next build && npx next start -p ${PORT}`,
