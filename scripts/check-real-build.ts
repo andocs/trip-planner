@@ -201,12 +201,20 @@ async function main() {
     phase = "viewer";
     {
       const { context, page } = await open(vs.data.session);
+      // every main screen as a viewer too: read-only branches render different trees than the owner's
+      for (const path of ["/", "/stays", "/places", "/flights", "/spend", "/pack", "/settings"]) {
+        phase = `viewer ${path}`;
+        await page.goto(BASE + path);
+        await page.waitForLoadState("networkidle");
+        await sleep(400);
+      }
+      phase = "viewer";
       await page.goto(`${BASE}/itinerary`);
       await see(page, "Real stop one");
       await see(page, "View only");
       await page.getByRole("img", { name: /^Weather:/ }).first().waitFor({ timeout: 40_000 });
       await sleep(1500);
-      console.log("viewer: sees the plan and the View only banner");
+      console.log("viewer: every main screen loads, and the itinerary shows the View only banner");
       await context.close();
     }
 
