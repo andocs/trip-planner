@@ -33,8 +33,10 @@ import { setSearchParam } from "@/lib/tab-param";
 import { cn } from "@/lib/utils";
 import { OtherMenus } from "@/components/places/menu-panel";
 import { openAddIdea } from "./capture-host";
-import { IdeaModal } from "@/components/ideas/idea-modal";
 import { IdeaCard } from "./idea-card";
+
+// Loaded when it is first opened: the sheet and its form code are large and most visits never open it.
+const IdeaModal = dynamic(() => import("@/components/ideas/idea-modal").then((m) => m.IdeaModal), { ssr: false });
 
 const IdeaSheet = dynamic(() => import("./idea-sheet").then((m) => m.IdeaSheet), { ssr: false });
 const NameSheet = dynamic(() => import("./name-sheet").then((m) => m.NameSheet), { ssr: false });
