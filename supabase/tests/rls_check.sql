@@ -1,7 +1,7 @@
 -- RLS proof for the owner / viewer model. Works in the Supabase SQL editor and in local `psql`.
 -- It creates throwaway users, runs every check as each user, and ALWAYS rolls back by raising an
 -- exception at the end. Read the final message: "RLS CHECK PASSED (n checks)" or "RLS CHECK FAILED: ...".
--- Needs migrations 1..29 applied. Does not need any real admin: it inserts a throwaway admin email.
+-- Needs migrations 1..30 applied. Does not need any real admin: it inserts a throwaway admin email.
 
 do $$
 declare
@@ -19,6 +19,9 @@ declare
   trip_old_draft uuid;
   tok text;
   tok2 text;
+  tok_s text;       -- the read-only share token (migration 30)
+  tok_s2 text;
+  shr jsonb;
   item_a uuid;      -- a draft attraction on trip_a
   item_f uuid;      -- a draft food place on trip_a
   item_old uuid;    -- an attraction on another trip (trip_old)
@@ -1404,6 +1407,73 @@ begin
   checks := checks + 1;
   select count(*) into n from information_schema.columns where table_schema = 'public' and table_name = 'flights' and column_name = 'booking_ref';
   if n <> 0 then failures := failures || 'flights still has the old booking_ref column'::text; end if;
+
+  -- migration 30: a read-only share link
+  perform set_config('request.jwt.claims', c_owner, true);
+  set local role authenticated;
+  tok_s := public.create_trip_share(trip_a);
+  checks := checks + 1;
+  if char_length(tok_s) < 36 then failures := failures || 'the share token is too short'::text; end if;
+  insert into public.flights (trip_id, airline, flight_no, from_code, to_code, fare, seat, terminal) values (trip_a, 'ShareAir', 'SA 1', 'MNL', 'HAN', 777123, '31Z', '3');
+  insert into public.stays (trip_id, hotel, city, check_in, check_out, confirmation, total, note) values (trip_a, 'Share Inn', 'Hanoi', current_date, current_date + 2, 'CONF-X9', 555321, 'secret stay note');
+  insert into public.itinerary_items (trip_id, activity, day, kind, note) values (trip_a, 'Share stop', 1, 'stop', 'private itinerary note');
+  checks := checks + 1;
+  select count(*) into n from public.trip_shares where trip_id = trip_a;
+  if n <> 1 then failures := failures || 'the owner could not read the share row'::text; end if;
+  reset role;
+
+  -- nobody but the owner can read it or manage it
+  foreach t in array array['viewer', 'other'] loop
+    perform set_config('request.jwt.claims', case t when 'viewer' then c_viewer else c_other end, true);
+    set local role authenticated;
+    checks := checks + 1;
+    select count(*) into n from public.trip_shares;
+    if n <> 0 then failures := failures || format('a %s could read trip_shares', t); end if;
+    checks := checks + 1;
+    begin perform public.create_trip_share(trip_a); failures := failures || format('a %s created a share link', t);
+    exception when insufficient_privilege then null; end;
+    checks := checks + 1;
+    begin perform public.revoke_trip_share(trip_a); failures := failures || format('a %s stopped sharing', t);
+    exception when insufficient_privilege then null; end;
+    reset role;
+  end loop;
+
+  -- an anonymous visitor with the token sees the fixed slice and nothing private
+  set local role anon;
+  shr := public.shared_trip(tok_s);
+  checks := checks + 1;
+  if shr is null or shr -> 'trip' ->> 'name' is null then failures := failures || 'a valid share token returned nothing'::text; end if;
+  checks := checks + 1;
+  if not (shr::text like '%Share Inn%' and shr::text like '%ShareAir%' and shr::text like '%Share stop%') then failures := failures || 'the shared view is missing the itinerary, flight or stay'::text; end if;
+  checks := checks + 1;
+  if shr::text ~ '777123|31Z|CONF-X9|555321|secret stay note|private itinerary note|join_token|booking_ref' then failures := failures || 'the shared view leaked a private field'::text; end if;
+  checks := checks + 1;
+  if public.shared_trip('not-a-token') is not null or public.shared_trip(repeat('a', 36)) is not null or public.shared_trip(null) is not null then failures := failures || 'a wrong share token returned data'::text; end if;
+  checks := checks + 1;
+  begin perform 1 from public.trip_shares; failures := failures || 'anon could read trip_shares'::text;
+  exception when insufficient_privilege then null; end;
+  checks := checks + 1;
+  begin perform public.create_trip_share(trip_a); failures := failures || 'anon created a share link'::text;
+  exception when insufficient_privilege then null; end;
+  reset role;
+
+  -- replacing the link kills the old one; stopping kills the new one
+  perform set_config('request.jwt.claims', c_owner, true);
+  set local role authenticated;
+  tok_s2 := public.create_trip_share(trip_a);
+  reset role;
+  set local role anon;
+  checks := checks + 1;
+  if tok_s2 = tok_s or public.shared_trip(tok_s) is not null or public.shared_trip(tok_s2) is null then failures := failures || 'replacing the share link did not retire the old one'::text; end if;
+  reset role;
+  perform set_config('request.jwt.claims', c_owner, true);
+  set local role authenticated;
+  perform public.revoke_trip_share(trip_a);
+  reset role;
+  set local role anon;
+  checks := checks + 1;
+  if public.shared_trip(tok_s2) is not null then failures := failures || 'a stopped share link still worked'::text; end if;
+  reset role;
 
   -- migration 26: one trip holds at most 300 photos (the project's storage is shared)
   perform set_config('request.jwt.claims', c_owner, true);

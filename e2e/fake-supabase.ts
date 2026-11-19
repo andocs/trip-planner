@@ -23,9 +23,11 @@ export type FakeResponse = { status: number; body?: unknown; headers?: Record<st
 export type FakeRole = "owner" | "viewer" | "noaccess" | "signedout";
 
 export function createFakeSupabase(
-  opts: { withSeed?: boolean; role?: FakeRole; noTrip?: boolean; failSave?: boolean; draftStep?: number } = {},
+  opts: { withSeed?: boolean; role?: FakeRole; noTrip?: boolean; failSave?: boolean; draftStep?: number; shareToken?: string } = {},
 ) {
   let hasTrip = !opts.noTrip;
+  /** The read-only share token (migration 30); null when sharing is off. */
+  let shareToken: string | null = opts.shareToken ?? null;
   let role: FakeRole = opts.role ?? "owner";
   const wizardSaves: { step: number; patch: Record<string, unknown> }[] = [];
   let finished: { starter: boolean } | null = null;
@@ -195,6 +197,32 @@ export function createFakeSupabase(
     }
     // Deletes place coordinates older than 30 days (a no-op here: the fake never ages rows).
     if (path === "/rest/v1/rpc/purge_stale_place_coords") return json(0);
+    // The read-only share link (migration 30): the owner creates or stops it; anyone with the token reads a fixed slice.
+    if (path === "/rest/v1/rpc/create_trip_share") {
+      if (!isOwner()) return json({ code: "42501", message: "Only the trip owner can share the trip" }, 403);
+      shareToken = "e2e" + Math.random().toString(16).slice(2).padEnd(33, "0").slice(0, 33);
+      return json(shareToken);
+    }
+    if (path === "/rest/v1/rpc/revoke_trip_share") {
+      if (!isOwner()) return json({ code: "42501", message: "Only the trip owner can stop sharing" }, 403);
+      shareToken = null;
+      return { status: 204 };
+    }
+    if (path === "/rest/v1/rpc/shared_trip") {
+      const sent = (req.body as { p_token?: string } | undefined)?.p_token;
+      if (!sent || !shareToken || sent !== shareToken) return json(null);
+      const mine = (t: string) => (tables.get(t) ?? []).filter((r) => r.trip_id === tripId);
+      const pick = (r: Row, keys: string[]) => Object.fromEntries(keys.map((k) => [k, r[k] ?? null]));
+      return json({
+        trip: pick(trip, ["name", "destination", "start_date", "end_date", "timezone"]),
+        itinerary: mine("itinerary_items")
+          .filter((i) => (i.kind ?? "stop") === "stop")
+          .map((i) => pick(i, ["day", "on_date", "at_time", "duration_min", "activity", "city", "type", "tentative"])),
+        flights: mine("flights").map((f) => pick(f, ["airline", "flight_no", "from_code", "to_code", "departs_at", "arrives_at", "dep_tz", "arr_tz", "terminal", "status"])),
+        stays: mine("stays").map((x) => pick(x, ["hotel", "city", "check_in", "check_out"])),
+      });
+    }
+    if (path === "/rest/v1/trip_shares") return json(isOwner() && shareToken ? [{ trip_id: tripId, token: shareToken }] : []);
     if (path === "/rest/v1/rpc/is_admin") return json(isOwner());
     if (path === "/rest/v1/rpc/trip_role")
       return json(role === "owner" ? "owner" : role === "viewer" ? "viewer" : null);
@@ -589,6 +617,9 @@ export function createFakeSupabase(
       return role;
     },
     wizardSaves,
+    get shareToken() {
+      return shareToken;
+    },
     get finished() {
       return finished;
     },
