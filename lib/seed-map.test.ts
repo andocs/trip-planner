@@ -72,7 +72,7 @@ describe("Vietnam '26 seed mapping", () => {
   });
 
   it("turns empty strings into nulls and keeps local flight times", () => {
-    expect(plan.rows.flights[0]).toMatchObject({ booking_ref: null, departs_at: "2026-06-16T22:20", status: "Priced" });
+    expect(plan.rows.flights[0]).toMatchObject({ departs_at: "2026-06-16T22:20", status: "Priced" });
     expect(plan.rows.menu_items[0].price_foreign).toBe(80000);
   });
 });

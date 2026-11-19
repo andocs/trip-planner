@@ -494,7 +494,7 @@ export function createFakeSupabase(
           tables.set(
             "flights",
             (tables.get("flights") ?? []).map((f) =>
-              f.id === gone.flight_id ? { ...f, has_ref: !!f.booking_ref } : f,
+              f.id === gone.flight_id ? { ...f, has_ref: false } : f,
             ),
           );
       }

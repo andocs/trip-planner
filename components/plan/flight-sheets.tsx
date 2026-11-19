@@ -103,8 +103,8 @@ export function FlightSheet({ sheet }: { sheet: ReturnType<typeof useSheet<Fligh
       gate: str(r?.gate),
       seat: str(r?.seat),
       duration: formatDuration(r?.duration_min),
-      // the reference from the owner-only table, or an old one that is still in the flight row
-      booking_ref: (r && byFlight.get(r.id)?.booking_ref) || str(r?.booking_ref),
+      // the reference comes from the owner-only table
+      booking_ref: (r && byFlight.get(r.id)?.booking_ref) || "",
     });
     // byFlight is a fresh Map each render; the form only needs its value when the sheet opens
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -135,8 +135,7 @@ export function FlightSheet({ sheet }: { sheet: ReturnType<typeof useSheet<Fligh
     const patch = { ...rest, duration_min: duration };
     if (sheet.row) {
       const id = sheet.row.id;
-      // an old reference left in the flight row moves to the owner-only table when it is saved
-      update.mutate({ id, patch: sheet.row.booking_ref ? { ...patch, booking_ref: null } : patch });
+      update.mutate({ id, patch });
       saveRef(id, booking_ref);
     } else {
       const id = newId();

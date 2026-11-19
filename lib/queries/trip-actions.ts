@@ -91,6 +91,9 @@ export async function fetchExportData(trip: Trip): Promise<ExportData> {
     }),
   );
   const tables = Object.fromEntries(entries) as Omit<ExportData, "trip">;
+  // Booking references are owner-only: row-level security returns nothing to anyone else, and that is fine here.
+  const refs = await db.from("flight_refs").select("flight_id, booking_ref").eq("trip_id", trip.id);
+  if (!refs.error) tables.flight_refs = refs.data as ExportData["flight_refs"];
   tables.travelers.sort((a, b) => a.sort - b.sort);
   tables.destinations.sort((a, b) => a.sort - b.sort);
   tables.categories.sort((a, b) => a.sort - b.sort);

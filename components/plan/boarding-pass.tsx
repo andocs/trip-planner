@@ -92,10 +92,9 @@ export function BoardingPass({
   const from = f.from_code?.trim() || "???";
   const to = f.to_code?.trim() || "???";
   const label = `${f.from_code ?? "?"} to ${f.to_code ?? "?"} ${f.flight_no ?? ""}`.trim();
-  // Owners see the reference (from flight_refs, or an old one still in the flight row); viewers only learn one exists.
-  const legacy = canEdit ? f.booking_ref : null;
-  const ref = bookingRef ?? legacy;
-  const hidden = !canEdit && (f.has_ref || !!f.booking_ref);
+  // Owners see the reference (from the owner-only flight_refs table); viewers only learn that one exists.
+  const ref = bookingRef;
+  const hidden = !canEdit && f.has_ref;
 
   const body = (
     <>
