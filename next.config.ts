@@ -20,6 +20,8 @@ const supabaseHosts = (() => {
   }
 })();
 const google = "https://*.googleapis.com https://*.gstatic.com https://*.google.com";
+// The dev server evaluates strings (source maps, React's call stacks). A production build must not need this.
+const devEval = process.env.NODE_ENV === "production" ? "" : " 'unsafe-eval'";
 
 /**
  * ENFORCED: the directives that cannot break a page (no framing, no plugins, no <base> tricks, forms stay on-site).
@@ -30,8 +32,10 @@ const google = "https://*.googleapis.com https://*.gstatic.com https://*.google.
 const enforcedCsp = "frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'";
 const fullCsp = [
   "default-src 'self'",
-  `script-src 'self' 'unsafe-inline' ${google}`, // Next and the theme script are inline; a nonce setup would replace this
-  `connect-src 'self' ${supabaseHosts} ${google}`,
+  // Next and the theme script are inline (a nonce setup would replace 'unsafe-inline'). 'wasm-unsafe-eval' lets the
+  // Google Maps script compile its WebAssembly; it does NOT allow evaluating strings. Our own bundle has no WebAssembly.
+  `script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'${devEval} ${google}`,
+  `connect-src 'self' data: ${supabaseHosts} ${google}`, // data: is used by the Google Maps label worker
   "img-src 'self' data: blob: https:", // photos can come from any https site the owner pasted
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' data: https://fonts.gstatic.com",
