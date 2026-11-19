@@ -150,6 +150,8 @@ export function createFakeSupabase(
   /** Display names: the browser's own (null until set) and anyone else who has voted or commented. */
   let myLabel: string | null = isOwner() ? "Jam" : null;
   const others = new Map<string, string | null>();
+  /** Other trips the person is on (an owner of each): for the trip switcher and /t/<id> addresses. */
+  const extraTrips: Row[] = [];
   const IDEA_TABLES = ["hotel_ideas", "food_places", "attractions"];
   /** Photo Storage (private bucket trip-photos): what was uploaded and removed, and a switch to refuse uploads. */
   const storage = {
@@ -173,12 +175,15 @@ export function createFakeSupabase(
       // One call for what active_trip + is_admin + trip_role return separately (see the migration).
       const sub = (name: string, body?: unknown) =>
         respond({ method: "POST", url: `${url.origin}/rest/v1/rpc/${name}`, body }).body;
-      const t = (sub("active_trip") as Row[])[0] ?? null;
+      const asked = (req.body as { p_trip?: string } | undefined)?.p_trip;
+      const extra = asked ? extraTrips.find((x) => x.id === asked) : undefined;
+      const last = (sub("active_trip") as Row[])[0] ?? null;
+      const t = asked ? (asked === trip.id ? last : (extra ?? null)) : last;
       return json({
         user: { id: userId, email: isOwner() ? "owner@test.local" : null, is_anonymous: !isOwner() },
         trip: t,
         is_admin: isOwner(),
-        role: t ? sub("trip_role", { t: t.id }) : null,
+        role: t ? (extra && t.id === extra.id ? "owner" : sub("trip_role", { t: t.id })) : null,
       });
     }
     if (path === "/rest/v1/rpc/trip_people") {
@@ -239,6 +244,25 @@ export function createFakeSupabase(
       return { status: 204 };
     }
 
+    if (path === "/rest/v1/rpc/my_trips") {
+      if (!hasTrip || role === "noaccess" || role === "signedout") return json([]);
+      const item = (t: Row, r: string) => ({ id: t.id, name: t.name, destination: t.destination ?? null, start_date: t.start_date ?? null, end_date: t.end_date ?? null, status: t.status ?? "active", archived_at: t.archived_at ?? null, role: r, joined_at: "2026-06-01T00:00:00Z" });
+      return json([item(trip, role === "owner" ? "owner" : String(role)), ...extraTrips.map((x) => item(x, "owner"))]);
+    }
+    if (path === "/rest/v1/rpc/new_trip") {
+      if (!canWrite()) return json({ code: "42501", message: "Only the trip owner can create trips", details: null, hint: null }, 403);
+      const { p_name } = req.body as { p_name?: string };
+      const id = `00000000-0000-4000-8000-${String(extraTrips.length + 1).padStart(12, "0")}`;
+      extraTrips.push({ ...trip, id, name: p_name || "My Trip", status: "draft", onboarding_step: 1, archived_at: null, start_date: null, end_date: null, destination: null });
+      return json(id);
+    }
+    if (path === "/rest/v1/rpc/archive_trip" || path === "/rest/v1/rpc/restore_trip") {
+      const { p_trip } = req.body as { p_trip: string };
+      const restoring = path.endsWith("restore_trip");
+      const row = extraTrips.find((x) => x.id === p_trip);
+      if (row) Object.assign(row, { archived_at: restoring ? null : "2026-06-02T00:00:00Z", status: restoring ? "active" : "archived" });
+      return { status: 204 };
+    }
     if (path === "/rest/v1/rpc/create_trip") {
       if (!canWrite())
         return json({ code: "42501", message: "Only the trip owner can create trips", details: null, hint: null }, 403);
@@ -599,6 +623,7 @@ export function createFakeSupabase(
   return {
     tables,
     storage,
+    extraTrips,
     /** Another person with a display name (so their votes and comments show a name). */
     addPerson: (id: string, label: string | null) => others.set(id, label),
     get myLabel() {

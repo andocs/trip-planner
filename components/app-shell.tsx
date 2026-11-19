@@ -15,10 +15,13 @@ import {
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
+import { TripSwitcher } from "@/components/trips/trip-switcher";
 import { Board } from "@/components/ui/flap-digits";
 import { Sheet } from "@/components/ui/sheet";
 import { daysToGo, localISODate } from "@/lib/calc";
+import { useTripHref } from "@/lib/open-trip";
 import { useActiveTrip } from "@/lib/queries/trip";
+import { screenPath } from "@/lib/trip-path";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { useClientValue } from "@/lib/use-client-value";
 import { cn } from "@/lib/utils";
@@ -40,11 +43,12 @@ const TABS = NAV.slice(0, 5);
 const MORE: NavItem[] = [...NAV.slice(5), { href: "/settings", label: "Settings", icon: Settings }];
 
 function isActive(pathname: string, href: string) {
-  return href === "/" ? pathname === "/" : pathname.startsWith(href);
+  const p = screenPath(pathname);
+  return href === "/" ? p === "/" : p.startsWith(href);
 }
 
-/** Desktop rail header: the trip's name with a board counter. Renders nothing until a trip is loaded. */
-function RailTrip() {
+/** The open trip's name and its board counter (days to go, the day number, or a tick). Null until a trip is loaded. */
+function useTripFace() {
   const trip = useActiveTrip().data;
   const today = useClientValue(localISODate, null);
   if (!trip) return null;
@@ -57,22 +61,41 @@ function RailTrip() {
         : c.kind === "during"
           ? [String(c.n), `of ${c.of} days`]
           : ["✓", "trip completed"];
+  return { name: trip.name, value, caption };
+}
+
+/** Desktop rail header: the trip switcher, with the board counter. Renders nothing until a trip is loaded. */
+function RailTrip() {
+  const face = useTripFace();
+  if (!face) return null;
   return (
-    <Link
-      href="/"
-      className="mb-4 flex items-center gap-3 rounded-2xl bg-surface-2 p-3 transition-colors hover:bg-line"
-    >
-      <Board value={value} size="sm" />
-      <span className="min-w-0">
-        <span className="block truncate font-display text-base leading-tight font-extrabold">{trip.name}</span>
-        <span className="text-sm text-fg-muted">{caption}</span>
+    <TripSwitcher mode="menu" className="mb-4 flex w-full items-center gap-3 rounded-2xl bg-surface-2 p-3 text-left transition-colors hover:bg-line">
+      <Board value={face.value} size="sm" />
+      <span className="min-w-0 flex-1">
+        <span className="block truncate font-display text-base leading-tight font-extrabold">{face.name}</span>
+        <span className="text-sm text-fg-muted">{face.caption}</span>
       </span>
-    </Link>
+    </TripSwitcher>
+  );
+}
+
+/** Phones have no rail: the same switcher as a chip at the top of Home. */
+function PhoneTrip() {
+  const face = useTripFace();
+  if (!face) return null;
+  return (
+    <div className="mb-3 lg:hidden">
+      <TripSwitcher mode="sheet" className="inline-flex min-h-11 max-w-full items-center gap-2 rounded-full bg-surface py-1 pr-3 pl-1.5 font-bold shadow-card">
+        <Board value={face.value} size="sm" />
+        <span className="min-w-0 truncate">{face.name}</span>
+      </TripSwitcher>
+    </div>
   );
 }
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const tripHref = useTripHref();
   const [moreOpen, setMoreOpen] = useState(false);
   const moreActive = MORE.some((m) => isActive(pathname, m.href));
 
@@ -96,10 +119,10 @@ export function AppShell({ children }: { children: ReactNode }) {
         {isSupabaseConfigured() && <RailTrip />}
         <nav aria-label="Main" className="flex flex-1 flex-col gap-1">
           {NAV.map(({ href, label, icon: Icon }) => (
-            <RailLink key={href} href={href} label={label} icon={Icon} active={isActive(pathname, href)} />
+            <RailLink key={href} href={tripHref(href)} label={label} icon={Icon} active={isActive(pathname, href)} />
           ))}
           <div className="mt-auto">
-            <RailLink href="/settings" label="Settings" icon={Settings} active={isActive(pathname, "/settings")} />
+            <RailLink href={tripHref("/settings")} label="Settings" icon={Settings} active={isActive(pathname, "/settings")} />
           </div>
         </nav>
       </aside>
@@ -109,6 +132,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         className="mx-auto w-full max-w-[1040px] flex-1 px-4 pt-[calc(env(safe-area-inset-top)+1rem)] pb-[calc(var(--tabbar-h)+1.5rem)] lg:px-10 lg:pt-16 lg:pb-12"
       >
         <OfflineBanner />
+        {screenPath(pathname) === "/" && isSupabaseConfigured() && <PhoneTrip />}
         {children}
       </main>
 
@@ -123,7 +147,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             return (
               <li key={href}>
                 <Link
-                  href={href}
+                  href={tripHref(href)}
                   aria-current={active ? "page" : undefined}
                   className={cn(
                     "flex h-full flex-col items-center justify-center gap-0.5 text-[11px] font-bold transition-colors",
@@ -163,7 +187,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           {MORE.map(({ href, label, icon: Icon }) => (
             <li key={href} className="border-t border-border first:border-t-0">
               <Link
-                href={href}
+                href={tripHref(href)}
                 onClick={() => setMoreOpen(false)}
                 aria-current={isActive(pathname, href) ? "page" : undefined}
                 className="flex min-h-14 items-center gap-3.5 text-[17px] font-bold"

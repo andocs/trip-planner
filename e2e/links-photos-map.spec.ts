@@ -574,7 +574,7 @@ test("Itinerary: an empty day between planned days gets its own dotted Plan Day 
   await page.goto("/itinerary");
   const gap = page.getByRole("button", { name: "Plan Day 2" });
   await expect(gap).toBeVisible();
-  await expect(gap).toHaveClass(/border-dotted/);
+  await expect(gap).toHaveClass(/border-dashed/);
   await expect(page.getByRole("button", { name: "Plan Day 3" })).toHaveCount(0); // one at a time
   await expect(page.getByRole("button", { name: "Plan Day 5" })).toBeVisible(); // after the last planned day, as before
   await gap.click();

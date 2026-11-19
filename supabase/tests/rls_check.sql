@@ -1,7 +1,7 @@
 -- RLS proof for the owner / viewer model. Works in the Supabase SQL editor and in local `psql`.
 -- It creates throwaway users, runs every check as each user, and ALWAYS rolls back by raising an
 -- exception at the end. Read the final message: "RLS CHECK PASSED (n checks)" or "RLS CHECK FAILED: ...".
--- Needs migrations 1..31 applied. Does not need any real admin: it inserts a throwaway admin email.
+-- Needs migrations 1..34 applied. Does not need any real admin: it inserts a throwaway admin email.
 
 do $$
 declare
@@ -36,6 +36,7 @@ declare
   flight_id uuid;   -- a flight on trip_a (migration 12)
   flight_old uuid;  -- a flight on another trip
   ref_flight uuid;  -- a flight with a booking reference (migration 13)
+  mt_b uuid; mt_c uuid; mt_x uuid; mt_tok text; mt_tok2 text; mt_j jsonb;   -- several live trips (migration 34)
   i int;
   n int;
   rc int;
@@ -1553,6 +1554,141 @@ begin
     failures := failures || 'a trip accepted more than 300 photos'::text;
   exception when check_violation then null; end;
   delete from public.item_images where trip_id = trip_a;
+  reset role;
+
+  -- ============================== migration 34: several live trips per person ==============================
+  perform set_config('request.jwt.claims', c_owner, true);
+  set local role authenticated;
+  mt_b := public.new_trip('Second trip');
+  checks := checks + 1;
+  select count(*) into n from public.my_trips() where id in (trip_a, mt_b) and archived_at is null;
+  if n <> 2 then failures := failures || 'my_trips should list both live trips'::text; end if;
+  checks := checks + 1;
+  if not exists (select 1 from public.trip_members where trip_id = mt_b and user_id = owner_u and role = 'owner') then
+    failures := failures || 'new_trip did not make the caller the owner'::text; end if;
+  checks := checks + 1;
+  if exists (select 1 from public.trips where id = trip_a and archived_at is not null) then
+    failures := failures || 'new_trip archived the existing trip'::text; end if;
+  -- copy the setup of a trip I own: travelers come along, members do not
+  mt_c := public.new_trip('Copy trip', trip_a);
+  checks := checks + 1;
+  select count(*) into n from public.travelers where trip_id = mt_c;
+  if n < 1 then failures := failures || 'new_trip(copy) did not copy travelers'::text; end if;
+  checks := checks + 1;
+  select count(*) into n from public.trip_members where trip_id = mt_c;
+  if n <> 1 then failures := failures || 'new_trip(copy) copied members'::text; end if;
+  -- a trip somebody else owns (the legacy trip was claimed by the owner earlier in this suite)
+  reset role;
+  insert into public.trips (name) values ('Not mine') returning id into mt_x;
+  set local role authenticated;
+  checks := checks + 1;
+  begin
+    perform public.new_trip('Steal', mt_x);
+    failures := failures || 'new_trip copied a trip the caller does not own'::text;
+  exception when insufficient_privilege then null; end;
+  -- the admin is not a member of mt_x either: archive and restore must refuse (is_trip_owner used to be NULL here)
+  checks := checks + 1;
+  begin perform public.archive_trip(mt_x); failures := failures || 'the admin archived a trip they are not a member of'::text;
+  exception when insufficient_privilege then null; end;
+  checks := checks + 1;
+  begin perform public.restore_trip(mt_x); failures := failures || 'the admin restored a trip they are not a member of'::text;
+  exception when insufficient_privilege then null; end;
+  -- finish the wizard's work as the table owner (clients cannot write trips.status directly)
+  reset role;
+  update public.trips set status = 'active' where id = mt_b;
+  set local role authenticated;
+  select join_token into mt_tok from public.trip_by_id(mt_b);
+  checks := checks + 1;
+  if coalesce(mt_tok, '') = '' then failures := failures || 'the owner could not read the invite link through trip_by_id'::text; end if;
+  checks := checks + 1;
+  mt_j := public.trip_bootstrap(mt_b);
+  if mt_j -> 'trip' ->> 'id' <> mt_b::text or mt_j ->> 'role' <> 'owner' then failures := failures || 'trip_bootstrap(id) returned the wrong trip or role'::text; end if;
+  reset role;
+
+  -- a non-admin Google account may not create trips
+  perform set_config('request.jwt.claims', c_other, true);
+  set local role authenticated;
+  checks := checks + 1;
+  begin
+    perform public.new_trip('Nope');
+    failures := failures || 'a non-admin created a trip with new_trip'::text;
+  exception when insufficient_privilege then null; end;
+  reset role;
+
+  -- a stranger sees nothing of these trips
+  perform set_config('request.jwt.claims', c_stranger, true);
+  set local role authenticated;
+  checks := checks + 1;
+  select count(*) into n from public.my_trips();
+  if n <> 0 then failures := failures || 'a stranger sees trips in my_trips'::text; end if;
+  checks := checks + 1;
+  mt_j := public.trip_bootstrap(mt_b);
+  if mt_j -> 'trip' is not null and mt_j ->> 'trip' <> 'null' then failures := failures || 'trip_bootstrap(id) leaked a trip to a stranger'::text; end if;
+  checks := checks + 1;
+  select count(*) into n from public.trip_by_id(mt_b);
+  if n <> 0 then failures := failures || 'trip_by_id returned a trip to a stranger'::text; end if;
+  reset role;
+
+  -- a viewer joins the second trip by its link: it is ADDED to their list, and they cannot manage it
+  perform set_config('request.jwt.claims', c_viewer, true);
+  set local role authenticated;
+  perform public.join_trip(mt_tok);
+  checks := checks + 1;
+  select count(*) into n from public.my_trips() where id = mt_b and role = 'viewer';
+  if n <> 1 then failures := failures || 'a joined trip is missing from the viewers my_trips'::text; end if;
+  checks := checks + 1;
+  select count(*) into n from public.my_trips() where id = trip_a;
+  if n <> 1 then failures := failures || 'joining a second trip removed the first from the viewers list'::text; end if;
+  checks := checks + 1;
+  select join_token into mt_tok2 from public.trip_by_id(mt_b);
+  if mt_tok2 is distinct from '' then failures := failures || 'a viewer could read the invite link through trip_by_id'::text; end if;
+  checks := checks + 1;
+  begin perform public.archive_trip(mt_b); failures := failures || 'a viewer archived a trip'::text;
+  exception when insufficient_privilege then null; end;
+  checks := checks + 1;
+  begin perform public.start_new_trip(true, mt_b); failures := failures || 'a viewer ran start_new_trip'::text;
+  exception when insufficient_privilege then null; end;
+  reset role;
+
+  -- the owner archives and restores one trip; the others are untouched; archiving rotates the link
+  perform set_config('request.jwt.claims', c_owner, true);
+  set local role authenticated;
+  perform public.archive_trip(mt_b);
+  checks := checks + 1;
+  if not exists (select 1 from public.trips where id = mt_b and archived_at is not null and status = 'archived') then
+    failures := failures || 'archive_trip did not archive'::text; end if;
+  checks := checks + 1;
+  select join_token into mt_tok2 from public.trip_by_id(mt_b);
+  if mt_tok2 = mt_tok then failures := failures || 'archive_trip kept the old invite link'::text; end if;
+  checks := checks + 1;
+  if exists (select 1 from public.trips where id in (trip_a, mt_c) and archived_at is not null) then
+    failures := failures || 'archive_trip touched another trip'::text; end if;
+  perform public.restore_trip(mt_b);
+  checks := checks + 1;
+  if not exists (select 1 from public.trips where id = mt_b and archived_at is null and status = 'active') then
+    failures := failures || 'restore_trip did not restore'::text; end if;
+  -- "start a new trip" can name the trip to end; the other trips stay live
+  checks := checks + 1;
+  mt_j := to_jsonb(public.start_new_trip(true, mt_c));
+  if exists (select 1 from public.trips where id in (trip_a, mt_b) and archived_at is not null)
+     or not exists (select 1 from public.trips where id = mt_c and archived_at is not null) then
+    failures := failures || 'start_new_trip(copy, id) ended the wrong trip'::text; end if;
+  checks := checks + 1;
+  begin perform public.start_new_trip(true, mt_c); failures := failures || 'start_new_trip ended an already archived trip'::text;
+  exception when invalid_parameter_value then null; end;
+  reset role;
+  -- a stranger cannot restore someone else's trip
+  perform set_config('request.jwt.claims', c_stranger, true);
+  set local role authenticated;
+  checks := checks + 1;
+  begin perform public.restore_trip(mt_c); failures := failures || 'a stranger restored a trip'::text;
+  exception when insufficient_privilege then null; end;
+  reset role;
+  -- anonymous role: none of the new functions
+  set local role anon;
+  checks := checks + 1;
+  begin perform public.my_trips(); failures := failures || 'anon can run my_trips'::text;
+  exception when insufficient_privilege then null; end;
   reset role;
 
   -- ============================== anonymous role (no session) ==============================

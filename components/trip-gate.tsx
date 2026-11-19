@@ -22,6 +22,8 @@ import { decideAccess } from "@/lib/access";
 import type { Bootstrap } from "@/lib/queries/bootstrap";
 import { useRealtimeSync, useWarmCache } from "@/lib/realtime";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
+import Link from "next/link";
+import { useRequestedTripId } from "@/lib/open-trip";
 import { useClientValue } from "@/lib/use-client-value";
 import { errorMessage } from "@/lib/utils";
 
@@ -92,6 +94,7 @@ function TripGateInner({ children, prefetched, boot }: { children: ReactNode; pr
   const admin = useIsAdmin();
   const role = useTripRole(trip.data?.id); // off until a trip is known
   const mounted = useClientValue(() => true, false);
+  const requested = useRequestedTripId();
 
   // One decision (lib/access.ts) from the server's snapshot or the live queries, one switch to show it.
   const access = decideAccess({ mounted, prefetched, boot, user, trip, admin, role });
@@ -105,7 +108,8 @@ function TripGateInner({ children, prefetched, boot }: { children: ReactNode; pr
     case "signed-out":
       return <InviteOnly />;
     case "no-trip":
-      return <OwnerWithoutTrip />;
+      // Asked for a trip by its address but not on it (or it is gone): say so, never offer to set up a new one.
+      return requested ? <TripUnavailable /> : <OwnerWithoutTrip />;
     case "no-access":
       return <NoAccess email={access.email} />;
     case "ready":
@@ -118,6 +122,19 @@ function TripGateInner({ children, prefetched, boot }: { children: ReactNode; pr
         </TripShell>
       );
   }
+}
+
+function TripUnavailable() {
+  return (
+    <div role="alert" className="mx-auto max-w-md py-16 text-center">
+      <h1 className="font-display text-2xl font-extrabold">That trip isn’t available</h1>
+      <p className="mt-2 text-fg-muted">It may have been removed, or you may not be on it any more.</p>
+      {/* data-bare-trip: this link must leave the trip in the address */}
+      <Link href="/" data-bare-trip className="mt-4 inline-flex min-h-11 items-center font-bold text-teal">
+        Go to my latest trip
+      </Link>
+    </div>
+  );
 }
 
 /** The signed-in, allowed-in screen: the owner's setup wizard while the trip is a draft, otherwise the app. */

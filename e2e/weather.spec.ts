@@ -51,7 +51,7 @@ test("each dated day shows its weather: a forecast with the chance of rain, then
   expect(calls.length).toBeGreaterThan(0);
 });
 
-test("only a rounded place and a date range are sent: nothing about the trip or the person", async ({ page }) => {
+test("our server gets a rounded place, a date range and the trip id (for its membership check); nothing about the person", async ({ page }) => {
   const fake = createFakeSupabase({ withSeed: true });
   fake.tables.get("destinations")!.forEach((d, i) => Object.assign(d, { lat: 21.028511 + i, lng: 105.854234 + i }));
   await fake.install(page);
@@ -60,7 +60,9 @@ test("only a rounded place and a date range are sent: nothing about the trip or 
   await expect(page.getByRole("img", { name: /^Weather:/ }).first()).toBeVisible();
 
   for (const u of calls) {
-    expect([...u.searchParams.keys()].sort()).toEqual(["from", "lat", "lng", "to"]);
+    // The trip id is an opaque id the route checks membership with; route.test.ts proves it never goes on to the weather service.
+    expect([...u.searchParams.keys()].sort()).toEqual(["from", "lat", "lng", "to", "trip"]);
+    expect(u.searchParams.get("trip")).toMatch(/^[0-9a-f-]{36}$/);
     expect(u.searchParams.get("lat")).toMatch(/^-?\d+(\.\d{1,2})?$/); // about a kilometre
     expect(u.searchParams.get("lng")).toMatch(/^-?\d+(\.\d{1,2})?$/);
     expect(u.pathname).toBe("/api/weather"); // our own server, never the weather service from the browser

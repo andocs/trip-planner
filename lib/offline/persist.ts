@@ -18,7 +18,7 @@ export const BUSTER = process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA ?? "dev";
 
 /** Trip tables that stay out of the saved copy: owner-only secrets, and files that are only valid for an hour. */
 const NEVER_SAVED = new Set(["flight_refs", "item_images"]);
-const SESSION_KEYS = new Set(["user", "bootstrap", "is-admin", "trip-role", "active-trip"]);
+const SESSION_KEYS = new Set(["user", "bootstrap", "is-admin", "trip-role", "active-trip", "my-trips"]);
 
 export function shouldPersist(query: Pick<Query, "queryKey" | "state">): boolean {
   if (query.state.status !== "success") return false;

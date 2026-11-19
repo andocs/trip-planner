@@ -12,12 +12,12 @@ import { qk } from "./keys";
 import type { Trip } from "./trip";
 
 /** Loads the example via the server action, then refreshes everything. */
-export function useLoadExample() {
+export function useLoadExample(tripId?: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async () => {
       if (!(await getCurrentUser())) throw new Error("Sign in first"); // the server action reads the session cookie
-      const res = await loadExample();
+      const res = await loadExample(tripId);
       if (!res.ok) throw new Error(res.error);
       return res.notes;
     },
@@ -46,13 +46,13 @@ export function useRestoreBackup(tripId: string) {
 }
 
 /** Archives the current trip and starts a fresh one; the whole group and the invite link move with it. */
-export function useStartNewTrip() {
+export function useStartNewTrip(tripId?: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (copySetup: boolean) => {
-      const { data, error } = await getSupabase().rpc("start_new_trip", { p_copy_setup: copySetup });
+      const { data, error } = await getSupabase().rpc("start_new_trip", { p_copy_setup: copySetup, ...(tripId ? { p_trip: tripId } : {}) });
       if (error) throw error;
-      return data;
+      return data as string;
     },
     onSuccess: async () => {
       qc.removeQueries({ queryKey: ["trip"] });

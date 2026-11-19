@@ -1,18 +1,28 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
-const member = vi.hoisted(() => ({ id: "u1" as string | null }));
-vi.mock("@/lib/supabase/require-user", () => ({ requireMemberId: async () => member.id }));
+const member = vi.hoisted(() => ({ id: "u1" as string | null, trips: null as string[] | null, asked: [] as string[] }));
+// A member of the trips listed in `trips` (every trip when null), or nobody when `id` is null.
+vi.mock("@/lib/supabase/require-user", () => ({
+  requireMemberId: async (trip: string) => {
+    member.asked.push(trip);
+    return member.trips && !member.trips.includes(trip) ? null : member.id;
+  },
+}));
 
 import { GET } from "./route";
 
 const upstream = vi.fn();
 const get = (qs: string, headers: Record<string, string> = {}) => GET(new Request(`https://trip.example.com/api/weather?${qs}`, { headers }));
 const day = (offset: number) => new Date(Date.now() + offset * 86_400_000).toISOString().slice(0, 10);
-const good = (lat = 21.0285, lng = 105.8542, from = day(2), to = day(3)) => `lat=${lat}&lng=${lng}&from=${from}&to=${to}`;
+const TRIP = "11111111-1111-4111-8111-111111111111";
+const OTHER = "22222222-2222-4222-8222-222222222222";
+const good = (lat = 21.0285, lng = 105.8542, from = day(2), to = day(3), trip = TRIP) => `trip=${trip}&lat=${lat}&lng=${lng}&from=${from}&to=${to}`;
 
 beforeEach(() => {
   member.id = "u1";
+  member.trips = null;
+  member.asked = [];
   upstream.mockReset();
   upstream.mockImplementation(async () =>
     Response.json({ daily: { time: [day(2), day(3)], weather_code: [1, 2], temperature_2m_max: [30, 31], temperature_2m_min: [24, 25], precipitation_probability_max: [10, 20] } }),
@@ -34,12 +44,27 @@ describe("GET /api/weather", () => {
     const sent = new URL(String(upstream.mock.calls[0][0]));
     expect(sent.searchParams.get("latitude")).toBe("21.03");
     expect(sent.searchParams.get("longitude")).toBe("105.85");
+    expect(sent.href).not.toContain(TRIP); // the trip id is for our own membership check only, never sent on
   });
 
   it("is not an open proxy: someone who has not joined a trip is refused, and nothing is fetched", async () => {
     member.id = null;
     const res = await get(good());
     expect(res.status).toBe(401);
+    expect(upstream).not.toHaveBeenCalled();
+  });
+
+  it("is checked against the trip in the request: a member of one trip is refused for another", async () => {
+    member.trips = [TRIP];
+    expect((await get(good())).status).toBe(200);
+    const res = await get(good(21.0285, 105.8542, day(2), day(3), OTHER));
+    expect(res.status).toBe(401);
+    expect(member.asked).toEqual([TRIP, OTHER]);
+  });
+
+  it("needs a trip id, and refuses one that is not an id, before anything else", async () => {
+    for (const qs of [`lat=1&lng=2&from=${day(2)}&to=${day(3)}`, `trip=not-an-id&lat=1&lng=2&from=${day(2)}&to=${day(3)}`]) expect((await get(qs)).status).toBe(400);
+    expect(member.asked).toEqual([]);
     expect(upstream).not.toHaveBeenCalled();
   });
 
@@ -50,12 +75,12 @@ describe("GET /api/weather", () => {
   });
 
   it.each([
-    ["a place that is not on Earth", `lat=100&lng=0&from=${day(2)}&to=${day(3)}`],
-    ["a longitude out of range", `lat=0&lng=200&from=${day(2)}&to=${day(3)}`],
-    ["text for a coordinate", `lat=abc&lng=0&from=${day(2)}&to=${day(3)}`],
-    ["a date that does not exist", `lat=1&lng=2&from=2026-02-30&to=2026-03-02`],
-    ["dates the wrong way round", `lat=1&lng=2&from=${day(5)}&to=${day(2)}`],
-    ["a range longer than a month", `lat=1&lng=2&from=${day(2)}&to=${day(40)}`],
+    ["a place that is not on Earth", `trip=${TRIP}&lat=100&lng=0&from=${day(2)}&to=${day(3)}`],
+    ["a longitude out of range", `trip=${TRIP}&lat=0&lng=200&from=${day(2)}&to=${day(3)}`],
+    ["text for a coordinate", `trip=${TRIP}&lat=abc&lng=0&from=${day(2)}&to=${day(3)}`],
+    ["a date that does not exist", `trip=${TRIP}&lat=1&lng=2&from=2026-02-30&to=2026-03-02`],
+    ["dates the wrong way round", `trip=${TRIP}&lat=1&lng=2&from=${day(5)}&to=${day(2)}`],
+    ["a range longer than a month", `trip=${TRIP}&lat=1&lng=2&from=${day(2)}&to=${day(40)}`],
     ["nothing at all", ""],
   ])("refuses %s", async (_, qs) => {
     expect((await get(qs)).status).toBe(400);

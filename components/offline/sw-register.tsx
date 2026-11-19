@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { WARMED_KEY } from "@/lib/offline/clear";
+import { tripIdFromPath, withTrip } from "@/lib/trip-path";
 
 /** The screens the service worker keeps a copy of (keep in step with APP_PATHS in public/sw.js). */
 export const APP_PATHS = ["/", "/itinerary", "/flights", "/stays", "/places", "/spend", "/pack", "/settings"];
@@ -29,7 +30,7 @@ export function ServiceWorkerRegister() {
         // Wait for the page's own loading to settle before asking for eight more screens.
         window.setTimeout(() => {
           if (cancelled || !navigator.onLine) return;
-          reg.active?.postMessage({ type: "warm", urls: APP_PATHS.filter((p) => p !== window.location.pathname) });
+          reg.active?.postMessage({ type: "warm", urls: APP_PATHS.map((p) => withTrip(tripIdFromPath(window.location.pathname), p)).filter((p) => p !== window.location.pathname) });
           try {
             localStorage.setItem(WARMED_KEY, String(Date.now()));
           } catch {}

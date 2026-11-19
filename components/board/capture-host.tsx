@@ -2,6 +2,7 @@
 
 import { Lightbulb } from "lucide-react";
 import { usePathname, useSearchParams } from "next/navigation";
+import { screenPath } from "@/lib/trip-path";
 import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import { useCanEdit } from "@/components/trip-gate";
@@ -50,7 +51,7 @@ export function CaptureHost() {
   }, [canEdit]);
 
   if (!canEdit) return null;
-  const boardShowing = pathname === "/places" && (tab === null || tab === "board");
+  const boardShowing = screenPath(pathname) === "/places" && (tab === null || tab === "board");
 
   // The button is ALWAYS in the markup and is only hidden with CSS where the Board already has its own. Its presence
   // never depends on the address or query string, so the server HTML and the first browser render cannot disagree about

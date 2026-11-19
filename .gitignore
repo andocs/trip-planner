@@ -68,3 +68,4 @@ supabase/.branches
 
 # Phase 3 spike output (counts only)
 /places-spike-result.json
+.claude/ledger/

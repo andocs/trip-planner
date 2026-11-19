@@ -42,6 +42,15 @@ describe("fetchBootstrap", () => {
     expect((await fetchBootstrap(supabase))?.role).toBe("viewer");
     expect(rpc).toHaveBeenCalledTimes(1);
   });
+  it("asks for one trip by id when given an id, and for the trip joined last otherwise", async () => {
+    const { rpc, supabase } = client({ trip_bootstrap: { data: { user: { id: "u", email: null, is_anonymous: false }, trip, is_admin: true, role: "owner" } } });
+    await fetchBootstrap(supabase, "11111111-1111-4111-8111-111111111111");
+    expect(rpc).toHaveBeenLastCalledWith("trip_bootstrap", { p_trip: "11111111-1111-4111-8111-111111111111" });
+    await fetchBootstrap(supabase, null);
+    expect(rpc).toHaveBeenLastCalledWith("trip_bootstrap");
+    await fetchBootstrap(supabase);
+    expect(rpc).toHaveBeenLastCalledWith("trip_bootstrap");
+  });
   it("throws errors, including a missing function", async () => {
     for (const code of ["42501", "PGRST202"]) {
       const { supabase } = client({ trip_bootstrap: { error: { code } } });
