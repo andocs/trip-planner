@@ -1,67 +1,67 @@
 /**
- * How a traveler likes to be paid back, and the links settle-up builds from it. Pure: no network, nothing is sent anywhere
- * until the person taps a link. Handles are public to everyone on the trip (that is the point) so they hold no secrets:
- * never a card number, password or bank login; the "other" line is free text such as "GCash 0917 123 4567".
+ * How a traveler likes to be paid back: the Philippine wallets and banks this group uses. None of them has a public link that
+ * fills in an amount, so Settle up shows the number or account to copy next to the amount owed. Pure: nothing is sent anywhere.
+ * Details are visible to everyone on the trip (that is the point), so they hold phone or account numbers only, never a
+ * password, PIN or card number.
  */
 import { z } from "zod";
 
-export type Payment = { paypal?: string; venmo?: string; other?: string };
+export type Payment = { gcash?: string; maya?: string; maribank?: string; qrph?: string; other?: string };
+
+export const METHODS = [
+  { key: "gcash", label: "GCash", hint: "Mobile number, e.g. 0917 123 4567" },
+  { key: "maya", label: "Maya", hint: "Mobile number" },
+  { key: "maribank", label: "MariBank", hint: "Account number" },
+  { key: "qrph", label: "QR Ph", hint: "Name on the QR, or where to find it" },
+  { key: "other", label: "Anything else", hint: "Bank name and account, for example" },
+] as const satisfies readonly { key: keyof Payment; label: string; hint: string }[];
 
 const clean = (s: string) => s.trim();
+const NUMBER = /^[0-9+\-() ]{6,24}$/;
 
-/** "@name", "name", "paypal.me/name" or a full paypal.me link all become "name". */
-export function normalizePaypal(raw: string): string {
-  return clean(raw).replace(/^https?:\/\//i, "").replace(/^(www\.)?paypal\.me\//i, "").replace(/^@/, "").replace(/\/.*$/, "");
-}
-export function normalizeVenmo(raw: string): string {
-  return clean(raw).replace(/^https?:\/\//i, "").replace(/^(www\.)?venmo\.com\/(u\/)?/i, "").replace(/^@/, "").replace(/[/?].*$/, "");
-}
-
-const optional = (re: RegExp, message: string, norm: (s: string) => string) =>
-  z.string().transform(norm).refine((v) => v === "" || re.test(v), message).optional();
+const number = (label: string) =>
+  z.string().transform(clean).refine((v) => v === "" || NUMBER.test(v), `${label}: digits only (spaces, + and - are fine), 6 to 24 characters`).optional();
+const text = z
+  .string()
+  .transform(clean)
+  .refine((v) => v.length <= 120, "Keep it under 120 characters")
+  .refine((v) => !/[\u0000-\u001f]/.test(v), "No line breaks")
+  .optional();
 
 export const PaymentSchema = z.object({
-  paypal: optional(/^[A-Za-z0-9._-]{1,40}$/, "PayPal.Me name: letters, numbers, dot, dash", normalizePaypal),
-  venmo: optional(/^[A-Za-z0-9_-]{1,30}$/, "Venmo name: letters, numbers, dash, underscore", normalizeVenmo),
-  other: z
-    .string()
-    .transform(clean)
-    .refine((v) => v.length <= 120, "Keep it under 120 characters")
-    .refine((v) => !/[\u0000-\u001f]/.test(v), "No line breaks")
-    .optional(),
+  gcash: number("GCash number"),
+  maya: number("Maya number"),
+  maribank: number("MariBank account"),
+  qrph: text,
+  other: text,
 });
 
 /** The stored value for a form's fields: empty ones dropped, null when nothing is left. */
 export function toPayment(input: Payment): Payment | null {
   const out: Payment = {};
-  for (const k of ["paypal", "venmo", "other"] as const) {
-    const v = input[k]?.trim();
-    if (v) out[k] = v;
+  for (const { key } of METHODS) {
+    const v = input[key]?.trim();
+    if (v) out[key] = v;
   }
   return Object.keys(out).length ? out : null;
 }
 
-/** Reads the jsonb column defensively: anything unexpected is ignored, and a handle that fails the rules is dropped. */
+/** Reads the jsonb column defensively: unknown keys are ignored and a value that fails the rules is dropped. */
 export function parsePayment(raw: unknown): Payment | null {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
   const r = raw as Record<string, unknown>;
-  const res = PaymentSchema.safeParse({
-    paypal: typeof r.paypal === "string" ? r.paypal : undefined,
-    venmo: typeof r.venmo === "string" ? r.venmo : undefined,
-    other: typeof r.other === "string" ? r.other : undefined,
-  });
-  return res.success ? toPayment(res.data) : null;
+  const out: Payment = {};
+  for (const { key } of METHODS) {
+    const v = r[key];
+    if (typeof v !== "string") continue;
+    const one = PaymentSchema.safeParse({ [key]: v });
+    if (one.success) out[key] = one.data[key];
+  }
+  return toPayment(out);
 }
 
-export type PayLink = { label: string; href: string };
-
-/** Links that open the payment app with the person and amount filled in. Venmo is dollars only. */
-export function payLinks(p: Payment | null, amount: number, currency: string, note: string): PayLink[] {
-  if (!p || !(amount > 0)) return [];
-  const amt = (Math.round(amount * 100) / 100).toFixed(2);
-  const links: PayLink[] = [];
-  if (p.paypal) links.push({ label: "PayPal", href: `https://paypal.me/${encodeURIComponent(p.paypal)}/${amt}${currency.toUpperCase()}` });
-  if (p.venmo && currency.toLowerCase() === "usd")
-    links.push({ label: "Venmo", href: `https://venmo.com/${encodeURIComponent(p.venmo)}?txn=pay&amount=${amt}&note=${encodeURIComponent(note)}` });
-  return links;
+/** What to show for a person: one labelled line per method they filled in. */
+export function payLines(p: Payment | null): { key: keyof Payment; label: string; value: string }[] {
+  if (!p) return [];
+  return METHODS.flatMap((m) => (p[m.key] ? [{ key: m.key, label: m.label, value: p[m.key]! }] : []));
 }
