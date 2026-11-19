@@ -74,7 +74,7 @@ type Entry =
 function PlanDayButton({ day, onPick, className }: { day: number; onPick: (type?: string) => void; className?: string }) {
   return (
     <CategoryMenu heading={`Plan Day ${day}: which kind of activity first?`} align="center" onPick={onPick}>
-      <Button variant="outline" className={cn("ml-[54px] w-[calc(100%-54px)] border-2 border-dotted", className)}>
+      <Button variant="outline" className={cn("ml-[54px] w-[calc(100%-54px)] border-2 border-dashed border-fg-muted/50", className)}>
         <CalendarPlus className="size-[18px]" aria-hidden />
         Plan Day {day}
       </Button>
