@@ -99,6 +99,40 @@ test("add to calendar downloads an .ics with the trip's activities, flights and 
   expect(ics).not.toMatch(/booking|confirmation/i);
 });
 
+test("download a backup (JSON) and the expenses (CSV), without secrets", async ({ page }) => {
+  const fake = createFakeSupabase({ withSeed: true });
+  await fake.install(page);
+  await page.goto("/settings");
+
+  let download = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Download a backup (JSON)" }).click();
+  let file = await download;
+  expect(file.suggestedFilename()).toMatch(/^Vietnam 26 backup \d{4}-\d{2}-\d{2}\.json$/);
+  const text = readFileSync(await file.path(), "utf8");
+  const backup = JSON.parse(text);
+  expect(backup).toMatchObject({ format: "trip-planner-backup", version: 1 });
+  expect(backup.tables.itinerary_items).toHaveLength(140);
+  expect(text).not.toContain(fake.trip.join_token);
+  expect(text).not.toContain("trip_id");
+
+  download = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Expenses as CSV" }).click();
+  file = await download;
+  expect(file.suggestedFilename()).toBe("Vietnam 26 expenses.csv");
+  const csv = readFileSync(await file.path(), "utf8");
+  expect(csv.startsWith("﻿Date,Description,Category,Paid by,Currency,Amount,Amount (PHP),Rate used,Note")).toBe(true);
+});
+
+test("restoring a backup into a trip that already has data is refused with a message", async ({ page }) => {
+  await createFakeSupabase({ withSeed: true }).install(page);
+  await page.goto("/settings");
+  const download = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Download a backup (JSON)" }).click();
+  const file = await download;
+  await page.getByLabel("Backup file").setInputFiles(await file.path());
+  await expect(page.getByText(/already has data/)).toBeVisible();
+});
+
 test("start a new trip archives the old one and keeps travelers", async ({ page }) => {
   const fake = createFakeSupabase({ withSeed: true });
   await fake.install(page);

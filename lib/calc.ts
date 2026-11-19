@@ -11,7 +11,8 @@
 export type RateInfo = { foreign_currency: string; rate: number | string };
 import { expenseShares, parseSplit } from "./split";
 
-export type MoneyLike = { currency: string; amount: number | string };
+/** `rate` is this expense's own exchange rate (home units per foreign unit); null or missing means the trip's rate. */
+export type MoneyLike = { currency: string; amount: number | string; rate?: number | string | null };
 
 const num = (v: number | string | null | undefined): number => {
   const n = typeof v === "string" ? Number(v) : (v ?? 0);
@@ -21,10 +22,15 @@ const num = (v: number | string | null | undefined): number => {
 /** Rounds to cents, avoiding binary drift (1.005 → 1.01). */
 export const round2 = (n: number): number => Math.round((n + Number.EPSILON) * 100) / 100;
 
-/** Amount in the trip's home currency. Anything not in the foreign currency is treated as home currency. */
+/**
+ * Amount in the trip's home currency. Anything not in the foreign currency is treated as home currency.
+ * A foreign expense uses its own rate when it has a valid one (> 0), otherwise the trip's rate.
+ */
 export function homeAmount(expense: MoneyLike, trip: RateInfo): number {
   const amount = num(expense.amount);
-  return expense.currency === trip.foreign_currency ? amount * num(trip.rate) : amount;
+  if (expense.currency !== trip.foreign_currency) return amount;
+  const own = num(expense.rate);
+  return amount * (own > 0 ? own : num(trip.rate));
 }
 
 export function menuHomePrice(priceForeign: number | string | null | undefined, rate: number | string): number | null {

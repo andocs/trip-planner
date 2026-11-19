@@ -18,7 +18,7 @@ const PIXEL_PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAD
 
 type Row = Record<string, unknown> & { id: string };
 export type FakeRequest = { method: string; url: string; body?: unknown; size?: number };
-export type FakeResponse = { status: number; body?: unknown };
+export type FakeResponse = { status: number; body?: unknown; headers?: Record<string, string> };
 
 export type FakeRole = "owner" | "viewer" | "noaccess" | "signedout";
 
@@ -369,6 +369,12 @@ export function createFakeSupabase(
         method === "GET" ? 200 : 403,
       );
     if (method === "GET") return json(rows.filter((r) => !eq("trip_id") || r.trip_id === eq("trip_id")));
+    // select(..., { count: "exact", head: true }): the row count comes back in Content-Range.
+    if (method === "HEAD") {
+      const n = rows.filter((r) => !eq("trip_id") || r.trip_id === eq("trip_id")).length;
+      // Cross-origin, so the page may only read this header if the response exposes it (as Supabase does).
+      return { status: 200, headers: { "content-range": `*/${n}`, "access-control-expose-headers": "content-range" } };
+    }
     if ((table === "votes" || table === "comments") && role !== "noaccess" && role !== "signedout") {
       if (method === "POST") {
         const body = (Array.isArray(req.body) ? req.body : [req.body]) as Row[];
@@ -604,6 +610,7 @@ export function createFakeSupabase(
         const res = respond({ method: req.method(), url: req.url(), body, size: req.postDataBuffer()?.length });
         return route.fulfill({
           status: res.status,
+          headers: res.headers,
           contentType: "application/json",
           body: res.body === undefined ? "" : JSON.stringify(res.body),
         });

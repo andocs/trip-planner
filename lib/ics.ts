@@ -1,4 +1,5 @@
 import type { Tables } from "@/lib/database.types";
+import { saveTextFile } from "@/lib/download";
 import { exportFileName } from "@/lib/export";
 import { dateForDay, dayOf, isStop } from "@/lib/itinerary";
 import { instantOf, zoneForAirport, zoneOrDefault } from "@/lib/timezones";
@@ -141,13 +142,5 @@ export function buildIcs(d: IcsData, now: Date = new Date()): string {
 
 /** Browser only: saves the calendar file. */
 export function downloadIcs(d: IcsData) {
-  const blob = new Blob([buildIcs(d)], { type: "text/calendar;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = exportFileName(d.trip.name).replace(/\.xlsx$/, ".ics");
-  document.body.append(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
+  saveTextFile(exportFileName(d.trip.name).replace(/\.xlsx$/, ".ics"), "text/calendar", buildIcs(d));
 }

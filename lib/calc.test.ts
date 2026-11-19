@@ -288,3 +288,100 @@ describe("settleUp with custom splits", () => {
     expect(s.share).toBe(100);
   });
 });
+
+describe("a foreign expense with its own rate", () => {
+  it("uses its own rate instead of the trip's", () => {
+    expect(homeAmount({ currency: "VND", amount: 100_000, rate: 0.0025 }, trip)).toBeCloseTo(250, 6);
+    expect(homeAmount({ currency: "VND", amount: 100_000, rate: "0.0025" }, trip)).toBeCloseTo(250, 6);
+  });
+  it("falls back to the trip rate when its own is null, zero, negative or junk", () => {
+    const base = homeAmount({ currency: "VND", amount: 100_000 }, trip);
+    for (const rate of [null, 0, -1, "abc", undefined]) expect(homeAmount({ currency: "VND", amount: 100_000, rate }, trip)).toBe(base);
+  });
+  it("is ignored for home-currency expenses", () => {
+    expect(homeAmount({ currency: "PHP", amount: 500, rate: 0.5 }, trip)).toBe(500);
+  });
+  it("flows into the totals and the settlement", () => {
+    const aq = { id: "aq", name: "Aq" };
+    const jam = { id: "jam", name: "Jam" };
+    const expenses = [
+      { currency: "VND", amount: 100_000, rate: 0.0025, paid_by: "aq" },
+      { currency: "VND", amount: 100_000, rate: 0.0024, paid_by: "aq" },
+    ];
+    expect(totalSpent(expenses, trip)).toBeCloseTo(490, 6);
+    expect(settleUp(expenses, [aq, jam], trip).transfers).toEqual([{ from: jam, to: aq, amount: 245 }]);
+  });
+});
+
+describe("settleUp properties (seeded random bills)", () => {
+  // A tiny deterministic generator (mulberry32), so a failure can be reproduced from its seed.
+  const rng = (seed: number) => () => {
+    seed = (seed + 0x6d2b79f5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+  const people = ["a", "b", "c", "d"].map((id) => ({ id, name: id.toUpperCase() }));
+
+  function bills(seed: number) {
+    const r = rng(seed);
+    const pick = <T>(xs: T[]) => xs[Math.floor(r() * xs.length)];
+    const n = 1 + Math.floor(r() * 8);
+    const travelers = people.slice(0, 1 + Math.floor(r() * people.length));
+    return {
+      travelers,
+      expenses: Array.from({ length: n }, () => {
+        const members = travelers.filter(() => r() < 0.7);
+        const chosen = members.length ? members : [travelers[0]];
+        const mode = pick(["none", "equal", "percent", "amount"] as const);
+        const amount = Math.round(r() * 500_000) / 100 + 0.01;
+        const split =
+          mode === "none"
+            ? null
+            : mode === "equal"
+              ? { mode: "equal", members: chosen.map((m) => m.id) }
+              : mode === "percent"
+                ? { mode: "percent", shares: Object.fromEntries(chosen.map((m, i) => [m.id, i === chosen.length - 1 ? 100 - 10 * (chosen.length - 1) : 10])) }
+                : { mode: "amount", shares: Object.fromEntries(chosen.map((m, i) => [m.id, i === chosen.length - 1 ? 0 : 1])) };
+        return {
+          currency: pick(["PHP", "VND"]),
+          amount,
+          rate: pick([null, 0.0025, 0.0023]),
+          paid_by: pick(travelers).id,
+          split,
+        };
+      }),
+    };
+  }
+
+  it("balances add up to zero, and applying the transfers settles everyone, for 200 random trips", () => {
+    for (let seed = 1; seed <= 200; seed++) {
+      const { travelers, expenses } = bills(seed);
+      const s = settleUp(expenses as never, travelers, trip);
+      // every bill has a payer who is a traveler, so money paid equals money owed
+      const net = s.rows.reduce((sum, r) => sum + r.balance, 0);
+      expect(Math.abs(net), `seed ${seed}: balances`).toBeLessThan(0.05);
+      const after = new Map(s.rows.map((r) => [r.traveler.id, r.balance]));
+      for (const t of s.transfers) {
+        after.set(t.from.id, (after.get(t.from.id) ?? 0) + t.amount);
+        after.set(t.to.id, (after.get(t.to.id) ?? 0) - t.amount);
+      }
+      // rounding noise below the app's 0.5 threshold is ignored on purpose
+      for (const [id, v] of after) expect(Math.abs(v), `seed ${seed}: ${id} left owing ${v}`).toBeLessThan(0.6);
+      expect(s.transfers.length, `seed ${seed}: at most n-1 payments`).toBeLessThanOrEqual(Math.max(0, travelers.length - 1));
+    }
+  });
+
+  it("a one-person trip and a zero amount owe nothing", () => {
+    const solo = [{ id: "a", name: "A" }];
+    expect(settleUp([{ currency: "PHP", amount: 100, paid_by: "a" }], solo, trip).transfers).toEqual([]);
+    expect(settleUp([{ currency: "PHP", amount: 0, paid_by: "a" }], people, trip).transfers).toEqual([]);
+    expect(settleUp([], people, trip).total).toBe(0);
+  });
+
+  it("an invalid trip rate counts a foreign expense as zero instead of NaN", () => {
+    const bad = { foreign_currency: "VND", rate: "abc" };
+    expect(homeAmount({ currency: "VND", amount: 100 }, bad)).toBe(0);
+    expect(totalSpent([{ currency: "VND", amount: 100 }], bad)).toBe(0);
+  });
+});
