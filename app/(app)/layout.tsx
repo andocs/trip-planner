@@ -3,6 +3,7 @@ import { AppShell } from "@/components/app-shell";
 import { CaptureHost } from "@/components/board/capture-host";
 import { GoogleProfileSync } from "@/components/google-profile-sync";
 import { MapHostLazy } from "@/components/map/map-host-lazy";
+import { ServiceWorkerRegister } from "@/components/offline/sw-register";
 import { PageSkeleton } from "@/components/trip-gate";
 import { PrefetchedTripGate } from "@/lib/queries/prefetch";
 
@@ -15,6 +16,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   return (
     <AppShell>
       <MapHostLazy />
+      <ServiceWorkerRegister />
       <Suspense fallback={<PageSkeleton />}>
         <PrefetchedTripGate>
           <CaptureHost />

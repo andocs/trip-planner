@@ -22,6 +22,7 @@ import { useActiveTrip } from "@/lib/queries/trip";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { useClientValue } from "@/lib/use-client-value";
 import { cn } from "@/lib/utils";
+import { OfflineBanner } from "@/components/offline/offline-banner";
 
 type NavItem = { href: string; label: string; icon: LucideIcon };
 
@@ -107,6 +108,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         id="main"
         className="mx-auto w-full max-w-[1040px] flex-1 px-4 pt-[calc(env(safe-area-inset-top)+1rem)] pb-[calc(var(--tabbar-h)+1.5rem)] lg:px-10 lg:pt-16 lg:pb-12"
       >
+        <OfflineBanner />
         {children}
       </main>
 
