@@ -23,3 +23,18 @@ test("API POSTs from another site are refused", async ({ page }) => {
   });
   expect(res.status()).toBe(403);
 });
+
+test("no screen of our own breaks the full (report-only) CSP", async ({ page }) => {
+  // The report-only policy logs violations to the console. Zod's eval probe was one: this keeps ours at zero.
+  // (Google Maps is not loaded in e2e, so its own scripts are checked by hand after a deploy.)
+  const violations: string[] = [];
+  page.on("console", (m) => {
+    if (m.text().includes("Content Security Policy")) violations.push(m.text().slice(0, 160));
+  });
+  await createFakeSupabase({ withSeed: true }).install(page);
+  for (const path of ["/", "/itinerary", "/places", "/spend", "/settings"]) {
+    await page.goto(path);
+    await page.waitForLoadState("networkidle");
+  }
+  expect(violations).toEqual([]);
+});
