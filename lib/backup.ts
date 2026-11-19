@@ -38,7 +38,7 @@ export type BackupTable = (typeof BACKUP_TABLES)[number];
 
 /** Columns that are never written to, or read back from, a backup. */
 const OMIT: Partial<Record<BackupTable, readonly string[]>> = {
-  travelers: ["user_id"],
+  travelers: ["user_id", "payment"],
   flights: ["booking_ref", "has_ref"],
 };
 const TRIP_FIELDS = [

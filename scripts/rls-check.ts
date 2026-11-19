@@ -133,6 +133,14 @@ async function main() {
     check("viewer cannot update", (upd.data ?? []).length === 0);
     const del = await viewer.from("travelers").delete().eq("trip_id", tripId).select();
     check("viewer cannot delete", (del.data ?? []).length === 0);
+    // Migration 32: payment handles. The owner may set them, a stranger and a viewer may not, and a huge value is refused.
+    const payOwn = await owner.from("travelers").update({ payment: { paypal: "aq" } }).eq("trip_id", tripId).eq("name", "Aq").select();
+    check("owner can set a payment handle", (payOwn.data ?? []).length === 1);
+    const payViewer = await viewer.from("travelers").update({ payment: { paypal: "evil" } }).eq("trip_id", tripId).select();
+    check("viewer cannot change a payment handle", (payViewer.data ?? []).length === 0);
+    const payStranger = await stranger.from("travelers").update({ payment: { paypal: "evil" } }).eq("trip_id", tripId).select();
+    check("stranger cannot change a payment handle", (payStranger.data ?? []).length === 0);
+    check("a payment value over 400 characters is refused", !!(await owner.from("travelers").update({ payment: { other: "x".repeat(500) } }).eq("trip_id", tripId)).error);
     check("viewer cannot replace the link", !!(await viewer.rpc("regenerate_invite", { p_trip: tripId })).error);
     check(
       "owner still has the traveler",

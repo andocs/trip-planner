@@ -1,16 +1,21 @@
 "use client";
 
-import { ArrowRight, Info } from "lucide-react";
+import { useMemo, useState } from "react";
+import { ArrowRight, Check, Copy, Info } from "lucide-react";
 import { useTrip } from "@/components/trip-gate";
 import { Avatar } from "@/components/ui/avatar";
 import { Card, CardTitle } from "@/components/ui/card";
 import type { Settlement } from "@/lib/calc";
 import { formatMoney } from "@/lib/format";
+import { parsePayment, payLinks, type Payment } from "@/lib/payment";
+import { useRows } from "@/lib/queries/table";
 import { cn } from "@/lib/utils";
 
 /** "Who owes whom" lines only — used on Home. */
 export function TransfersList({ settlement }: { settlement: Settlement }) {
   const trip = useTrip();
+  const travelers = useRows("travelers").data;
+  const payments = useMemo(() => new Map((travelers ?? []).map((t) => [t.id, parsePayment(t.payment)])), [travelers]);
   if (settlement.rows.length < 2)
     return <p className="text-sm text-fg-muted">Add at least two travelers to split costs.</p>;
   if (settlement.transfers.length === 0)
@@ -23,16 +28,64 @@ export function TransfersList({ settlement }: { settlement: Settlement }) {
   return (
     <ul className="space-y-2">
       {settlement.transfers.map((t) => (
-        <li key={`${t.from.id}-${t.to.id}`} className="flex items-center gap-2 rounded-xl bg-surface-2 px-3 py-2.5">
-          <Avatar name={t.from.name} index={order.get(t.from.id)} className="size-8 text-xs" />
-          <span className="font-semibold">{t.from.name}</span>
-          <ArrowRight className="size-4 text-fg-muted" aria-label="pays" />
-          <Avatar name={t.to.name} index={order.get(t.to.id)} className="size-8 text-xs" />
-          <span className="font-semibold">{t.to.name}</span>
-          <span className="ml-auto font-bold tabular-nums">{formatMoney(t.amount, trip.home_currency)}</span>
+        <li key={`${t.from.id}-${t.to.id}`} className="rounded-xl bg-surface-2 px-3 py-2.5">
+          <div className="flex items-center gap-2">
+            <Avatar name={t.from.name} index={order.get(t.from.id)} className="size-8 text-xs" />
+            <span className="font-semibold">{t.from.name}</span>
+            <ArrowRight className="size-4 text-fg-muted" aria-label="pays" />
+            <Avatar name={t.to.name} index={order.get(t.to.id)} className="size-8 text-xs" />
+            <span className="font-semibold">{t.to.name}</span>
+            <span className="ml-auto font-bold tabular-nums">{formatMoney(t.amount, trip.home_currency)}</span>
+          </div>
+          <PayHow payment={payments.get(t.to.id) ?? null} to={t.to.name} amount={t.amount} currency={trip.home_currency} tripName={trip.name} />
         </li>
       ))}
     </ul>
+  );
+}
+
+/** How to pay this person: links that open the payment app with the amount filled in, and their own words to copy. */
+function PayHow({ payment, to, amount, currency, tripName }: { payment: Payment | null; to: string; amount: number; currency: string; tripName: string }) {
+  const [copied, setCopied] = useState(false);
+  if (!payment) return null;
+  const links = payLinks(payment, amount, currency, `${tripName} (settle up)`);
+  const copy = () => {
+    void navigator.clipboard?.writeText(payment.other ?? "").then(
+      () => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1500);
+      },
+      () => {},
+    );
+  };
+  return (
+    <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
+      {links.map((l) => (
+        <a
+          key={l.label}
+          href={l.href}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex min-h-9 items-center rounded-full border border-border bg-surface px-3 font-semibold text-teal"
+          aria-label={`Pay ${to} with ${l.label}`}
+        >
+          {l.label}
+        </a>
+      ))}
+      {payment.other && (
+        <span className="flex min-w-0 items-center gap-1.5 text-fg-muted">
+          <span className="truncate">{payment.other}</span>
+          <button
+            type="button"
+            onClick={copy}
+            className="inline-flex size-9 shrink-0 items-center justify-center rounded-full hover:bg-surface"
+            aria-label={`Copy ${to}'s payment details`}
+          >
+            {copied ? <Check className="size-4" aria-hidden /> : <Copy className="size-4" aria-hidden />}
+          </button>
+        </span>
+      )}
+    </div>
   );
 }
 
