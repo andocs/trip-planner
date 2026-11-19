@@ -18,6 +18,7 @@ import {
   type Role,
   type Trip,
 } from "@/lib/queries/trip";
+import { decideAccess } from "@/lib/access";
 import type { Bootstrap } from "@/lib/queries/bootstrap";
 import { useRealtimeSync, useWarmCache } from "@/lib/realtime";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
@@ -56,10 +57,10 @@ export function EditOnly({ children }: { children: ReactNode }) {
 /**
  * Loads the session and active trip, then shows the right access state before rendering children.
  *
- * `prefetched` says the server already put the trip in the HTML (cold-load prefetch). When it did not,
- * the server HTML is a skeleton, so the first client render must be one too: the shell's own queries may
- * have filled the cache before this part of the page hydrates, and rendering real content then would
- * not match the HTML (and can leave the page stuck on its skeleton).
+ * What is shown is decided by `decideAccess` (lib/access.ts), the only place those rules live. `prefetched` says the
+ * server already put the trip in the HTML, and `boot` is the server's own answer: until the page has mounted only that
+ * answer may be used (and a skeleton when there is none), because the first client render must match the server HTML.
+ * Rendering from the browser's cache earlier caused hydration mismatches. After mounting, the live queries decide.
  */
 export function TripGate({
   children,
@@ -83,71 +84,43 @@ function TripGateInner({ children, prefetched, boot }: { children: ReactNode; pr
   const user = useUser();
   const trip = useActiveTrip();
   const admin = useIsAdmin();
+  const role = useTripRole(trip.data?.id); // off until a trip is known
   const mounted = useClientValue(() => true, false);
 
-  if (!prefetched && !mounted) return <PageSkeleton />;
-
-  // The server HTML was built from `boot`. The browser's query cache is NOT a safe source for the first render: the
-  // app shell (outside this boundary) has already created the user and trip queries there, still empty, and a
-  // dehydrated query that already exists is only filled in an effect. Rendering from the cache would sometimes show a
-  // skeleton where the server sent the page (or the reverse): a hydration mismatch. So until mounted, use `boot`.
-  const snap = !mounted && boot ? boot : null;
-  if (snap) return <Ready boot={snap}>{children}</Ready>;
-
-  // An answer we already hold (loaded earlier, or the offline copy) beats a failed refresh: a failed refetch must not
-  // replace a working screen with an error. Only "no answer at all" is an error or a skeleton.
-  const userKnown = user.data !== undefined;
-  const tripKnown = trip.data !== undefined;
-  if (user.isError && !userKnown) return <ErrorState message={errorMessage(user.error)} onRetry={() => user.refetch()} />;
-  if (!user.isSuccess && !userKnown) return <PageSkeleton />;
-  if (!user.data) return <InviteOnly />;
-  if (trip.isError && !tripKnown) return <ErrorState message={errorMessage(trip.error)} onRetry={() => trip.refetch()} />;
-  if ((!trip.isSuccess && !tripKnown) || (!user.data.isAnonymous && !admin.isFetched && admin.data === undefined)) return <PageSkeleton />;
-
-  if (!trip.data) {
-    return admin.data ? <OwnerWithoutTrip /> : <NoAccess email={user.data.email} />;
+  // One decision (lib/access.ts) from the server's snapshot or the live queries, one switch to show it.
+  const access = decideAccess({ mounted, prefetched, boot, user, trip, admin, role });
+  switch (access.kind) {
+    case "loading":
+      return <PageSkeleton />;
+    case "error": {
+      const failing = access.source === "user" ? user : access.source === "trip" ? trip : role;
+      return <ErrorState message={access.message} onRetry={() => failing.refetch()} />;
+    }
+    case "signed-out":
+      return <InviteOnly />;
+    case "no-trip":
+      return <OwnerWithoutTrip />;
+    case "no-access":
+      return <NoAccess email={access.email} />;
+    case "ready":
+      // The key makes the screen mount afresh once the page is live, on purpose (the old gate did this too, by accident of
+      // having two component types). Parts of a streamed page hydrate AFTER the first effects, reading the browser's cache
+      // instead of what the server sent, and several screens still do (Settings' time zone labels and Account card were
+      // caught in a real-build test). Mounting afresh renders them in the browser instead of comparing them with the HTML,
+      // so nothing is reported. Removing the key is possible, but only after each screen is made hydration-safe:
+      // run `npm run check:real-build` with it removed to see what is left.
+      return (
+        <TripShell key={mounted ? "live" : "snapshot"} trip={access.trip} role={access.role} canEdit={access.canEdit}>
+          {children}
+        </TripShell>
+      );
   }
-  return (
-    <TripRole trip={trip.data} isAdmin={admin.data === true} email={user.data.email}>
-      {children}
-    </TripRole>
-  );
 }
 
-/** The gate's decision from the server's snapshot alone (same branches as the live path, no queries). */
-function Ready({ boot, children }: { boot: Bootstrap; children: ReactNode }) {
-  if (!boot.trip) return boot.isAdmin ? <OwnerWithoutTrip /> : <NoAccess email={boot.user.email} />;
-  return (
-    <TripRole trip={boot.trip} isAdmin={boot.isAdmin} email={boot.user.email} bootRole={boot.role}>
-      {children}
-    </TripRole>
-  );
-}
-
-function TripRole({
-  trip,
-  isAdmin,
-  email,
-  bootRole,
-  children,
-}: {
-  trip: Trip;
-  isAdmin: boolean;
-  email: string | null;
-  /** The server's answer for the first render (see TripGateInner); undefined once the live query takes over. */
-  bootRole?: Role | null;
-  children: ReactNode;
-}) {
-  const role = useTripRole(trip.id);
-  const fromServer = bootRole !== undefined;
-  if (!fromServer && role.isError) return <ErrorState message={errorMessage(role.error)} onRetry={() => role.refetch()} />;
-  if (!fromServer && !role.isSuccess) return <PageSkeleton />;
-  const roleData = fromServer ? bootRole : role.data;
-  if (!roleData) return <NoAccess email={email} />;
-  // An owner row only counts while the account is still an admin (the database applies the same rule).
-  const canEdit = roleData === "editor" || (roleData === "owner" && isAdmin);
+/** The signed-in, allowed-in screen: the owner's setup wizard while the trip is a draft, otherwise the app. */
+function TripShell({ trip, role, canEdit, children }: { trip: Trip; role: Role; canEdit: boolean; children: ReactNode }) {
+  const value = { trip, role, canEdit };
   // A draft is the owner's setup wizard; viewers wait until it is finished.
-  const value = { trip, role: roleData, canEdit };
   if (trip.status === "draft") {
     return canEdit ? (
       <TripContext value={value}>

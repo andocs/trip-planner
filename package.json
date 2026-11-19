@@ -16,6 +16,7 @@
     "db:push": "supabase db push",
     "db:types": "supabase gen types typescript --linked --schema public > lib/database.types.ts",
     "check:rls": "tsx scripts/rls-check.ts",
+    "check:real-build": "tsx scripts/check-real-build.ts",
     "seed": "tsx scripts/seed.ts",
     "icons": "node scripts/make-icons.mjs",
     "test:e2e": "playwright test",
