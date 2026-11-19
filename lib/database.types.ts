@@ -480,65 +480,14 @@ export type Database = {
           },
         ]
       }
-      stays: {
+      hotel_ideas: {
         Row: {
           check_in: string | null
           check_out: string | null
           city: string | null
           confirmation: string | null
-          created_at: string
-          details: Json
-          hotel: string
-          id: string
-          note: string | null
-          room: string | null
-          status: string
-          total: number | null
-          trip_id: string
-        }
-        Insert: {
-          check_in?: string | null
-          check_out?: string | null
-          city?: string | null
-          confirmation?: string | null
-          created_at?: string
-          details?: Json
-          hotel: string
-          id?: string
-          note?: string | null
-          room?: string | null
-          status?: string
-          total?: number | null
-          trip_id: string
-        }
-        Update: {
-          check_in?: string | null
-          check_out?: string | null
-          city?: string | null
-          confirmation?: string | null
-          created_at?: string
-          details?: Json
-          hotel?: string
-          id?: string
-          note?: string | null
-          room?: string | null
-          status?: string
-          total?: number | null
-          trip_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "stays_trip_id_fkey"
-            columns: ["trip_id"]
-            isOneToOne: false
-            referencedRelation: "trips"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      hotel_ideas: {
-        Row: {
-          city: string | null
+          is_stay: boolean
+          stay_status: string
           created_at: string
           deal_breaker: boolean
           details: Json
@@ -551,7 +500,12 @@ export type Database = {
           trip_id: string
         }
         Insert: {
+          check_in?: string | null
+          check_out?: string | null
           city?: string | null
+          confirmation?: string | null
+          is_stay?: boolean
+          stay_status?: string
           created_at?: string
           deal_breaker?: boolean
           details?: Json
@@ -564,7 +518,12 @@ export type Database = {
           trip_id: string
         }
         Update: {
+          check_in?: string | null
+          check_out?: string | null
           city?: string | null
+          confirmation?: string | null
+          is_stay?: boolean
+          stay_status?: string
           created_at?: string
           deal_breaker?: boolean
           details?: Json

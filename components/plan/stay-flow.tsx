@@ -11,13 +11,11 @@ import { Sheet } from "@/components/ui/sheet";
 import type { Idea } from "@/lib/drafts";
 import type { IdeaPayload } from "@/lib/idea-form";
 import { useIdeas } from "@/lib/queries/ideas";
-import { newId, useDeleteRow, useInsertRow, useRows, useUpdateRow, type Row } from "@/lib/queries/table";
-import { formFromIdeaAsStay, formFromStay, stayColumns, stayOfIdea } from "@/lib/stay-sync";
-import { blankForm } from "@/lib/idea-form";
-import { parseStayDetails } from "@/lib/stay-details";
+import { useRemoveStay } from "@/lib/queries/stays";
+import { useInsertRow, useRows, useUpdateRow } from "@/lib/queries/table";
+import { blankStayForm, formFromIdeaAsStay, formFromStay, stayIdeaColumns } from "@/lib/stay-sync";
+import type { Stay } from "@/lib/stays";
 import { formatMoney } from "@/lib/format";
-
-type Stay = Row<"stays">;
 
 /** What the Stays page is doing: nothing, choosing an existing idea, filling in the stay form, or adding a plan. */
 export type StayStep = { step: "pick" } | { step: "form"; stay?: Stay; fromIdea?: Idea } | { step: "idea" };
@@ -63,21 +61,17 @@ export function AddStayMenu({ onChoose, label = "Add", variant = "secondary" }: 
 export function StayFlow({ flow, onFlow, onClose }: { flow: StayStep; onFlow: (s: StayStep | null) => void; onClose: () => void }) {
   const trip = useTrip();
   const { ideas } = useIdeas();
-  const stays = useRows("stays");
-  const hotels = useRows("hotel_ideas");
   const destinations = useRows("destinations");
-  const insertIdea = useInsertRow("hotel_ideas", "hotel idea");
-  const updateIdea = useUpdateRow("hotel_ideas", "hotel idea");
-  const insertStay = useInsertRow("stays", "stay");
-  const updateStay = useUpdateRow("stays", "stay");
-  const removeStay = useDeleteRow("stays", "stay");
+  const insertIdea = useInsertRow("hotel_ideas", "stay");
+  const updateIdea = useUpdateRow("hotel_ideas", "stay");
+  const removeStay = useRemoveStay();
   const cities = [...new Set([...(destinations.data ?? []).map((d) => d.city), ...ideas.map((i) => i.city)].filter(Boolean) as string[])].sort();
   const hotelIdeas = ideas.filter((i) => i.kind === "stay");
 
   if (flow.step === "pick")
     return (
       <IdeaPicker
-        ideas={hotelIdeas.filter((i) => i.decision !== "dropped" && !stayOfIdea(stays.data ?? [], i.id))}
+        ideas={hotelIdeas.filter((i) => i.decision !== "dropped" && !i.stay)}
         currency={trip.home_currency}
         onPick={(idea) => onFlow({ step: "form", fromIdea: idea })}
         onNew={() => onFlow({ step: "form" })}
@@ -88,42 +82,32 @@ export function StayFlow({ flow, onFlow, onClose }: { flow: StayStep; onFlow: (s
   if (flow.step === "idea") return <IdeaModal kind="stay" cities={cities} onClose={onClose} />;
 
   const { stay, fromIdea } = flow;
-  const linkedId = stay ? parseStayDetails(stay.details).ideaId : undefined;
-  const linked = fromIdea ?? (linkedId ? hotelIdeas.find((i) => i.id === linkedId) : undefined);
-  const defaults = stay
-    ? formFromStay(stay, linked, trip.home_currency)
-    : fromIdea
-      ? formFromIdeaAsStay(fromIdea, trip.start_date, trip.home_currency)
-      : { ...blankForm("stay", trip.home_currency), decision: "confirmed" as const, unit: "total" as const };
+  // A stay IS its hotel idea (same id), so editing a stay and booking an idea are the same write.
+  const idea = stay ? hotelIdeas.find((i) => i.id === stay.id) : fromIdea;
+  const defaults = idea?.stay
+    ? formFromStay(idea, trip.home_currency)
+    : idea
+      ? formFromIdeaAsStay(idea, trip.start_date, trip.home_currency)
+      : blankStayForm(trip.home_currency);
 
   const save = (payload: IdeaPayload, out: Record<string, unknown>, draftId: string) => {
-    // Every stay has a hotel idea behind it (the one it was picked from, its linked one, or a new confirmed one), so the
-    // board and this page never disagree about what the place is.
-    const ideaColumns = { ...payload.columns, decision: "confirmed" };
-    let ideaId = linked?.id ?? null;
-    if (ideaId) {
-      if (hotels.data?.some((h) => h.id === ideaId)) updateIdea.mutate({ id: ideaId, patch: ideaColumns });
-    } else {
-      ideaId = draftId;
-      insertIdea.mutate([{ id: ideaId, ...payload.columns, ...payload.insertOnly, decision: "confirmed" } as never]);
-    }
-    const cols = stayColumns(out as never, payload, ideaId);
-    if (stay) updateStay.mutate({ id: stay.id, patch: cols });
-    else insertStay.mutate([{ id: newId(), ...cols }]);
+    const columns = stayIdeaColumns(out as never, payload);
+    if (idea) updateIdea.mutate({ id: idea.id, patch: columns as never });
+    else insertIdea.mutate([{ id: draftId, ...payload.insertOnly, ...columns } as never]);
   };
 
   return (
     <IdeaModal
       key={stay?.id ?? fromIdea?.id ?? "new"}
       kind="stay"
-      idea={linked}
+      idea={idea}
       cities={cities}
       onClose={onClose}
       stay={{
         defaults,
         editing: !!stay,
         save,
-        onDelete: stay ? () => removeStay(stay, stay.hotel) : undefined,
+        onDelete: stay ? () => removeStay(stay) : undefined,
       }}
     />
   );

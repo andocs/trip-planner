@@ -5,6 +5,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { loadExample } from "@/app/actions/load-example";
 import type { ExportData } from "@/lib/export";
+import { staysOf } from "@/lib/stays";
 import { getCurrentUser, getSupabase } from "@/lib/supabase/client";
 import { errorMessage } from "@/lib/utils";
 import { qk } from "./keys";
@@ -70,7 +71,6 @@ const EXPORT_TABLES = [
   "itinerary_items",
   "flights",
   "transfers",
-  "stays",
   "hotel_ideas",
   "food_places",
   "menu_items",
@@ -94,6 +94,8 @@ export async function fetchExportData(trip: Trip): Promise<ExportData> {
   // Booking references are owner-only: row-level security returns nothing to anyone else, and that is fine here.
   const refs = await db.from("flight_refs").select("flight_id, booking_ref").eq("trip_id", trip.id);
   if (!refs.error) tables.flight_refs = refs.data as ExportData["flight_refs"];
+  // Stays are the booked hotel ideas (migration 31), read out of the ideas just loaded.
+  tables.stays = staysOf(tables.hotel_ideas);
   tables.travelers.sort((a, b) => a.sort - b.sort);
   tables.destinations.sort((a, b) => a.sort - b.sort);
   tables.categories.sort((a, b) => a.sort - b.sort);

@@ -242,6 +242,7 @@ export function formFromIdea(idea: Idea, currency: string): IdeaFormValues {
     f.maxGuests = str(d.maxGuests);
     f.cancellation = d.cancellation ?? "";
     f.freeUntilDay = str(d.freeUntilDay);
+    f.freeUntil = d.freeUntil ?? "";
     f.breakfast = d.breakfast === true;
     f.amenities = d.amenities ?? [];
     f.nearby = d.nearby ?? "";
@@ -314,6 +315,7 @@ export function toPayload(kind: IdeaKind, raw: Out<"stay"> | Out<"food"> | Out<"
         maxGuests: v.maxGuests,
         cancellation: v.cancellation || undefined,
         freeUntilDay: v.cancellation === "free" ? v.freeUntilDay : undefined,
+        freeUntil: v.cancellation === "free" ? (v.freeUntil ?? undefined) : undefined,
         breakfast: yes(v.breakfast),
         amenities: v.amenities,
         nearby: v.nearby,

@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { ITINERARY_TYPES, STATUSES } from "@/lib/constants";
 import type { Database, TablesInsert } from "@/lib/database.types";
+import { daysBetween } from "@/lib/calc";
 import { decisionForStatus } from "@/lib/drafts";
 
 const TYPES: readonly string[] = ITINERARY_TYPES;
@@ -95,7 +96,7 @@ export type SeedPlan = {
     itinerary_items: Ins<"itinerary_items">[];
     flights: Ins<"flights">[];
     transfers: Ins<"transfers">[];
-    stays: Ins<"stays">[];
+    /** Booked stays are hotel ideas with is_stay set (migration 31), so the example's stays are in here too. */
     hotel_ideas: Ins<"hotel_ideas">[];
     food_places: Ins<"food_places">[];
     menu_items: Ins<"menu_items">[];
@@ -117,7 +118,6 @@ export const INSERT_ORDER = [
   "itinerary_items",
   "flights",
   "transfers",
-  "stays",
   "hotel_ideas",
   "food_places",
   "menu_items",
@@ -238,27 +238,37 @@ export function buildSeedPlan(
         cost_text: t(x.cost),
         link: t(x.link),
       })),
-      stays: seed.stays.map((x) => ({
-        id: uuid(),
-        status: status(x.status),
-        city: t(x.city),
-        hotel: x.hotel,
-        room: t(x.room),
-        check_in: date(x.cin),
-        check_out: date(x.cout),
-        total: x.total ?? null,
-        confirmation: t(x.conf),
-        note: t(x.note),
-      })),
-      hotel_ideas: seed.short.map((x) => ({
-        id: uuid(),
-        decision: "confirmed" as const,
-        city: t(x.city),
-        hotel: x.hotel,
-        room: t(x.room),
-        nights: x.nights ?? null,
-        total: x.total ?? null,
-      })),
+      hotel_ideas: [
+        ...seed.short.map((x) => ({
+          id: uuid(),
+          decision: "confirmed" as const,
+          city: t(x.city),
+          hotel: x.hotel,
+          room: t(x.room),
+          nights: x.nights ?? null,
+          total: x.total ?? null,
+        })),
+        // A booked stay is a confirmed hotel idea with its booking on it: `room` holds the notes, details.rooms the room.
+        ...seed.stays.map((x) => {
+          const checkIn = date(x.cin);
+          const checkOut = date(x.cout);
+          return {
+            id: uuid(),
+            decision: "confirmed" as const,
+            is_stay: true,
+            stay_status: status(x.status),
+            city: t(x.city),
+            hotel: x.hotel,
+            room: t(x.note),
+            nights: checkIn && checkOut ? daysBetween(checkIn, checkOut) : null,
+            total: x.total ?? null,
+            check_in: checkIn,
+            check_out: checkOut,
+            confirmation: t(x.conf),
+            details: t(x.room) ? { rooms: t(x.room) } : {},
+          };
+        }),
+      ],
       food_places: seed.food.map((x) => ({
         id: uuid(),
         decision: decisionForStatus(status(x.status)),

@@ -46,6 +46,7 @@ import { useImages, usePhotoUrls } from "@/lib/queries/images";
 import { freshCoords, usePlaceRefs } from "@/lib/queries/places";
 import { useMoveItems } from "@/lib/queries/itinerary";
 import { useDeleteRow, useRows, useUpdateRow } from "@/lib/queries/table";
+import { useStays } from "@/lib/queries/stays";
 import { useMedia } from "@/lib/use-media";
 import { useSheet } from "@/lib/use-sheet";
 import { cn } from "@/lib/utils";
@@ -96,7 +97,7 @@ export function Itinerary() {
   const trip = useTrip();
   const canEdit = useCanEdit();
   const { data: items = [], isPending } = useRows("itinerary_items");
-  const stays = useRows("stays");
+  const stays = useStays();
   const { ideas } = useIdeas();
   const { byIdea: imagesBy } = useImages();
   const refs = usePlaceRefs();

@@ -194,8 +194,8 @@ test("owner: a stay takes the same grouped form, with website and Google Maps li
   await sheet.getByLabel("Website").fill("https://example.com/namba");
   await sheet.getByLabel("Google Maps link").fill("https://maps.app.goo.gl/namba");
   await sheet.getByRole("button", { name: "Add", exact: true }).click();
-  await expect.poll(() => fake.tables.get("stays")?.find((s) => s.hotel === "Namba Guesthouse")).toBeTruthy();
-  expect(fake.tables.get("stays")!.find((s) => s.hotel === "Namba Guesthouse")!.details).toMatchObject({ website: "https://example.com/namba", mapsUrl: "https://maps.app.goo.gl/namba" });
+  await expect.poll(() => fake.stayRows().find((s) => s.hotel === "Namba Guesthouse")).toBeTruthy();
+  expect(fake.stayRows().find((s) => s.hotel === "Namba Guesthouse")!.details).toMatchObject({ website: "https://example.com/namba", mapsUrl: "https://maps.app.goo.gl/namba" });
 });
 
 test("the activity view has the idea-sheet layout: facts, actions for the owner, Mark complete works from it", async ({ page }) => {
@@ -312,7 +312,7 @@ function addHotelIdea(fake: ReturnType<typeof createFakeSupabase>, details: Reco
   return idea;
 }
 
-test("Stays: a confirmed stay is picked from the ideas, and it links the idea to the stay", async ({ page }) => {
+test("Stays: a confirmed stay is picked from the ideas, and the idea itself becomes the booked stay", async ({ page }) => {
   const fake = createFakeSupabase({ withSeed: true });
   const idea = addHotelIdea(fake, {});
   await fake.install(page);
@@ -327,10 +327,11 @@ test("Stays: a confirmed stay is picked from the ideas, and it links the idea to
   await sheet.getByLabel("Check-out", { exact: true }).fill("2026-06-23");
   await sheet.getByRole("button", { name: "Booked", exact: true }).click();
   await sheet.getByRole("button", { name: "Add", exact: true }).click();
-  await expect.poll(() => fake.tables.get("stays")!.find((s) => (s.details as Record<string, unknown>)?.ideaId === idea.id)).toBeTruthy();
-  const stay = fake.tables.get("stays")!.find((s) => (s.details as Record<string, unknown>)?.ideaId === idea.id)!;
-  expect(stay).toMatchObject({ check_in: "2026-06-20", check_out: "2026-06-23", status: "Booked" });
-  expect(fake.tables.get("hotel_ideas")!.find((h) => h.id === idea.id)!.decision).toBe("confirmed");
+  await expect.poll(() => fake.stayRows().find((s) => s.id === idea.id)).toBeTruthy();
+  // One row: the idea IS the stay, so there is nothing to link and nothing is inserted.
+  const stay = fake.stayRows().find((s) => s.id === idea.id)!;
+  expect(stay).toMatchObject({ check_in: "2026-06-20", check_out: "2026-06-23", stay_status: "Booked", is_stay: true, decision: "confirmed" });
+  expect(fake.tables.get("hotel_ideas")!.filter((h) => h.hotel === idea.hotel)).toHaveLength(1);
 });
 
 test("Stays: Add a plan or idea opens the place form on Stay", async ({ page }) => {
@@ -345,16 +346,18 @@ test("Stays: Add a plan or idea opens the place form on Stay", async ({ page }) 
 test("confirming a stay idea asks first, and adds it to Stays too", async ({ page }) => {
   const fake = createFakeSupabase({ withSeed: true });
   const idea = addHotelIdea(fake, { checkInDay: 2, checkOutDay: 4, cancellation: "free" });
-  const before = fake.tables.get("stays")!.length;
+  const before = fake.stayRows().length;
+  const ideasBefore = fake.tables.get("hotel_ideas")!.length;
   await fake.install(page);
   await page.goto("/places?cat=stay");
   await page.getByRole("article", { name: String(idea.hotel) }).getByRole("button", { name: "Confirm" }).click();
   const ask = page.getByRole("dialog", { name: /^Confirm “/ });
   await expect(ask).toContainText("added to the Stays page");
   await ask.getByRole("button", { name: /^Confirm/ }).click();
-  await expect.poll(() => fake.tables.get("stays")!.length).toBe(before + 1);
-  const stay = fake.tables.get("stays")!.find((s) => (s.details as Record<string, unknown>)?.ideaId === idea.id)!;
-  expect(stay).toMatchObject({ hotel: idea.hotel, check_in: "2026-06-17", check_out: "2026-06-19", status: "Planned" });
+  await expect.poll(() => fake.stayRows().length).toBe(before + 1);
+  expect(fake.tables.get("hotel_ideas")!.length).toBe(ideasBefore); // the idea became the stay; no second row
+  const stay = fake.stayRows().find((s) => s.id === idea.id)!;
+  expect(stay).toMatchObject({ hotel: idea.hotel, check_in: "2026-06-17", check_out: "2026-06-19", stay_status: "Planned" });
 });
 
 test("a stay idea with no dates cannot be confirmed until it has them", async ({ page }) => {
@@ -478,9 +481,9 @@ test("Edit activity follows the category: food shows food details, and they are 
 
 test("a stay's view: dates, total, a hidden confirmation number you can show, and a menu for Cancel and Delete", async ({ page }) => {
   const fake = createFakeSupabase({ withSeed: true });
-  const stay = fake.tables.get("stays")![0];
+  const stay = fake.stayRows()[0];
   stay.hotel = "Lakeside Inn";
-  Object.assign(stay, { status: "Booked", check_in: "2026-06-20", check_out: "2026-06-23", total: 11400, confirmation: "ABC123", details: { cancellation: "free", freeUntil: "2026-06-15" } });
+  Object.assign(stay, { stay_status: "Booked", check_in: "2026-06-20", check_out: "2026-06-23", total: 11400, confirmation: "ABC123", details: { cancellation: "free", freeUntil: "2026-06-15" } });
   await fake.install(page);
   await page.goto("/stays");
   await page.getByRole("button", { name: "Open Lakeside Inn" }).click();
@@ -492,7 +495,7 @@ test("a stay's view: dates, total, a hidden confirmation number you can show, an
   await expect(view.getByText("ABC123")).toBeVisible();
   await view.getByRole("button", { name: "More actions" }).click();
   await page.getByRole("menuitem", { name: "Cancel stay" }).click();
-  await expect.poll(() => fake.tables.get("stays")!.find((s) => s.id === stay.id)?.status).toBe("Cancelled");
+  await expect.poll(() => fake.stayRows().find((s) => s.id === stay.id)?.stay_status).toBe("Cancelled");
 });
 
 test("a card dips as one piece when pressed", async ({ page }) => {

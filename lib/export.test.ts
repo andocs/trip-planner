@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import seed from "../seed/vietnam26.seed.json";
 import { buildWorkbook, exportFileName, type ExportData } from "./export";
 import { buildSeedPlan, INSERT_ORDER } from "./seed-map";
+import { staysOf } from "./stays";
 
 function seededData(): ExportData {
   let i = 0;
@@ -25,6 +26,8 @@ function seededData(): ExportData {
   const data = Object.fromEntries(
     INSERT_ORDER.map((t) => [t, withMeta(plan.rows[t] as object[])]),
   ) as unknown as ExportData;
+  // Stays are the booked hotel ideas (migration 31), as fetchExportData derives them.
+  data.stays = staysOf(data.hotel_ideas);
   data.categories = cats.map((name, k) => ({
     id: `c${k}`,
     trip_id: "t",

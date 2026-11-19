@@ -41,8 +41,7 @@ describe("Vietnam '26 seed mapping", () => {
       itinerary_items: 140,
       flights: 2,
       transfers: 6,
-      stays: 5,
-      hotel_ideas: 14,
+      hotel_ideas: 19, // 14 shortlisted ideas + the 5 booked stays (a stay is a booked hotel idea)
       food_places: 19,
       menu_items: 44,
       attractions: 36,

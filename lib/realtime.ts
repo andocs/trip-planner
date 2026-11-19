@@ -18,7 +18,6 @@ const CHILD_TABLES: ChildTable[] = [
   "itinerary_items",
   "flights",
   "transfers",
-  "stays",
   "hotel_ideas",
   "food_places",
   "menu_items",

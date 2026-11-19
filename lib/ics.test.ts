@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Tables } from "@/lib/database.types";
+import type { Stay } from "@/lib/stays";
 import { buildIcs, fold, type IcsData } from "./ics";
 
 const now = new Date("2026-06-01T00:00:00Z");
@@ -8,8 +9,8 @@ const item = (o: Partial<Tables<"itinerary_items">>) =>
   ({ id: "i1", kind: "stop", activity: "Pho", day: 1, on_date: null, at_time: null, duration_min: null, note: null, city: null, tentative: false, details: {}, ...o }) as Tables<"itinerary_items">;
 const flight = (o: Partial<Tables<"flights">> = {}) =>
   ({ id: "f1", airline: "Cebu Pacific", flight_no: "5J 111", from_code: "MNL", to_code: "HAN", departs_at: "2026-06-16T09:40", arrives_at: "2026-06-16T12:40", dep_tz: "Asia/Manila", arr_tz: "Asia/Bangkok", terminal: "3", gate: null, seat: "12A", booking_ref: "SECRET1", has_ref: true, fare: 5000, ...o }) as Tables<"flights">;
-const stay = (o: Partial<Tables<"stays">> = {}) =>
-  ({ id: "s1", hotel: "Old Quarter Inn", check_in: "2026-06-16", check_out: "2026-06-19", city: "Hanoi", confirmation: "CONF999", total: 9000, ...o }) as Tables<"stays">;
+const stay = (o: Partial<Stay> = {}) =>
+  ({ id: "s1", hotel: "Old Quarter Inn", check_in: "2026-06-16", check_out: "2026-06-19", city: "Hanoi", confirmation: "CONF999", total: 9000, ...o }) as Stay;
 const data = (o: Partial<IcsData>): IcsData => ({ trip, itinerary_items: [], flights: [], stays: [], ...o });
 const events = (ics: string) => ics.split("BEGIN:VEVENT").length - 1;
 

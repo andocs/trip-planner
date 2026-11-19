@@ -219,7 +219,7 @@ export function createFakeSupabase(
           .filter((i) => (i.kind ?? "stop") === "stop")
           .map((i) => pick(i, ["day", "on_date", "at_time", "duration_min", "activity", "city", "type", "tentative"])),
         flights: mine("flights").map((f) => pick(f, ["airline", "flight_no", "from_code", "to_code", "departs_at", "arrives_at", "dep_tz", "arr_tz", "terminal", "status"])),
-        stays: mine("stays").map((x) => pick(x, ["hotel", "city", "check_in", "check_out"])),
+        stays: mine("hotel_ideas").filter((x) => x.is_stay === true).map((x) => pick(x, ["hotel", "city", "check_in", "check_out"])),
       });
     }
     if (path === "/rest/v1/trip_shares") return json(isOwner() && shareToken ? [{ trip_id: tripId, token: shareToken }] : []);
@@ -509,7 +509,7 @@ export function createFakeSupabase(
           "flight_refs",
           (tables.get("flight_refs") ?? []).filter((x) => x.flight_id !== id),
         );
-      if (table === "flights" || table === "stays")
+      if (table === "flights" || table === "hotel_ideas")
         tables.set(
           "expenses",
           (tables.get("expenses") ?? []).map((x) =>
@@ -617,6 +617,8 @@ export function createFakeSupabase(
       return role;
     },
     wizardSaves,
+    /** The booked stays: the live hotel-idea rows that have is_stay set (a stay IS a booked hotel idea, migration 31). */
+    stayRows: () => (tables.get("hotel_ideas") ?? []).filter((r) => r.is_stay === true),
     get shareToken() {
       return shareToken;
     },

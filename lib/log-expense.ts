@@ -1,6 +1,7 @@
 /** Pure helpers for "Log as expense": what the expense should look like, and which category it belongs in. */
 
-export type LoggableKind = "flights" | "stays";
+/** Matches expenses.source_table: a stay is a booked hotel idea (migration 31). */
+export type LoggableKind = "flights" | "hotel_ideas";
 
 type FlightLike = {
   from_code: string | null;
@@ -12,7 +13,7 @@ type FlightLike = {
 type StayLike = { hotel: string; city: string | null; total: number | null };
 type CategoryLike = { id: string; name: string };
 
-const CATEGORY_NAME: Record<LoggableKind, string> = { flights: "flights", stays: "accommodation" };
+const CATEGORY_NAME: Record<LoggableKind, string> = { flights: "flights", hotel_ideas: "accommodation" };
 
 /** The category a flight or stay belongs under (by its default name), or null if the owner renamed or removed it. */
 export function categoryFor(kind: LoggableKind, categories: CategoryLike[]): string | null {

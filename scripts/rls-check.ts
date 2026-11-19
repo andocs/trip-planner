@@ -247,12 +247,24 @@ async function main() {
       "details must be a JSON object",
       !!(await owner.from("attractions").update({ details: [1] as never }).eq("id", ideaId)).error,
     );
-    const stayRow = await owner.from("stays").insert({ trip_id: tripId, hotel: "rls-check stay", details: { cancellation: "free" } }).select("id").single();
+    // A stay is a hotel idea that has been booked (migration 31).
+    const stayRow = await owner.from("hotel_ideas").insert({ trip_id: tripId, hotel: "rls-check stay", decision: "confirmed", is_stay: true, check_in: "2026-06-16", check_out: "2026-06-18", stay_status: "Booked", confirmation: "RLS-1", details: { cancellation: "free" } }).select("id").single();
+    check("owner can book a stay", !stayRow.error && !!stayRow.data);
+    // The app reads every column with select("*"): the new booking columns must come back, for a viewer too.
+    for (const [who, client] of [["owner", owner], ["viewer", viewer]] as const) {
+      const full = await client.from("hotel_ideas").select("*").eq("id", stayRow.data!.id).single();
+      check(`${who} reads a booked stay with its booking columns`, full.data?.is_stay === true && full.data?.stay_status === "Booked" && full.data?.check_in === "2026-06-16" && full.data?.confirmation === "RLS-1");
+    }
     check(
       "viewer cannot change a stay's details",
-      ((await viewer.from("stays").update({ details: { cancellation: "none" } }).eq("id", stayRow.data!.id).select()).data ?? []).length === 0,
+      ((await viewer.from("hotel_ideas").update({ details: { cancellation: "none" } }).eq("id", stayRow.data!.id).select()).data ?? []).length === 0,
     );
-    await owner.from("stays").delete().eq("id", stayRow.data!.id);
+    check(
+      "viewer cannot change a stay's booking",
+      ((await viewer.from("hotel_ideas").update({ stay_status: "Cancelled", confirmation: "X" }).eq("id", stayRow.data!.id).select()).data ?? []).length === 0,
+    );
+    check("the old stays table is gone from the API", !!(await (owner as unknown as SupabaseClient).from("stays").select("id").limit(1)).error);
+    await owner.from("hotel_ideas").delete().eq("id", stayRow.data!.id);
 
     check(
       "viewer cannot add an idea",

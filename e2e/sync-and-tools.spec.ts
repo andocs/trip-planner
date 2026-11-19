@@ -110,7 +110,9 @@ test("download a backup (JSON) and the expenses (CSV), without secrets", async (
   expect(file.suggestedFilename()).toMatch(/^Vietnam 26 backup \d{4}-\d{2}-\d{2}\.json$/);
   const text = readFileSync(await file.path(), "utf8");
   const backup = JSON.parse(text);
-  expect(backup).toMatchObject({ format: "trip-planner-backup", version: 1 });
+  expect(backup).toMatchObject({ format: "trip-planner-backup", version: 2 });
+  expect(backup.tables).not.toHaveProperty("stays"); // a stay is a booked hotel idea now
+  expect(backup.tables.hotel_ideas.some((h: { is_stay?: boolean }) => h.is_stay === true)).toBe(true);
   expect(backup.tables.itinerary_items).toHaveLength(140);
   expect(text).not.toContain(fake.trip.join_token);
   expect(text).not.toContain("trip_id");

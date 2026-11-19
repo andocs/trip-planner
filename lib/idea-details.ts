@@ -45,6 +45,8 @@ export const link = z.string().trim().max(500).regex(/^https?:\/\/[^\s]+$/i);
 /** What a stay has both as a board idea and as a booked record (lib/stay-details.ts), defined once. */
 export const stayCommon = {
   cancellation: z.enum(CANCELLATION).optional(),
+  /** Last day the booking can be cancelled for free (a real date). Only set once the idea is a booked stay. */
+  freeUntil: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   checkInTime: z.string().regex(/^\d{2}:\d{2}$/).optional(),
   breakfast: z.boolean().optional(),
 };

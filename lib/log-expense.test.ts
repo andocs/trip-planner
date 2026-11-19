@@ -37,7 +37,7 @@ describe("Log as expense", () => {
   ];
   it("finds the category by its default name, ignoring case and spaces", () => {
     expect(categoryFor("flights", cats)).toBe("c1");
-    expect(categoryFor("stays", cats)).toBe("c2");
+    expect(categoryFor("hotel_ideas", cats)).toBe("c2");
     expect(categoryFor("flights", [{ id: "x", name: "Plane tickets" }])).toBeNull();
   });
   it("describes a flight and a stay the way a person would", () => {
@@ -58,7 +58,7 @@ describe("Log as expense", () => {
       "2026-06-10",
     );
     expect(f).toEqual({ description: "Flight MNL → HAN", amount: "12000", category_id: "c1", spent_on: "2026-06-10" });
-    const s = expenseDefaults("stays", { hotel: "H", city: null, total: null }, cats, "2026-06-10");
+    const s = expenseDefaults("hotel_ideas", { hotel: "H", city: null, total: null }, cats, "2026-06-10");
     expect(s.amount).toBe("");
     expect(s.category_id).toBe("c2");
   });

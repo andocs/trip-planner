@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { formatDay } from "@/lib/format";
 import { sourceKey, type LoggableKind } from "@/lib/log-expense";
 import { useRows, type Row } from "@/lib/queries/table";
+import type { Stay } from "@/lib/stays";
 import { bySort, useSheet } from "@/lib/use-sheet";
 import { cn } from "@/lib/utils";
 
@@ -34,11 +35,11 @@ export function LogExpenseRow({
   className,
 }: {
   kind: LoggableKind;
-  item: Row<"flights"> | Row<"stays">;
+  item: Row<"flights"> | Stay;
   className?: string;
 }) {
   const logged = useLoggedExpenses().get(sourceKey(kind, item.id));
-  const amount = kind === "flights" ? (item as Row<"flights">).fare : (item as Row<"stays">).total;
+  const amount = kind === "flights" ? (item as Row<"flights">).fare : (item as Stay).total;
   const sheet = useSheet<Row<"expenses">>();
   const categories = useRows("categories", bySort);
   const travelers = useRows("travelers", bySort);
