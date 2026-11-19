@@ -36,6 +36,8 @@ import { creditText } from "@/lib/photos/shared";
 import type { ImageRow } from "@/lib/queries/images";
 import type { Row } from "@/lib/queries/table";
 import { cn } from "@/lib/utils";
+import { DayWeather } from "./day-weather";
+import type { WeatherDay } from "@/lib/weather";
 
 type Item = Row<"itinerary_items">;
 const KIND_ICON: Record<string, LucideIcon> = { stay: BedDouble, food: Utensils, sight: Landmark };
@@ -280,7 +282,7 @@ export function StayRow({ mark, status }: { mark: StayMark; status: string }) {
 
 /** The quiet divider between days: the day, its date (worked out from the trip start), the total and a soft warning. */
 /** The day divider, as in the mockup: a centred label with a quiet line either side. No add button here. */
-export function DaySplit({ group, totals }: { group: DayGroup; totals: DayTotals }) {
+export function DaySplit({ group, totals, weather }: { group: DayGroup; totals: DayTotals; weather?: WeatherDay }) {
   const title = group.day === null ? "Unscheduled" : `Day ${group.day}${group.date ? ` · ${formatDay(group.date)}` : ""}`;
   const summary = totals.total ? formatTotal(totals.total) : null;
   return (
@@ -294,11 +296,16 @@ export function DaySplit({ group, totals }: { group: DayGroup; totals: DayTotals
         </span>
         <span aria-hidden className="h-px flex-1 bg-line" />
       </div>
-      {totals.long && (
-        <span className="inline-flex min-h-6 items-center gap-1 rounded-full bg-warn-tint px-2.5 text-xs font-bold text-warn-text">
-          <TriangleAlert className="size-3.5" strokeWidth={2.6} aria-hidden />
-          Long day
-        </span>
+      {(weather || totals.long) && (
+        <div className="flex flex-wrap items-center justify-center gap-2">
+          {weather && <DayWeather weather={weather} />}
+          {totals.long && (
+            <span className="inline-flex min-h-6 items-center gap-1 rounded-full bg-warn-tint px-2.5 text-xs font-bold text-warn-text">
+              <TriangleAlert className="size-3.5" strokeWidth={2.6} aria-hidden />
+              Long day
+            </span>
+          )}
+        </div>
       )}
     </div>
   );

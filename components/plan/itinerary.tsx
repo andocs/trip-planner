@@ -47,6 +47,7 @@ import { freshCoords, usePlaceRefs } from "@/lib/queries/places";
 import { useMoveItems } from "@/lib/queries/itinerary";
 import { useDeleteRow, useRows, useUpdateRow } from "@/lib/queries/table";
 import { useStays } from "@/lib/queries/stays";
+import { useItineraryWeather } from "@/lib/queries/weather";
 import { useMedia } from "@/lib/use-media";
 import { useSheet } from "@/lib/use-sheet";
 import { cn } from "@/lib/utils";
@@ -98,6 +99,7 @@ export function Itinerary() {
   const canEdit = useCanEdit();
   const { data: items = [], isPending } = useRows("itinerary_items");
   const stays = useStays();
+  const weatherOn = useItineraryWeather(items, trip.start_date, trip.end_date);
   const { ideas } = useIdeas();
   const { byIdea: imagesBy } = useImages();
   const refs = usePlaceRefs();
@@ -264,7 +266,7 @@ export function Itinerary() {
         <SortableRow key={e.id} id={e.id} locked label="day" cover={k === 0}>
           {() => (
             <>
-              <DaySplit group={e.group} totals={totals} />
+              <DaySplit group={e.group} totals={totals} weather={weatherOn(e.group.date)} />
               {tentative > 0 && !editing && (
                 <p className="mb-4 ml-[54px] text-[13px] text-fg-muted">
                   {tentative} tentative {tentative === 1 ? "stop isn’t" : "stops aren’t"} in this day’s count or the export until confirmed on the board.
