@@ -2,7 +2,8 @@ import "server-only";
 
 import { z } from "zod";
 import { requireUserId } from "@/lib/supabase/require-user";
-import { LinkError, resolvePicture, type Deps, type LinkErrorCode } from "./link";
+import { isSameOrigin } from "@/lib/same-origin";
+import { LIMITS, LinkError, resolvePicture, type Deps, type LinkErrorCode } from "./link";
 import { netDeps } from "./net";
 
 export const LinkBody = z.object({ url: z.string().trim().min(8).max(2000) });
@@ -29,6 +30,7 @@ const fail = (code: keyof typeof MESSAGES) =>
 const recent = new Map<string, number[]>();
 const allow = (id: string, perMinute: number) => {
   const now = Date.now();
+  if (recent.size > 200) for (const [k, v] of recent) if (v.every((t) => now - t >= 60_000)) recent.delete(k); // never grows without bound
   const list = (recent.get(id) ?? []).filter((t) => now - t < 60_000);
   if (list.length >= perMinute) return false;
   recent.set(id, [...list, now]);
@@ -40,6 +42,7 @@ const allow = (id: string, perMinute: number) => {
  * address, the page address and a site name leave the server: never the fetched content, headers or any error text.
  */
 export async function handleLink(request: Request, deps: Deps = netDeps): Promise<Response> {
+  if (!isSameOrigin(request)) return fail("forbidden");
   const userId = await requireUserId();
   if (!userId) return fail("forbidden");
   let json: unknown;
@@ -52,7 +55,12 @@ export async function handleLink(request: Request, deps: Deps = netDeps): Promis
   if (!parsed.success) return fail("bad_request");
   if (!allow(userId, 20)) return fail("rate");
   try {
-    const found = await resolvePicture(parsed.data.url, deps);
+    // resolvePicture checks its own clock between steps; this is the hard stop for a server that trickles bytes.
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const hardStop = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => reject(new LinkError("unreachable")), LIMITS.totalMs + 1500);
+    });
+    const found = await Promise.race([resolvePicture(parsed.data.url, deps), hardStop]).finally(() => clearTimeout(timer));
     return Response.json({ found }, { headers: { "Cache-Control": "no-store" } });
   } catch (e) {
     return fail(e instanceof LinkError ? e.code : "unreachable");

@@ -28,8 +28,12 @@ const Hits = z.array(Hit);
  * forbids Date.now() inside cached functions. Per server instance, which is plenty here.
  */
 let queue: Promise<unknown> = Promise.resolve();
+let waiting = 0;
+const MAX_WAITING = 8; // a flood is refused instead of queued for minutes
 function oneAtATime<T>(task: () => Promise<T>): Promise<T> {
-  const run = queue.then(task, task);
+  if (waiting >= MAX_WAITING) return Promise.reject(new Error("busy"));
+  waiting++;
+  const run = queue.then(task, task).finally(() => waiting--);
   queue = run.then(
     () => new Promise((r) => setTimeout(r, 1100)),
     () => new Promise((r) => setTimeout(r, 1100)),

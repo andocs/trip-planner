@@ -1,6 +1,7 @@
 import "server-only";
 
 import type { z } from "zod";
+import { isSameOrigin } from "@/lib/same-origin";
 import { requireUserId } from "@/lib/supabase/require-user";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import type { Sku } from "./fields";
@@ -28,6 +29,7 @@ export function fail(code: PlacesErrorCode) {
 const recent = new Map<string, number[]>();
 function allow(userId: string, perMinute: number) {
   const now = Date.now();
+  if (recent.size > 200) for (const [k, v] of recent) if (v.every((t) => now - t >= 60_000)) recent.delete(k); // never grows without bound
   const list = (recent.get(userId) ?? []).filter((t) => now - t < 60_000);
   if (list.length >= perMinute) {
     recent.set(userId, list);
@@ -51,6 +53,7 @@ export async function placesRoute<S extends z.ZodType>(
   opts: { sku?: Sku; needsGoogleKey?: boolean; freePerMinute?: number },
   run: (body: z.infer<S>) => Promise<unknown>,
 ): Promise<Response> {
+  if (!isSameOrigin(request)) return fail("forbidden");
   const userId = await requireUserId();
   if (!userId) return fail("forbidden");
 

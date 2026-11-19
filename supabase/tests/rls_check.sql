@@ -1,7 +1,7 @@
 -- RLS proof for the owner / viewer model. Works in the Supabase SQL editor and in local `psql`.
 -- It creates throwaway users, runs every check as each user, and ALWAYS rolls back by raising an
 -- exception at the end. Read the final message: "RLS CHECK PASSED (n checks)" or "RLS CHECK FAILED: ...".
--- Needs migrations 1..25 applied. Does not need any real admin: it inserts a throwaway admin email.
+-- Needs migrations 1..26 applied. Does not need any real admin: it inserts a throwaway admin email.
 
 do $$
 declare
@@ -1349,6 +1349,23 @@ begin
     insert into public.travelers (trip_id, name, sort) values (trip_a, 'Ex-editor added', 101);
     failures := failures || 'a removed editor could still add a traveler after rejoining'::text;
   exception when insufficient_privilege then null; end;
+  reset role;
+
+  -- migration 26: one trip holds at most 300 photos (the project's storage is shared)
+  perform set_config('request.jwt.claims', c_owner, true);
+  set local role authenticated;
+  delete from public.item_images where trip_id = trip_a;
+  for i in 1..300 loop
+    insert into public.item_images (trip_id, item_table, item_id, source, url)
+    values (trip_a, 'itinerary_items', ('00000000-0000-0000-0000-' || lpad((i / 12)::text, 12, '0'))::uuid, 'link', 'https://cdn.example.com/q.jpg');
+  end loop;
+  checks := checks + 1;
+  begin
+    insert into public.item_images (trip_id, item_table, item_id, source, url)
+    values (trip_a, 'itinerary_items', gen_random_uuid(), 'link', 'https://cdn.example.com/over.jpg');
+    failures := failures || 'a trip accepted more than 300 photos'::text;
+  exception when check_violation then null; end;
+  delete from public.item_images where trip_id = trip_a;
   reset role;
 
   -- ============================== anonymous role (no session) ==============================

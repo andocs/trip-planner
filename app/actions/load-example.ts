@@ -33,7 +33,8 @@ export async function loadExample(): Promise<LoadExampleResult> {
     await applySeedPlan(supabase, tripId, plan);
     return { ok: true, notes: plan.notes };
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    return { ok: false, error: `Couldn't load the example: ${message}` };
+    // The details can name tables or policies; they stay on the server.
+    console.error("load-example failed", err instanceof Error ? err.name : "unknown");
+    return { ok: false, error: "Couldn't load the example. Try again in a moment." };
   }
 }
