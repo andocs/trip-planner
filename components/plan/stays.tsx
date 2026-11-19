@@ -18,7 +18,7 @@ import { FormGroup } from "@/components/ui/form-group";
 import { useImages, usePhotoUrls, type ImageRow } from "@/lib/queries/images";
 import { useRemoveStay, useSetStayStatus, useStays } from "@/lib/queries/stays";
 import type { Stay } from "@/lib/stays";
-import { AddStayMenu, type StayStep } from "./stay-flow";
+import { AddStayMenu, type StayStep } from "./add-stay-menu";
 import { PlaceLinks } from "@/components/ui/place-links";
 import { cancellationFact, checkInFact, isBooked, parseStayDetails, type Fact } from "@/lib/stay-details";
 import { useClientValue } from "@/lib/use-client-value";

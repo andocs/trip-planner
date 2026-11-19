@@ -7,7 +7,7 @@ import { GateLayout, gateTitle } from "@/components/gate/gate-layout";
 import { NoAccess } from "@/components/gate/no-access";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Wizard } from "@/components/wizard/wizard";
+import dynamic from "next/dynamic";
 import {
   useActiveTrip,
   useClaimableTrips,
@@ -24,6 +24,12 @@ import { useRealtimeSync, useWarmCache } from "@/lib/realtime";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { useClientValue } from "@/lib/use-client-value";
 import { errorMessage } from "@/lib/utils";
+
+/**
+ * The owner's setup wizard, loaded only when a draft trip needs it (about 10 KB of JavaScript that no other screen uses).
+ * Rendered in the browser only, so the server HTML and the first client render are both the skeleton.
+ */
+const Wizard = dynamic(() => import("@/components/wizard/wizard").then((m) => m.Wizard), { ssr: false, loading: () => <PageSkeleton /> });
 
 type TripAccess = { trip: Trip; role: Role; canEdit: boolean };
 const TripContext = createContext<TripAccess | null>(null);
