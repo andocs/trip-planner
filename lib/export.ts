@@ -95,7 +95,7 @@ export function buildWorkbook(d: ExportData): Sheet[] {
     {
       name: "Expenses",
       rows: [
-        ["Date", "Description", "Category", "Paid by", "Currency", "Amount", `Amount (${home})`, "Note"],
+        ["Date", "Description", "Category", "Paid by", "Currency", "Amount", `Amount (${home})`, "Note", "Rate used"],
         ...[...d.expenses]
           .sort(byDate((e) => e.spent_on))
           .map((e) => [
@@ -107,6 +107,7 @@ export function buildWorkbook(d: ExportData): Sheet[] {
             n(e.amount),
             r2(homeAmount(e, t)),
             e.note,
+            e.currency === foreign ? (n(e.rate) ?? n(t.rate)) : null,
           ]),
       ],
     },

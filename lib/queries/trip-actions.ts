@@ -28,6 +28,22 @@ export function useLoadExample() {
   });
 }
 
+/** Restores a backup file's text into the current trip (which must be empty), then refreshes everything. */
+export function useRestoreBackup(tripId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (text: string) => {
+      const [{ parseBackup }, { applyBackup }] = await Promise.all([import("@/lib/backup"), import("@/lib/backup-apply")]);
+      return applyBackup(getSupabase(), tripId, parseBackup(text));
+    },
+    onSuccess: async ({ rows }) => {
+      await qc.invalidateQueries();
+      toast.success(`Restored ${rows} items from the backup.`);
+    },
+    onError: (e) => toast.error(errorMessage(e)),
+  });
+}
+
 /** Archives the current trip and starts a fresh one; the whole group and the invite link move with it. */
 export function useStartNewTrip() {
   const qc = useQueryClient();

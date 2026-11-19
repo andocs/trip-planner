@@ -1,7 +1,7 @@
 -- RLS proof for the owner / viewer model. Works in the Supabase SQL editor and in local `psql`.
 -- It creates throwaway users, runs every check as each user, and ALWAYS rolls back by raising an
 -- exception at the end. Read the final message: "RLS CHECK PASSED (n checks)" or "RLS CHECK FAILED: ...".
--- Needs migrations 1..27 applied. Does not need any real admin: it inserts a throwaway admin email.
+-- Needs migrations 1..28 applied. Does not need any real admin: it inserts a throwaway admin email.
 
 do $$
 declare
@@ -1374,6 +1374,31 @@ begin
   checks := checks + 1;
   select name into r from public.travelers where trip_id = trip_a and user_id = namer;
   if r is distinct from 'AQ (2)' then failures := failures || format('a joiner named like an existing traveler got %L, expected AQ (2)', r); end if;
+
+  -- migration 28: an expense may carry its own exchange rate (> 0); a viewer cannot write one
+  perform set_config('request.jwt.claims', c_owner, true);
+  set local role authenticated;
+  checks := checks + 1;
+  begin
+    insert into public.expenses (trip_id, spent_on, description, currency, amount, rate) values (trip_a, current_date, 'own rate', 'VND', 1000, 0.0025);
+  exception when others then failures := failures || format('the owner could not save an expense rate: %s', sqlerrm); end;
+  checks := checks + 1;
+  begin
+    insert into public.expenses (trip_id, spent_on, description, currency, amount, rate) values (trip_a, current_date, 'bad rate', 'VND', 1000, 0);
+    failures := failures || 'an expense accepted a zero rate'::text;
+  exception when check_violation then null; end;
+  checks := checks + 1;
+  update public.expenses set rate = 0.0030 where trip_id = trip_a and description = 'own rate';
+  get diagnostics rc = row_count;
+  if rc <> 1 then failures := failures || 'the owner could not change an expense rate'::text; end if;
+  reset role;
+  perform set_config('request.jwt.claims', c_stranger, true);
+  set local role authenticated;
+  checks := checks + 1;
+  update public.expenses set rate = 9 where trip_id = trip_a;
+  get diagnostics rc = row_count;
+  if rc <> 0 then failures := failures || 'someone outside the trip changed an expense rate'::text; end if;
+  reset role;
 
   -- migration 26: one trip holds at most 300 photos (the project's storage is shared)
   perform set_config('request.jwt.claims', c_owner, true);

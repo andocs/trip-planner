@@ -1,14 +1,14 @@
 "use client";
 
 import { AlertDialog } from "radix-ui";
-import { Archive, CalendarPlus, FileSpreadsheet, Loader2, Sparkles } from "lucide-react";
+import { Archive, CalendarPlus, FileJson, FileSpreadsheet, FileText, Loader2, Sparkles, Upload } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { useTrip } from "@/components/trip-gate";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
-import { fetchExportData, useLoadExample, useStartNewTrip } from "@/lib/queries/trip-actions";
+import { fetchExportData, useLoadExample, useRestoreBackup, useStartNewTrip } from "@/lib/queries/trip-actions";
 import { errorMessage } from "@/lib/utils";
 
 /** `owner` shows the admin-only "Start a new trip"; editors get export and the example only. */
@@ -19,7 +19,35 @@ export function TripTools({ owner = false }: { owner?: boolean }) {
   const startNew = useStartNewTrip();
   const [exporting, setExporting] = useState(false);
   const [calendaring, setCalendaring] = useState(false);
+  const [saving, setSaving] = useState<"backup" | "csv" | null>(null);
+  const restore = useRestoreBackup(trip.id);
+  const fileInput = useRef<HTMLInputElement>(null);
   const [copySetup, setCopySetup] = useState(true);
+
+  /** Backup (JSON) and the expenses CSV share one flow: fetch fresh, build, save. */
+  async function saveBackup(kind: "backup" | "csv") {
+    setSaving(kind);
+    try {
+      const [backup, { saveTextFile }, data] = await Promise.all([import("@/lib/backup"), import("@/lib/download"), fetchExportData(trip)]);
+      if (kind === "backup") {
+        saveTextFile(backup.backupFileName(trip.name), "application/json", JSON.stringify(backup.buildBackup(data), null, 2));
+        toast.success("Backup downloaded. Keep the file private: it has booking details.");
+      } else {
+        saveTextFile(`${trip.name.replace(/[^\p{L}\p{N} _-]+/gu, "").trim() || "Trip"} expenses.csv`, "text/csv", backup.expensesCsv(data));
+        toast.success("Expenses downloaded as CSV");
+      }
+    } catch (e) {
+      toast.error(`Download failed: ${errorMessage(e)}`);
+    } finally {
+      setSaving(null);
+    }
+  }
+
+  async function onBackupFile(file: File | undefined) {
+    if (fileInput.current) fileInput.current.value = ""; // so the same file can be chosen again
+    if (!file) return;
+    restore.mutate(await file.text());
+  }
 
   async function exportExcel() {
     setExporting(true);
@@ -67,6 +95,30 @@ export function TripTools({ owner = false }: { owner?: boolean }) {
         Add to calendar (.ics)
       </Button>
       <p className="-mt-1 text-xs text-fg-muted">Activities, flights and stays. Booking numbers and prices are left out.</p>
+      <Button variant="secondary" className="w-full justify-start" onClick={() => saveBackup("csv")} disabled={saving !== null}>
+        {saving === "csv" ? <Loader2 className="size-5 animate-spin" aria-hidden /> : <FileText className="size-5" aria-hidden />}
+        Expenses as CSV
+      </Button>
+      <Button variant="secondary" className="w-full justify-start" onClick={() => saveBackup("backup")} disabled={saving !== null}>
+        {saving === "backup" ? <Loader2 className="size-5 animate-spin" aria-hidden /> : <FileJson className="size-5" aria-hidden />}
+        Download a backup (JSON)
+      </Button>
+      <Button variant="secondary" className="w-full justify-start" onClick={() => fileInput.current?.click()} disabled={restore.isPending}>
+        {restore.isPending ? <Loader2 className="size-5 animate-spin" aria-hidden /> : <Upload className="size-5" aria-hidden />}
+        Restore from a backup
+      </Button>
+      <input
+        ref={fileInput}
+        type="file"
+        accept="application/json,.json"
+        className="sr-only"
+        aria-label="Backup file"
+        tabIndex={-1}
+        onChange={(e) => void onBackupFile(e.target.files?.[0])}
+      />
+      <p className="-mt-1 text-xs text-fg-muted">
+        A backup has everything except photos, votes, comments, the invite link and flight booking references. Restoring only works in a trip with no data yet.
+      </p>
       <Button
         variant="secondary"
         className="w-full justify-start"

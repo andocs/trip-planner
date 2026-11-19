@@ -61,6 +61,26 @@ test("add a VND expense and see it converted and split", async ({ page }) => {
   await expect(page.getByText("−PHP 6,010.54")).toBeVisible(); // Aq's balance
 });
 
+test("a foreign expense can carry its own rate, and it counts at that rate", async ({ page }) => {
+  const fake = createFakeSupabase({ withSeed: true });
+  await fake.install(page);
+  await page.goto("/spend");
+
+  await page.getByRole("button", { name: "Add expense" }).click();
+  const sheet = page.getByRole("dialog", { name: "Add expense" });
+  await expect(sheet.getByLabel("Rate for this expense (optional)")).toHaveCount(0); // home currency: no rate field
+  await sheet.getByRole("radio", { name: "VND" }).click();
+  await sheet.getByLabel("Amount").fill("1000000");
+  await sheet.getByLabel("Rate for this expense (optional)").fill("0.0025");
+  await expect(sheet.getByText("≈ PHP 2,500.00 at 0.0025 (this expense)")).toBeVisible();
+  await sheet.getByLabel("Description").fill("Market stall");
+  await sheet.getByRole("checkbox", { name: "Keep adding" }).uncheck();
+  await sheet.getByRole("button", { name: "Add expense" }).click();
+
+  await expect.poll(() => fake.tables.get("expenses")?.find((e) => e.description === "Market stall")?.rate).toBe(0.0025);
+  await expect(page.getByText("PHP 16,978.08").first()).toBeVisible(); // 14,478.08 + 2,500 (the trip rate would give 16,935.08)
+});
+
 test("delete offers undo", async ({ page }) => {
   const fake = createFakeSupabase({ withSeed: true });
   await fake.install(page);

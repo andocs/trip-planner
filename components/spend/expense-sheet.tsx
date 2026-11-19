@@ -13,11 +13,11 @@ import { FormGroup } from "@/components/ui/form-group";
 import { RowSheet } from "@/components/ui/row-sheet";
 import { Segmented } from "@/components/ui/segmented";
 import { toast } from "sonner";
-import { homeAmount, localISODate } from "@/lib/calc";
+import { daysBetween, homeAmount, localISODate } from "@/lib/calc";
 import { expenseDefaults, type LoggableKind } from "@/lib/log-expense";
 import { formatMoney } from "@/lib/format";
 import { newId, useDeleteRow, useInsertRow, useUpdateRow, type Row } from "@/lib/queries/table";
-import { optionalText, requiredNumber, requiredText, str } from "@/lib/schemas";
+import { optionalNumber, optionalText, requiredNumber, requiredText, str } from "@/lib/schemas";
 import type { useSheet } from "@/lib/use-sheet";
 
 const Schema = z.object({
@@ -27,6 +27,8 @@ const Schema = z.object({
   paid_by: z.string().transform((v) => (v === "" ? null : v)),
   currency: z.string().regex(/^[A-Z]{3}$/),
   amount: requiredNumber("Amount").refine((v) => v !== 0, "Amount can't be zero"),
+  // This expense's own exchange rate (foreign currency only). Empty means the trip's rate.
+  rate: optionalNumber({ min: 0.00000001 }),
   note: optionalText(500),
   // How the bill is shared (see lib/split.ts). Everyone, equally, no service charge is the default and stores nothing.
   split_mode: z.enum(["equal", "percent", "amount"]),
@@ -99,6 +101,7 @@ export function ExpenseSheet({
       paid_by: r?.paid_by ?? "",
       currency: r?.currency ?? trip.home_currency,
       amount: str(r?.amount) || logged?.amount || "",
+      rate: str(r?.rate),
       note: str(r?.note),
       ...splitDefaults(r?.split, travelers.map((t) => t.id)),
     });
@@ -106,9 +109,9 @@ export function ExpenseSheet({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sheet.open, sheet.row, reset, trip.home_currency]);
 
-  const [currency, amountStr, rawMode, rawMembers, rawShares, rawPct, rawSvc] = useWatch({
+  const [currency, amountStr, rawRate, rawMode, rawMembers, rawShares, rawPct, rawSvc] = useWatch({
     control,
-    name: ["currency", "amount", "split_mode", "split_members", "split_shares", "service_pct", "service_split"],
+    name: ["currency", "amount", "rate", "split_mode", "split_members", "split_shares", "service_pct", "service_split"],
   });
   // Until the form has been filled in for this sheet these are undefined.
   const splitMode = rawMode ?? "equal";
@@ -118,7 +121,13 @@ export function ExpenseSheet({
   const serviceSplit = rawSvc ?? "proportional";
   const nameOf = (id: string) => travelers.find((t) => t.id === id)?.name ?? "?";
   const amount = Number(String(amountStr ?? "").replace(/,/g, ""));
-  const showConversion = currency === trip.foreign_currency && amountStr && Number.isFinite(amount);
+  const isForeign = currency === trip.foreign_currency;
+  const showConversion = isForeign && amountStr && Number.isFinite(amount);
+  const ownRate = Number(String(rawRate ?? "").replace(/,/g, ""));
+  const usedRate = ownRate > 0 ? ownRate : Number(trip.rate);
+  // The trip rate is one number for the whole trip; say so when it is old, so a stale one is not trusted silently.
+  const rateAge = trip.rate_date ? daysBetween(trip.rate_date, localISODate()) : null;
+  const rateStale = rateAge !== null && rateAge > 30;
 
   // The pill offers the trip's two currencies, plus an old one if this expense used it.
   const currencies = [
@@ -140,7 +149,8 @@ export function ExpenseSheet({
     const problem = travelers.length > 0 ? splitProblem(spec, Math.abs(columns.amount)) : null;
     if (problem) return setError("split_mode", { message: problem });
     const split = travelers.length > 0 ? specToStore(spec, everyone) : null;
-    const v2 = { ...columns, split: split as never };
+    // A rate only means something on a foreign-currency expense.
+    const v2 = { ...columns, rate: columns.currency === trip.foreign_currency ? columns.rate : null, split: split as never };
     if (sheet.row) {
       update.mutate({ id: sheet.row.id, patch: v2 });
       sheet.close();
@@ -155,7 +165,7 @@ export function ExpenseSheet({
     if (keepAdding) {
       const keep = getValues();
       // The next expense starts as an equal split again; the rest (date, payer, currency) is kept.
-      reset({ ...keep, description: "", amount: "", note: "", ...splitDefaults(null, travelers.map((t) => t.id)) });
+      reset({ ...keep, description: "", amount: "", rate: "", note: "", ...splitDefaults(null, travelers.map((t) => t.id)) });
       setFocus("description");
     } else sheet.close();
   });
@@ -205,12 +215,25 @@ export function ExpenseSheet({
               />
               <p className="min-h-5 text-sm text-fg-muted" aria-live="polite">
                 {showConversion
-                  ? `≈ ${formatMoney(homeAmount({ currency, amount }, trip), trip.home_currency)} at ${Number(trip.rate)}`
+                  ? `≈ ${formatMoney(homeAmount({ currency, amount, rate: ownRate > 0 ? ownRate : null }, trip), trip.home_currency)} at ${usedRate}${ownRate > 0 ? " (this expense)" : ""}`
                   : ""}
               </p>
             </div>
           )}
         </Field>
+        {isForeign && (
+          <Field
+            label={`Rate for this expense (optional)`}
+            error={errors.rate?.message}
+            hint={
+              rateStale
+                ? `Leave empty to use the trip rate, ${Number(trip.rate)} ${trip.home_currency} per ${trip.foreign_currency}. It was set ${rateAge} days ago: check it in Settings, or enter today's rate here.`
+                : `Leave empty to use the trip rate, ${Number(trip.rate)} ${trip.home_currency} per ${trip.foreign_currency}.`
+            }
+          >
+            {(p) => <Input {...p} {...register("rate")} inputMode="decimal" placeholder={String(Number(trip.rate))} />}
+          </Field>
+        )}
       </FormGroup>
 
       <FormGroup icon={Receipt} title="What it was for">
