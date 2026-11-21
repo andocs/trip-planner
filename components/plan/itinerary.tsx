@@ -70,11 +70,11 @@ type Entry =
   /** A "Plan Day N" button for the first empty day after a planned day that is followed by a later planned day. */
   | { kind: "gap"; id: string; day: number };
 
-/** The dotted outline button that starts a day: asks which kind of activity first. */
+/** The dotted outline button that starts a day: asks which kind of activity first. (`ring-0` drops the outline variant's solid ring.) */
 function PlanDayButton({ day, onPick, className }: { day: number; onPick: (type?: string) => void; className?: string }) {
   return (
     <CategoryMenu heading={`Plan Day ${day}: which kind of activity first?`} align="center" onPick={onPick}>
-      <Button variant="outline" className={cn("ml-[54px] w-[calc(100%-54px)] border-2 border-dashed border-fg-muted/50", className)}>
+      <Button variant="outline" className={cn("ml-[54px] w-[calc(100%-54px)] border-2 border-dashed border-fg-muted/50 ring-0", className)}>
         <CalendarPlus className="size-[18px]" aria-hidden />
         Plan Day {day}
       </Button>

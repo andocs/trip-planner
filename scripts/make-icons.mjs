@@ -1,28 +1,41 @@
-// Draws the app icon (coral map pin on navy) into PNGs without any image library.
+// Draws the app icon (white eight-ray sun on teal) into PNGs without any image library.
+// The glyph is the same one as public/icons/icon.svg and the side panel logo (24-unit grid).
 // Run: node scripts/make-icons.mjs
 import { mkdirSync, writeFileSync } from "node:fs";
 import { crc32, deflateSync } from "node:zlib";
 
-const NAVY = [0x1f, 0x2a, 0x44];
-const CORAL = [0xe7, 0x6f, 0x51];
-const SAND = [0xf6, 0xf1, 0xe9];
-const TEAL = [0x2a, 0x9d, 0x8f];
+const TEAL = [0x0e, 0x6b, 0x5c];
+const WHITE = [0xff, 0xff, 0xff];
+
+const RAYS = [
+  [12, 2.5, 12, 5.5],
+  [12, 18.5, 12, 21.5],
+  [2.5, 12, 5.5, 12],
+  [18.5, 12, 21.5, 12],
+  [5.3, 5.3, 7.4, 7.4],
+  [16.6, 16.6, 18.7, 18.7],
+  [18.7, 5.3, 16.6, 7.4],
+  [7.4, 16.6, 5.3, 18.7],
+];
+const GLYPH = 0.034; // tile units per glyph unit (the rays span about 65% of the tile)
+const HALF_STROKE = 1.15; // a little heavier than the 1 of the 24 px line icons, so it holds at 16 px
+
+function distToSegment(px, py, [x1, y1, x2, y2]) {
+  const dx = x2 - x1,
+    dy = y2 - y1;
+  const t = Math.max(0, Math.min(1, ((px - x1) * dx + (py - y1) * dy) / (dx * dx + dy * dy)));
+  return Math.hypot(px - (x1 + t * dx), py - (y1 + t * dy));
+}
 
 /** Colour at a point in unit space, `s` = artwork scale (smaller for maskable safe zone). */
 function shade(x, y, s) {
   const u = (x - 0.5) / s + 0.5;
   const v = (y - 0.5) / s + 0.5;
-  const cx = 0.5,
-    cy = 0.42,
-    r = 0.24,
-    tip = 0.86;
-  const d = Math.hypot(u - cx, v - cy);
-  const inTail = v > cy && v < tip && Math.abs(u - cx) <= r * ((tip - v) / (tip - cy)) ** 1.15;
-  if (d <= 0.095) return SAND;
-  if (d <= r || inTail) return CORAL;
-  // teal ground ellipse under the pin
-  if (((u - 0.5) / 0.22) ** 2 + ((v - 0.9) / 0.045) ** 2 <= 1) return TEAL;
-  return NAVY;
+  const gx = (u - 0.5) / GLYPH + 12;
+  const gy = (v - 0.5) / GLYPH + 12;
+  if (Math.abs(Math.hypot(gx - 12, gy - 12) - 3.6) <= HALF_STROKE) return WHITE;
+  if (RAYS.some((r) => distToSegment(gx, gy, r) <= HALF_STROKE)) return WHITE;
+  return TEAL;
 }
 
 function png(size, scale) {
