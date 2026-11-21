@@ -33,6 +33,7 @@ trip-planner is an existing, deployed Next.js 16 + Supabase (Singapore) + Google
 - 2026-11-21 10:03 | rev-1 | Plan Day outline: ring-2 ring-line-strong comes from the Button outline variant (components/ui/button.tsx:14), removed on PlanDayButton with ring-0 (itinerary.tsx:77); dashed border kept (a first attempt removed it and broke e2e links-photos-map.spec.ts:577; fixed) | -
 - 2026-11-21 10:03 | rev-1 | Checks: tsc and eslint clean, unit 483 pass, playwright 167 pass / 8 skipped. One earlier full run had 1 failure (name not captured; later runs passed): watch for a flake. Mockups (gitignored): design/mockups/icons-and-rail.html, icons-sunrise-round2.html | -
 - 2026-11-21 10:03 | rev-1 | rev-1 marked complete; merge as PR from branch rev/1-sun-icon pending | -
+- 2026-11-21 10:09 | rev-2 | Theme colours: app/manifest.ts theme_color and app/layout.tsx viewport themeColor set to #0E6B5C (the icon's teal); manifest background_color left at #F6F1E9. Checks: tsc and eslint clean, unit 483 pass, playwright 167 pass / 8 skipped (the 8 skipped are screens.spec.ts capture tests). Branch rev/2-theme-colour, being merged as a PR | -
 
 ## 4. Open questions
 <!-- - [ ] Q1: ...   resolved: - [x] Q1: ... -> answer -->
@@ -48,7 +49,6 @@ trip-planner is an existing, deployed Next.js 16 + Supabase (Singapore) + Google
 - zod on the client (largest remaining bundle lever)
 - Phase 6 loading skeletons for tab switches (mockup not approved)
 - Optional migration 35 (not started): RLS refuses edits on archived trips; archived read-only is app-only today
-- Manifest theme_color (#1F2A44) and layout themeColor (#EEF3F0) do not match the new teal sun icon (rev-1)
 
 ## 5. Token & usage ledger
 Source: transcript (falls back to `estimate` with `~` numbers). in = fresh input + cache writes, cached = cache reads, out = output.
@@ -76,6 +76,7 @@ Source: transcript (falls back to `estimate` with `~` numbers). in = fresh input
 | 5 | Trip switcher UI, new-trip flow, invite-link behaviour | 1, 4 | sequential | complete, merged (PR #44, 19e6ee1) | feat/multiple-trips |
 | 6 | Offline cache and realtime keyed by trip id; real-build check with a user on two trips | 4 | sequential | complete, merged (PR #44, 19e6ee1) | feat/multiple-trips |
 | rev-1 | New icons (10 mockups: favicon + side panel logo), wider side panel (w-60 -> w-68), remove outline on Plan Day buttons | none | sequential | complete (PR from branch rev/1-sun-icon pending merge) | rev/1-sun-icon |
+| rev-2 | Theme colour: manifest theme_color and layout themeColor set to #0E6B5C (icon teal); background_color unchanged | none | sequential | complete (PR from branch rev/2-theme-colour pending merge) | rev/2-theme-colour |
 
 ## Decisions & architecture
 - Stack: Next.js 16 (App Router, PPR), Supabase Postgres + Auth + Storage (Singapore), TanStack Query, Tailwind 4, shadcn/ui, Google Maps JS, Vitest, Playwright, PGlite.
