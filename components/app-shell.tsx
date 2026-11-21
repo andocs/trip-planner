@@ -109,10 +109,16 @@ export function AppShell({ children }: { children: ReactNode }) {
       </a>
 
       {/* Desktop rail */}
-      <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col border-r border-border bg-surface px-4 py-6 lg:flex">
+      <aside className="sticky top-0 hidden h-dvh w-68 shrink-0 flex-col border-r border-border bg-surface px-4 py-6 lg:flex">
         <div className="mb-6 flex items-center gap-2.5 px-2">
           <span className="grid size-9 place-items-center rounded-[11px] bg-ink text-ground" aria-hidden>
-            <MapPinned className="size-5" />
+            <svg
+              viewBox="0 0 24 24"
+              className="size-5 fill-none stroke-current stroke-2 [stroke-linecap:round] [stroke-linejoin:round]"
+            >
+              <circle cx="12" cy="12" r="3.6" />
+              <path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M18.7 5.3l-2.1 2.1M7.4 16.6l-2.1 2.1" />
+            </svg>
           </span>
           <span className="font-display text-xl font-extrabold tracking-tight">Trip Planner</span>
         </div>

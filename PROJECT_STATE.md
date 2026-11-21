@@ -7,29 +7,16 @@ trip-planner is an existing, deployed Next.js 16 + Supabase (Singapore) + Google
 
 ## 2. Current phase & active slice
 - **Phase:** 3 Revisions (adopted; build phase complete, all work merged to main)
-- **Active slice / milestone:** #43 gap cleanup (revision). Issue #43 slices 1-6 are merged to main as PR #44 (merge commit 19e6ee1); gap cleanup approved by user, NOT committed (working tree on main)
-- **Gate:** none (#43 gap cleanup approved)
-- **Next action:** user says when to commit (haiku-git would branch off main first); run check:real-build after `npx supabase start` (still to run)
-- **User to-do now:** (1) confirm migrations 34 and 23-33 are applied to production by hand (not confirmed in the log); (2) two uncommitted edits on main, components/plan/map-stop-card.tsx and scripts/check-real-build.ts, purpose unknown: say whether to keep or discard
+- **Active slice / milestone:** none (rev-1 complete, being merged as a PR from branch rev/1-sun-icon). Issue #43 complete (PR #44 19e6ee1, PR #45 99fac5b)
+- **Gate:** none
+- **Next action:** none pending
+- **User to-do now:** none
+- **Working tree:** clean after the rev-1 merge
 
 ## 3. Execution log
 <!-- newest last: - YYYY-MM-DD HH:MM | phase/slice | what happened or was decided | sha -->
-- 2026-11-19 | Phase 1 | Project state created | -
-- 2026-11-19 | Phase 1 | Project adopted (existing app, orchestrator bootstrapped); phase set to 3 Revisions | -
-- 2026-11-19 | Phase 3 | Issue #43 (several live trips per person, /t/[tripId] URLs) planned as 6 sequential slices; none started | -
-- 2026-11-19 15:59 | slice-1 | User answered #43 Q1 (invite link adds the trip to the list, does not replace) and Q2 (explicit "Start a new trip" archives the current trip; plain "New trip" archives nothing); slice 1 building | -
-- 2026-11-19 16:01 | slice-1 | Switcher mockup built (design/mockups/multi-trip-switcher.html, gitignored, not committed): Light/Night, Desktop/Phone, 5 states; awaiting approval | -
-- 2026-11-19 16:05 | slice-1 | User feedback: "all good" but keep the flight-board style counter on the switcher (rail tile, phone chip, trip rows, archived rows, invite confirmation). Mockup revised (seam thinned, menu widened, captions shortened); gate re-opened for approval | -
-- 2026-11-19 16:08 | slice-1 | User decision: revert to the original recommendation (rail tile, phone chip, archived and invite screens as first drawn); flight-board counter ONLY on the clickable dropdown/sheet trip rows; try other board colours. Mockup revised (revision 3): default navy + cream, "Board colours" toggle (Navy + cream, Coral + white, Teal + mint, original amber); gate re-opened | -
-- 2026-11-19 16:10 | slice-1 | User decision: keep the original amber board colours; flight-board counter on the switcher button (rail tile desktop, trip chip phone), not inside dropdown/sheet rows (plain initials there); colour toggle removed. Mockup revised (revision 4); gate re-opened | -
-- 2026-11-19 | slice-1 | User approved the switcher mockup (revision 4); slice 1 closed | -
-- 2026-11-19 | slice-2 | Slice 2 started: migration 34 (my_trips(), trip_bootstrap(p_trip), create a trip without archiving) + rollback + RLS checks | -
-- 2026-11-19 | slice-2 | Slice 2 complete (awaiting gate): migration 34 + rollback; fixed is_trip_owner() NULL for admin non-members (found by new checks); SQL suite 358, live RLS 141, tsc/eslint clean, unit 471, e2e 13 pass; not committed | -
-- 2026-11-19 | slice-3 | Slice 3 complete (awaiting gate): requireMemberId(tripId) via trip_by_id, /api/weather needs trip uuid (400/401), loadExample(tripId) owner-only; unit 473, e2e 18, tsc/eslint clean, check:real-build passed; not committed | -
-- 2026-11-19 | slice-3 | Ledger: no start mark existed for slice-3, so its per-slice token row is n/a (all-time figures would mislead); cumulative row updated | -
-- 2026-11-19 | slice-3 | User approved slice 3; committed and pushed on feat/multiple-trips | 426d29b
-- 2026-11-19 | slice-4 | Scout findings: query keys carry no trip id; trip choice is server side; service worker paths duplicated; 173 e2e page.goto calls use old paths. Slice 4 split: 4a (trip id explicit in app, no URL change, existing tests unchanged) and 4b (/t/[tripId] routing, redirects, cookie, service worker, e2e helper) | -
-- 2026-11-19 | slice-4a | Slice 4a started (building); ledger slice-3 row recorded, cumulative updated, slice-4a start marked | -
+- 2026-11-19 | Phase 1 to slice-4a | Merged summary of 15 earlier entries: project adopted (phase 3); #43 planned as 6 slices; switcher mockup approved (revision 4); slice 2 migration 34 and slice 3 server routes built and committed (slice 3 approved); slices 4a to 6 built on feat/multiple-trips | 426d29b, db9aabf
+
 - 2026-11-19 | Phase 3 | PROJECT_STATE corrected: 4a had been shown as building, but it was already built | -
 - 2026-11-19 | slice-4 | Slices 4a, 4b, 5 and 6 built and pushed on feat/multiple-trips (last commit "Final commit") | db9aabf
 - 2026-11-19 | slice-2 | Slice 2 approval was never recorded in the log; it is merged anyway | -
@@ -37,6 +24,15 @@ trip-planner is an existing, deployed Next.js 16 + Supabase (Singapore) + Google
 - 2026-11-19 | #43 | Next: two gaps (archived-trip read-only banner; bare-link new tab opens the trip joined last, not the last-used trip) | -
 - 2026-11-19 | #43 | #43 gap cleanup built, awaiting gate, NOT committed (working tree on main): (a) archived trips open read-only: lib/access.ts ready() sets canEdit false when trip.archived_at; ArchivedBanner with owner-only Restore trip in components/trip-gate.tsx; ViewOnlyBanner hidden on archived trips; (b) last-trip memory: cookie tp-last-trip written by components/open-trip-from-url.tsx, proxy.ts redirects bare screen addresses to /t/<id>/<screen> (lib/last-trip.ts, pure, unit tested), '/?latest=1' forgets it and is the 'Go to my latest trip' link, signOut clears it. Tests: tsc/eslint clean, unit 483, playwright 166 pass / 8 skipped (2 new tests in e2e/multi-trip.spec.ts). check:real-build NOT run (local Supabase stopped; needs npx supabase start). Known limit: archived read-only is enforced in the app only; child-table RLS write policies do not check archived_at (needs a migration, not done). | -
 - 2026-11-19 | #43 | User approved the #43 gap cleanup gate (Approve); changes still uncommitted on main, check:real-build not yet run | -
+- 2026-11-19 | #43 | Gap cleanup committed on feat/trip-gaps-archived-and-last-trip (13 files). Before merge: tsc and eslint clean, unit 483, playwright 167 pass / 8 skipped | 3ebd4fb
+- 2026-11-19 | #43 | check:real-build first failed (an unavailable trip address was remembered in the tp-last-trip cookie); fixed by writing the cookie only once a trip has opened, plus an e2e test; check:real-build then PASSED | -
+- 2026-11-19 | #43 | PR #45 merged to main (feat/trip-gaps-archived-and-last-trip still on origin) | 99fac5b
+- 2026-11-19 | #43 | User confirmed migrations are all applied to production; issue #43 complete, active slice none | -
+- 2026-11-21 09:30 | rev-1 | Icon mockup built (design/mockups/icons-and-rail.html, 10 options), awaiting approval. Scout found no ring-2 or ring-line-strong on PlanDayButton (itinerary.tsx:77 uses border-2 border-dashed border-fg-muted/50); ring-line-strong is in itinerary-entries.tsx:68 and :135; awaiting user clarification | -
+- 2026-11-21 10:03 | rev-1 | Built after user approval: icon 1 of round 2 (eight-ray sun, white on teal #0E6B5C) replaces favicon/app icons (public/icons/icon.svg, PNGs via scripts/make-icons.mjs) and the side panel logo glyph (components/app-shell.tsx); side panel w-60 -> w-68 (272 px, approved) | -
+- 2026-11-21 10:03 | rev-1 | Plan Day outline: ring-2 ring-line-strong comes from the Button outline variant (components/ui/button.tsx:14), removed on PlanDayButton with ring-0 (itinerary.tsx:77); dashed border kept (a first attempt removed it and broke e2e links-photos-map.spec.ts:577; fixed) | -
+- 2026-11-21 10:03 | rev-1 | Checks: tsc and eslint clean, unit 483 pass, playwright 167 pass / 8 skipped. One earlier full run had 1 failure (name not captured; later runs passed): watch for a flake. Mockups (gitignored): design/mockups/icons-and-rail.html, icons-sunrise-round2.html | -
+- 2026-11-21 10:03 | rev-1 | rev-1 marked complete; merge as PR from branch rev/1-sun-icon pending | -
 
 ## 4. Open questions
 <!-- - [ ] Q1: ...   resolved: - [x] Q1: ... -> answer -->
@@ -51,6 +47,8 @@ trip-planner is an existing, deployed Next.js 16 + Supabase (Singapore) + Google
 - Sentry needs a DSN
 - zod on the client (largest remaining bundle lever)
 - Phase 6 loading skeletons for tab switches (mockup not approved)
+- Optional migration 35 (not started): RLS refuses edits on archived trips; archived read-only is app-only today
+- Manifest theme_color (#1F2A44) and layout themeColor (#EEF3F0) do not match the new teal sun icon (rev-1)
 
 ## 5. Token & usage ledger
 Source: transcript (falls back to `estimate` with `~` numbers). in = fresh input + cache writes, cached = cache reads, out = output.
@@ -77,6 +75,7 @@ Source: transcript (falls back to `estimate` with `~` numbers). in = fresh input
 | 4b | Routing /t/[tripId]/... with redirects from old paths, last-used-trip cookie, service worker paths, e2e helper; TripGate/decideAccess by route | 4a | sequential | complete, merged (PR #44, 19e6ee1) | feat/multiple-trips |
 | 5 | Trip switcher UI, new-trip flow, invite-link behaviour | 1, 4 | sequential | complete, merged (PR #44, 19e6ee1) | feat/multiple-trips |
 | 6 | Offline cache and realtime keyed by trip id; real-build check with a user on two trips | 4 | sequential | complete, merged (PR #44, 19e6ee1) | feat/multiple-trips |
+| rev-1 | New icons (10 mockups: favicon + side panel logo), wider side panel (w-60 -> w-68), remove outline on Plan Day buttons | none | sequential | complete (PR from branch rev/1-sun-icon pending merge) | rev/1-sun-icon |
 
 ## Decisions & architecture
 - Stack: Next.js 16 (App Router, PPR), Supabase Postgres + Auth + Storage (Singapore), TanStack Query, Tailwind 4, shadcn/ui, Google Maps JS, Vitest, Playwright, PGlite.
@@ -125,6 +124,6 @@ Other checks: `npm run check:rls` (local Docker), `npm run check:real-build` (op
 7. Known limits: no app code uses the new functions yet (slices 3-6).
 
 ## Assumptions, risks & sources
-- Assumptions: Production status of migrations 23-34 is UNCONFIRMED (not assumed applied; user to confirm). Only open GitHub item is issue #43. Branch feat/multiple-trips has one unrelated style commit.
+- Assumptions: User confirmed migrations 23-34 are applied to production (2026-11-19). Issue #43 is complete; no other open issue is recorded here. Branch feat/multiple-trips has one unrelated style commit.
 - Security / compliance notes: Service role key and Google server key stay server-only. Invite link (trips.join_token) is owner-only. Read-only share links expose only the fields in shared_trip(). Production migrations are applied by the user by hand.
 - Token numbers come from Claude Code session transcripts; they exclude anything run outside this project directory.
